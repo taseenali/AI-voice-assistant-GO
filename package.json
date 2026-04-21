@@ -1,7 +1,7 @@
 {
-  "name": "ai-voice-assistant",
+  "name": "ai-voice-assistant-engine",
   "version": "1.0.0",
-  "description": "AI Voice Assistant for Genuine Optimum",
+  "description": "Deterministic multi-tenant AI Voice Assistant Engine",
   "main": "index.html",
   "type": "module",
   "scripts": {

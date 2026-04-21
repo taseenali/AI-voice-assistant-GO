@@ -7,10 +7,23 @@
  * Never breaks conversation flow — always recovers smoothly.
  */
 
+import { AppContext } from '../config/loader.js';
+
 export class FallbackRecovery {
 
   constructor() {
     this._confusionCount = 0;
+    
+    // Dynamically build the service summary for recovery prompts
+    const config = AppContext.getConfig();
+    const services = config.services || [];
+    let serviceListStr = "our core services";
+    if (services.length > 0) {
+      const names = services.map(s => s.name.toLowerCase());
+      if (names.length === 1) serviceListStr = names[0];
+      else if (names.length === 2) serviceListStr = `${names[0]} and ${names[1]}`;
+      else serviceListStr = `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+    }
 
     // ─── Response Pools by Escalation Level ───────────────
     this._responses = {
@@ -31,8 +44,8 @@ export class FallbackRecovery {
 
       // Level 2: Third confusion — simplified options
       simplified: [
-        "Let me make this simple. We help businesses with four main things: building websites, getting more clients through search, setting up automation, and building apps. Which one sounds closest to what you need?",
-        "I think we might be going in circles! Here's what we do best: websites, SEO, AI automation, and app development. Does any of that sound relevant to you?"
+        `Let me make this simple. We help businesses with projects like ${serviceListStr}. Which one sounds closest to what you need?`,
+        `I think we might be going in circles! Here's what we do best: ${serviceListStr}. Does any of that sound relevant to you?`
       ],
 
       // Level 3+: Offer human handoff
@@ -44,9 +57,9 @@ export class FallbackRecovery {
 
     // ─── Redirect Responses (for irrelevant topics) ───────
     this._redirects = [
-      "That's an interesting question! But let me steer us back — are you looking for any help growing your business with technology?",
+      "That's an interesting question! But let me steer us back — are you looking for any help growing your business?",
       "I appreciate the thought! My focus is on helping you with business solutions though. Is there a challenge you're facing that I might be able to help with?",
-      "Good question, but that's a bit outside my area! I specialize in web, marketing, AI, and app solutions. Is there something along those lines I can help with?"
+      `Good question, but that's a bit outside my area! I specialize in ${serviceListStr}. Is there something along those lines I can help with?`
     ];
   }
 

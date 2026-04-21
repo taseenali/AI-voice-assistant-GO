@@ -10,7 +10,7 @@ export class KnowledgeEngine {
           { text: "the most scalable businesses treat their lead pipeline like a system, not a hope", tone: "analytical", depth: 3 },
           { text: "consistent growth happens when you control both inbound traffic and what happens after they land", tone: "guided", depth: 3 }
         ],
-        intent: 'INTENT_WEBSITE',
+        intent: 'WEBSITE',
         triggerTokens: ['sale', 'client', 'customer', 'revenue', 'growth', 'double', 'scale', 'profit']
       },
       AD_EFFICIENCY: {
@@ -22,7 +22,7 @@ export class KnowledgeEngine {
           { text: "most businesses overspend on ads because their organic foundation isn't strong enough", tone: "analytical", depth: 3 },
           { text: "the best performing businesses use ads to amplify organic growth, not replace it", tone: "guided", depth: 3 }
         ],
-        intent: 'INTENT_SEO',
+        intent: 'SEO',
         triggerTokens: ['ad', 'google ads', 'facebook ads', 'expensive', 'not working', 'ad spend', 'ads']
       },
       OPERATIONAL_SCALABILITY: {
@@ -34,7 +34,7 @@ export class KnowledgeEngine {
           { text: "most business owners spend 60% of their day on tasks a system could handle", tone: "analytical", depth: 2 },
           { text: "the businesses that scale fastest are the ones that automate their intake and follow-up first", tone: "guided", depth: 3 }
         ],
-        intent: 'INTENT_AI_AUTOMATION',
+        intent: 'AI_AUTOMATION',
         triggerTokens: ['manual', 'repetitive', 'too much work', 'busy', 'time', 'process', 'automate']
       },
       BRAND_TRUST: {
@@ -44,7 +44,7 @@ export class KnowledgeEngine {
           { text: "your website is your digital handshake — it sets the tone for every client relationship", tone: "analytical", depth: 2 },
           { text: "businesses that invest in their online presence typically see higher conversion rates", tone: "expert", depth: 3 }
         ],
-        intent: 'INTENT_WEBSITE',
+        intent: 'WEBSITE',
         triggerTokens: ['trust', 'professional', 'look', 'legit', 'brand', 'credibility', 'image']
       },
       LEAD_GENERATION: {
@@ -54,7 +54,7 @@ export class KnowledgeEngine {
           { text: "building a predictable lead flow is usually the single highest-impact investment", tone: "professional", depth: 3 },
           { text: "the most successful businesses we work with have automated their lead generation", tone: "expert", depth: 4 }
         ],
-        intent: 'INTENT_SEO',
+        intent: 'SEO',
         triggerTokens: ['leads', 'lead', 'inquiries', 'prospects', 'generate', 'pipeline']
       },
       COMPETITIVE_POSITIONING: {
@@ -64,7 +64,7 @@ export class KnowledgeEngine {
           { text: "competitive advantage online comes from a combination of visibility, speed, and credibility", tone: "professional", depth: 3 },
           { text: "the businesses winning right now are the ones that invested in their digital strategy early", tone: "expert", depth: 4 }
         ],
-        intent: 'INTENT_SEO',
+        intent: 'SEO',
         triggerTokens: ['competitor', 'competition', 'behind', 'losing', 'market', 'edge']
       },
       CLIENT_RETENTION: {
@@ -74,7 +74,7 @@ export class KnowledgeEngine {
           { text: "smart automation can keep your existing clients engaged without extra effort from your team", tone: "professional", depth: 3 },
           { text: "the most profitable businesses have systems that nurture relationships automatically", tone: "expert", depth: 4 }
         ],
-        intent: 'INTENT_AI_AUTOMATION',
+        intent: 'AI_AUTOMATION',
         triggerTokens: ['retain', 'keep', 'existing', 'churn', 'follow up', 'followup', 'nurture']
       },
       DIGITAL_TRANSFORMATION: {
@@ -84,7 +84,7 @@ export class KnowledgeEngine {
           { text: "digital transformation is really about connecting your sales, marketing, and operations into one flow", tone: "professional", depth: 3 },
           { text: "the businesses that thrive long-term are the ones that build their digital infrastructure early", tone: "expert", depth: 4 }
         ],
-        intent: 'INTENT_WEBSITE',
+        intent: 'WEBSITE',
         triggerTokens: ['digital', 'online', 'modernize', 'upgrade', 'transform', 'technology']
       }
     };

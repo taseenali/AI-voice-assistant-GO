@@ -13,40 +13,59 @@
  *   - Never force a sale
  *   - Only close after value is established and problem is clear
  *   - Guide naturally
+ *
+ * CONFIG-DRIVEN: All closing responses come from config.closing_responses.
+ * Calendar URL is injected from config.calendar_url.
  */
+
+import { AppContext } from '../config/loader.js';
 
 export class ClosingEngine {
 
   constructor() {
-    // ─── Soft Close Responses ─────────────────────────────
-    this._softCloses = [
-      "Would you like to take this forward? I can arrange a quick consultation with our team to discuss specifics.",
-      "This sounds like something we can definitely help with. Would you like us to look into this for you?",
-      "I think there's a real opportunity here. Want me to set up a quick call so we can map out a plan?",
-      "Based on everything you've shared, I'm confident we can make a real difference. Shall I get the ball rolling?"
-    ];
+    const config = AppContext.getConfig();
+    const closingConfig = config.closing_responses || {};
 
-    // ─── Direct Close Responses ───────────────────────────
-    this._directCloses = [
-      "Let's get you started. I'll pass your details to our team and they'll reach out to set up next steps.",
-      "Great — let's make this happen. Our team will follow up with a tailored plan for you.",
-      "Perfect. I'll set everything in motion. You'll hear from our team very soon."
-    ];
+    // ─── Soft Close Responses (from config) ──────────────
+    this._softCloses = (closingConfig.soft && closingConfig.soft.length > 0)
+      ? [...closingConfig.soft]
+      : [
+          "Would you like to take this forward? I can arrange a quick consultation to discuss specifics.",
+          "This sounds like something we can definitely help with. Would you like us to look into this for you?",
+          "I think there's a real opportunity here. Want me to set up a quick call so we can map out a plan?",
+          "Based on everything you've shared, I'm confident we can make a real difference. Shall I get the ball rolling?"
+        ];
 
-    // ─── Confirmation Follow-ups ──────────────────────────
-    this._confirmations = [
-      "Excellent! We'll take great care of this. Is there anything else you'd like to add before I pass this along?",
-      "Wonderful! You're in good hands. Any final questions or details you'd like to share?",
-      "Brilliant! Our team will reach out shortly. Anything else on your mind?"
-    ];
+    // ─── Direct Close Responses (from config) ────────────
+    this._directCloses = (closingConfig.direct && closingConfig.direct.length > 0)
+      ? [...closingConfig.direct]
+      : [
+          "Let's get you started. I'll pass your details to our team and they'll reach out to set up next steps.",
+          "Great — let's make this happen. Our team will follow up with a tailored plan for you.",
+          "Perfect. I'll set everything in motion. You'll hear from our team very soon."
+        ];
 
-    // ─── Polite Exit (user declines) ──────────────────────
-    this._exits = [
-      "No worries at all! Feel free to reach out anytime you're ready. We'll be here.",
-      "Totally understand — no pressure at all. Whenever you'd like to revisit this, just reach out.",
-      "All good! Thanks for the conversation. You know where to find us when the time is right.",
-      "I appreciate you taking the time to chat. Whenever you're ready, we'd love to help."
-    ];
+    // ─── Confirmation Follow-ups (from config) ───────────
+    this._confirmations = (closingConfig.confirmations && closingConfig.confirmations.length > 0)
+      ? [...closingConfig.confirmations]
+      : [
+          "Excellent! We'll take great care of this. Is there anything else you'd like to add before I pass this along?",
+          "Wonderful! You're in good hands. Any final questions or details you'd like to share?",
+          "Brilliant! Our team will reach out shortly. Anything else on your mind?"
+        ];
+
+    // ─── Polite Exit (from config) ───────────────────────
+    this._exits = (closingConfig.exit && closingConfig.exit.length > 0)
+      ? [...closingConfig.exit]
+      : [
+          "No worries at all! Feel free to reach out anytime you're ready. We'll be here.",
+          "Totally understand — no pressure at all. Whenever you'd like to revisit this, just reach out.",
+          "All good! Thanks for the conversation. You know where to find us when the time is right.",
+          "I appreciate you taking the time to chat. Whenever you're ready, we'd love to help."
+        ];
+
+    // ─── Calendar URL (from config) ──────────────────────
+    this._calendarUrl = config.calendar_url || '';
 
     this._pickCounters = {};
   }
@@ -54,16 +73,18 @@ export class ClosingEngine {
   // ─── Public API ───────────────────────────────────────────
 
   /**
-   * Get a closing response based on engagement level
+   * Get a closing response based on engagement level.
+   * If a calendar URL is configured, appends it to direct closes.
    * @param {string} engagementLevel - 'high', 'medium', 'low'
    * @returns {{ response: string, type: string }}
    */
   getClose(engagementLevel) {
     if (engagementLevel === 'high') {
-      return {
-        response: this._pick(this._directCloses, 'direct'),
-        type: 'direct'
-      };
+      let response = this._pick(this._directCloses, 'direct');
+      if (this._calendarUrl) {
+        response += ` You can also book directly here: ${this._calendarUrl}`;
+      }
+      return { response, type: 'direct' };
     }
 
     return {
@@ -76,7 +97,11 @@ export class ClosingEngine {
    * Get a confirmation response after user agrees to proceed
    */
   getConfirmation() {
-    return this._pick(this._confirmations, 'confirm');
+    let response = this._pick(this._confirmations, 'confirm');
+    if (this._calendarUrl) {
+      response += ` You can also book a time here: ${this._calendarUrl}`;
+    }
+    return response;
   }
 
   /**
@@ -102,6 +127,7 @@ export class ClosingEngine {
   // ─── Private ──────────────────────────────────────────────
 
   _pick(arr, key = 'default') {
+    if (!arr || arr.length === 0) return "Would you like to proceed?";
     if (!this._pickCounters[key]) this._pickCounters[key] = 0;
     const idx = this._pickCounters[key] % arr.length;
     this._pickCounters[key]++;

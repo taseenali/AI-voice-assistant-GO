@@ -1,3 +1,5 @@
+import { AppContext } from '../config/loader.js';
+
 export class NLPTemporal {
   constructor() {
     this.history = [];
@@ -50,7 +52,7 @@ export class NLPTemporal {
 
     // Weight recent turns higher
     this.history.forEach((entry, index) => {
-      if (!entry.intent || entry.intent === 'INTENT_UNKNOWN') return;
+      if (!entry.intent || entry.intent === 'UNKNOWN') return;
 
       const recencyWeight = Math.pow(this.decayFactor, this.history.length - 1 - index);
       scores[entry.intent] = (scores[entry.intent] || 0) + (entry.confidence * recencyWeight);
@@ -70,7 +72,12 @@ export class NLPTemporal {
   _detectContradiction(current, stableIntent) {
     const result = { isPivot: false, type: 'none', acknowledgment: null };
 
-    const isServiceIntent = (intent) => ['INTENT_WEBSITE', 'INTENT_SEO', 'INTENT_AI_AUTOMATION', 'INTENT_APP_DEV'].includes(intent);
+    // Build service intent set dynamically from config
+    const config = AppContext.getConfig();
+    const serviceIntentKeys = new Set(
+      (config.services || []).map(s => s.intent_key).filter(Boolean)
+    );
+    const isServiceIntent = (intent) => serviceIntentKeys.has(intent);
 
     if (stableIntent && current.intent !== stableIntent && isServiceIntent(current.intent)) {
       // 1. HARD PIVOT (Explicit actually/no/instead + high confidence)

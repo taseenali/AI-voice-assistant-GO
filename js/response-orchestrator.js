@@ -1,5 +1,5 @@
 /**
- * Response Orchestrator v2 — Controlled Adaptive Conversation Engine
+ * Response Orchestrator v3 — Config-Driven Adaptive Conversation Engine
  *
  * Every input runs through a strict 6-step pipeline:
  *   1. detect_intent()      → What does the user want?
@@ -15,6 +15,9 @@
  *   - Interruption handling (detect pivot, acknowledge, reroute)
  *   - Memory-aware (never re-ask known data, reference stored context)
  *   - Engagement scoring based on input quality
+ *   - CONFIG-DRIVEN: All modules receive config from AppContext
+ *   - CONVERSION ANCHORS: CTA injection after 3+ turns without goal progress
+ *   - ACTION LAYER: Webhook trigger on lead capture, calendar URL injection
  */
 
 import { STATES, GOALS }            from './state-machine.js';
@@ -32,6 +35,7 @@ import { KnowledgeEngine }          from './knowledge/knowledge-engine.js';
 import { ResponseBuilder }          from './modules/response-builder.js';
 import { ConversationRouter, ROUTE_TYPE } from './router/conversation-router.js';
 import { RouterHandlers }           from './router/router-handlers.js';
+import { AppContext }               from './config/loader.js';
 
 // ─── Action Types ──────────────────────────────────────────────
 const ACT = {
@@ -47,12 +51,8 @@ const ACT = {
   RESUME:     'resume_flow',
   EXIT:       'exit',
   ENDED:      'ended',
+  CTA:        'cta_injection',
 };
-
-// ─── Service Intents Set ───────────────────────────────────────
-const SERVICE_INTENTS = new Set([
-  INTENTS.WEBSITE, INTENTS.SEO, INTENTS.AI_AUTOMATION, INTENTS.APP_DEV
-]);
 
 // ─── Flow Context Map ──────────────────────────────────────────
 const FLOW_CTX = {
@@ -68,8 +68,8 @@ export class ResponseOrchestrator {
   constructor(stateMachine) {
     this.sm = stateMachine;
 
-    // Modules
-    this.intent       = new IntentDetector(); // Retained for basic isPositive/isNegative
+    // All modules are initialized with config already loaded via AppContext
+    this.intent       = new IntentDetector();
     this.nlp          = new NLPEngine();
     this.services     = new ServiceMapper();
     this.discovery    = new DiscoveryEngine();
@@ -82,13 +82,25 @@ export class ResponseOrchestrator {
     this.kb           = new KnowledgeEngine();
     this.builder      = new ResponseBuilder(this.personality);
 
+    // ── SERVICE_INTENTS: dynamically from config ─────────────
+    this.SERVICE_INTENTS = this.intent.getServiceIntentKeys();
+
     // Internal
     this._capField     = null;   // Field currently being captured
     this._unclear      = 0;      // Consecutive unclear inputs
 
+    // ── Conversion Anchor tracking ──────────────────────────
+    this._turnsSinceGoalProgress = 0;
+    this._CTA_THRESHOLD = 3;     // Inject CTA after this many turns without progress
+
     // ── Conversation Router (pre-pipeline gate) ──────────────
     this.router        = new ConversationRouter();
     this.routerHandlers= new RouterHandlers();
+
+    // ── Action Layer ─────────────────────────────────────────
+    this._webhookSentPartial = false;
+    this._webhookSentFinal   = false;
+    this._lastCTATurn        = -5; // prevent immediate fire
   }
 
 
@@ -114,31 +126,40 @@ export class ResponseOrchestrator {
     }
 
     // ── DEMO MODE INTERCEPT ──
-    if (lower.includes('demo website') || lower.includes('show website demo') || lower.includes('website demo')) {
-      this.sm.transition(STATES.FLOW_WEBSITE);
-      this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: INTENTS.WEBSITE, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
-      return `For a business like yours, a strong website brings consistent leads. What kind of site do you need?`;
-    } 
-    else if (lower.includes('demo seo') || lower.includes('show seo demo') || lower.includes('seo demo')) {
-      this.sm.transition(STATES.FLOW_SEO);
-      this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: INTENTS.SEO, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
-      return `For a business like yours, better visibility usually solves this. How do you get most clients now?`;
+    // Config-aware: uses first two service flows for demo
+    const config = AppContext.getConfig();
+    const demoServices = (config.services || []).slice(0, 2);
+    
+    if (demoServices.length >= 1) {
+      const svc0 = demoServices[0];
+      const demoKey0 = svc0.intent_key.toLowerCase().replace(/_/g, ' ');
+      if (lower.includes(`demo ${demoKey0}`) || lower.includes(`${demoKey0} demo`)) {
+        this.sm.transition(STATES.FLOW_WEBSITE);
+        this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: svc0.intent_key, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
+        const step = this.flows.getStep(STATES.FLOW_WEBSITE, 0);
+        return step ? step.prompt : `Tell me more about what you need regarding ${svc0.name}.`;
+      }
+    }
+    if (demoServices.length >= 2) {
+      const svc1 = demoServices[1];
+      const demoKey1 = svc1.intent_key.toLowerCase().replace(/_/g, ' ');
+      if (lower.includes(`demo ${demoKey1}`) || lower.includes(`${demoKey1} demo`)) {
+        this.sm.transition(STATES.FLOW_SEO);
+        this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: svc1.intent_key, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
+        const step = this.flows.getStep(STATES.FLOW_SEO, 0);
+        return step ? step.prompt : `Tell me more about what you need regarding ${svc1.name}.`;
+      }
     }
 
     // ═══ CONVERSATION ROUTER — pre-pipeline gate ═══════════
-    // Run a lightweight classification BEFORE any heavy NLP logic.
-    // Non-core inputs are handled immediately and returned.
-    // Only CORE inputs proceed to the 6-step pipeline.
-
-    // Note: We run a quick pre-NLP route with null nlpData for speed
     const quickRoute = this.router.route(input, null, this._unclear);
 
     if (quickRoute.type !== ROUTE_TYPE.CORE) {
-      // Track unclear streak for escalation
       if (quickRoute.type === ROUTE_TYPE.NOISE) {
         this._unclear++;
+        this._turnsSinceGoalProgress++;
       } else {
-        this._unclear = 0; // Greetings/meta are intentional — reset streak
+        this._unclear = 0;
       }
 
       const routeResponse = this.routerHandlers.handle(quickRoute.type, this._unclear);
@@ -150,7 +171,6 @@ export class ResponseOrchestrator {
     // ── CORE input confirmed — reset unclear streak ──────────
     this._unclear = 0;
 
-    // If state is still GREETING (user's first real message), transition to DISCOVERY
     if (this.sm.getState() === STATES.GREETING) {
       this.sm.transition(STATES.DISCOVERY);
     }
@@ -163,22 +183,31 @@ export class ResponseOrchestrator {
     // KNOWLEDGE INTEGRATION (Phase KB)
     const kbData = this.kb.analyze(ir, ctx, input, ctx.depthLevel || 1);
     
-    // INTENT RESCUE: If NLP is weak, let KB logic take control
-    if ((!ir.intent || ir.intent === 'INTENT_UNKNOWN' || ir.confidence.intent < 0.5) && kbData.confidence > 0.6) {
+    if ((!ir.intent || ir.intent === INTENTS.UNKNOWN || ir.confidence.intent < 0.5) && kbData.confidence > 0.6) {
        ir.intent = kbData.recommendedIntent;
     }
     ir.insight = kbData.insight;
     ir.kbOutcome = kbData.outcome;
 
     this._step2_updateContext(input, ir);
-    this._updateDepthLevel(ir); // Update depth based on intent and user state
+    this._updateDepthLevel(ir);
 
     const ev   = this._step3_evaluateState(input, ir);
     const goal = this._step4_chooseGoal(ev);
     const act  = this._step5_selectAction(goal, ev, ir);
     const raw  = this._step6_generateResponse(act, ir, input);
 
+    // ── CONVERSION ANCHOR: Track goal progress ──────────────
+    this._trackGoalProgress(goal, ev);
+
+    // ── ACTION LAYER: Check Partial Lead Capture ─────────────
+    if (!this._webhookSentPartial && this.leads.hasMinimumData()) {
+      this._webhookSentPartial = true;
+      this._triggerWebhook('partial');
+    }
+
     this.sm.addToMemory({ role: 'assistant', text: raw });
+    console.log(`[Orchestrator] Action triggered: ${act.type} logic.`);
     return raw;
   }
 
@@ -187,14 +216,146 @@ export class ResponseOrchestrator {
     this.discovery.reset();
     this.leads.reset();
     this.fallback.reset();
-    this._capField = null;
-    this._unclear  = 0;
+    this._capField     = null;
+    this._unclear      = 0;
+    this._turnsSinceGoalProgress = 0;
+    this._lastCTATurn  = -5;
+    this._webhookSentPartial = false;
+    this._webhookSentFinal   = false;
     // Router handlers have round-robin state — reset for fresh conversation
     this.routerHandlers = new RouterHandlers();
   }
 
   getLeadData()         { return this.leads.getData(); }
   getLeadCompleteness() { return this.leads.getCompleteness(); }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  CONVERSION ANCHOR SYSTEM
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Track turns since last meaningful goal progress.
+   * If threshold exceeded, the next turn will inject a CTA.
+   */
+  _trackGoalProgress(goal, ev) {
+    const progressGoals = ['position_solution', 'close', 'capture_lead', 'reroute'];
+    
+    if (progressGoals.includes(goal) || ev.isPositive) {
+      this._turnsSinceGoalProgress = 0;
+    } else {
+      this._turnsSinceGoalProgress++;
+    }
+  }
+
+  /**
+   * Check if a CTA should be injected this turn.
+   */
+  _shouldInjectCTA(ev, ir) {
+    const turnCount = this.sm.getContext().turnCount;
+    // Cooldown verification to prevent over-pushing (wait at least 2 turns between CTAs)
+    if (turnCount - this._lastCTATurn < 2) return false;
+
+    let shouldTrigger = false;
+
+    // 1. User hesitation (skepticism or confusion)
+    if (ir && (ir.userType === 'skeptical' || ir.userType === 'confused')) shouldTrigger = true;
+    
+    // 2. Unclear streak (user keeps giving noise)
+    if (this._unclear >= 2) shouldTrigger = true;
+    
+    // 3. Stalled general progress
+    if (this._turnsSinceGoalProgress >= this._CTA_THRESHOLD) shouldTrigger = true;
+    
+    // 4. Parital qualification achieved but stalled
+    const hasLead = this.leads.hasMinimumData();
+    if (hasLead && ir && (ir.intent !== 'POSITIVE' && ir.intent !== 'YES') && this._turnsSinceGoalProgress >= 2) shouldTrigger = true;
+
+    return shouldTrigger;
+  }
+
+  /**
+   * Get a CTA from config templates.
+   */
+  _getCTA() {
+    const config = AppContext.getConfig();
+    const templates = config.cta_templates || [];
+    if (templates.length === 0) return "Would you like to take the next step?";
+
+    // Round-robin through CTA templates
+    if (!this._ctaCounter) this._ctaCounter = 0;
+    const idx = this._ctaCounter % templates.length;
+    this._ctaCounter++;
+    return templates[idx];
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  ACTION LAYER — Webhook & Booking
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Send lead data via webhook. Includes error handling, timeout, and retry.
+   * Prevents spam through partial and final tracking.
+   */
+  async _triggerWebhook(stage = 'final') {
+    if (stage === 'final' && this._webhookSentFinal) return;
+    if (stage === 'final') this._webhookSentFinal = true;
+
+    const config = AppContext.getConfig();
+    const webhookUrl = config.webhook_url;
+    
+    if (!webhookUrl) {
+      console.log(`[ActionLayer] No webhook URL configured for stage: ${stage}. Payload:`, JSON.stringify(this.leads.getData()));
+      return;
+    }
+
+    const payload = {
+      client_id:    config.company_name || 'unknown',
+      conversation_stage: stage,
+      lead_data:    this.leads.getData(),
+      conversation_meta: {
+        intent:      this.sm.getContext().intent || 'none',
+        turn_count:  this.sm.getContext().turnCount || 0
+      },
+      timestamp:    new Date().toISOString()
+    };
+
+    const attemptFetch = async (retryCount = 0) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
+
+      try {
+        const res = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          console.log(`[ActionLayer] Webhook ${stage} sent successfully.`);
+        } else {
+          console.warn(`[ActionLayer] Webhook failed (${res.status}).`);
+          if (retryCount < 1) {
+            console.log(`[ActionLayer] Retrying webhook in 2s...`);
+            setTimeout(() => attemptFetch(retryCount + 1), 2000);
+          }
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        console.warn('[ActionLayer] Webhook error:', err.message);
+        if (err.name === 'AbortError' && retryCount < 1) {
+          console.log(`[ActionLayer] Webhook timed out. Retrying in 2s...`);
+          setTimeout(() => attemptFetch(retryCount + 1), 2000);
+        }
+      }
+    };
+
+    attemptFetch(0);
+  }
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -205,30 +366,24 @@ export class ResponseOrchestrator {
     const ctx = this.sm.getContext();
     const nlpData = this.nlp.analyze(input, ctx);
     
-    if (!nlpData) return null; // empty
+    if (!nlpData) return null;
 
     const cur = ctx.intent;
     const inFlow = this.sm.isInFlow() && this.sm.getState() !== STATES.FLOW_GENERAL;
     let isInterrupt = false;
 
-    // Primary interruption
-    if (SERVICE_INTENTS.has(cur) && SERVICE_INTENTS.has(nlpData.intent) &&
+    // Primary interruption — service intent switch during active flow
+    if (this.SERVICE_INTENTS.has(cur) && this.SERVICE_INTENTS.has(nlpData.intent) &&
         nlpData.intent !== cur && nlpData.intentStrength !== 'weak' && inFlow) {
       isInterrupt = true;
     }
 
-    // Secondary interruption mapping using userType
-    if (inFlow && nlpData.userType === 'confused' && !nlpData.business && !nlpData.goal) {
-       // Confusion during flow -> handled natively via fallback check if intent missing
-    }
-
     nlpData.isInterruption = isInterrupt;
 
-    // NOISE STABILIZATION (Phase NLP-3)
-    // If current intent is unknown/weak but history has a stable trend, stick to stability
+    // NOISE STABILIZATION
     if (nlpData.intentStrength === 'weak' && nlpData.stableIntent && nlpData.confidenceTrend > 0.6) {
       nlpData.intent = nlpData.stableIntent;
-      nlpData.intentStrength = 'moderate'; // promoted from history
+      nlpData.intentStrength = 'moderate';
     }
 
     return nlpData;
@@ -290,7 +445,7 @@ export class ResponseOrchestrator {
     }
 
     // MULTI-SIGNAL HANDLING
-    if (nlpData.secondaryIntent && SERVICE_INTENTS.has(nlpData.secondaryIntent) && !ld.problem) {
+    if (nlpData.secondaryIntent && this.SERVICE_INTENTS.has(nlpData.secondaryIntent) && !ld.problem) {
       this.sm.updateLeadData({ problem: `Prior failure/interest in ${nlpData.secondaryIntent}` });
     }
 
@@ -314,7 +469,6 @@ export class ResponseOrchestrator {
       this.sm.updateContext({ urgency: 'high' });
     }
 
-    // Save user model trace
     this.sm.updateContext({ userType: nlpData.userType });
 
     // 4. Engagement scoring
@@ -335,11 +489,9 @@ export class ResponseOrchestrator {
     const ctx = this.sm.getContext();
     let depth = ctx.depthLevel || 1;
 
-    // 1. REGRSSION: If confused or confidence dropped, step back
     if (ir.userType === 'confused' || ir.confidence.lowConfidence) {
       depth = Math.max(1, depth - 1);
     }
-    // 2. ALIGNMENT: Max depth constrained by intent strength
     else {
       const limits = { weak: 2, medium: 3, strong: 5 };
       const maxAllowed = limits[ir.intentStrength] || 2;
@@ -356,24 +508,19 @@ export class ResponseOrchestrator {
   _scoreEngagement(input, ir) {
     let d = 0;
 
-    // Input quality
     if (ir.quality.detail === 'high')   d += 8;
     else if (ir.quality.detail === 'medium') d += 4;
     else if (ir.quality.words <= 1 && !this.intent.isPositive(input)) d -= 3;
 
-    // Urgency
     if (ir.urgency && ir.urgency.value === 'high') d += 10;
     else if (ir.urgency && ir.urgency.value === 'low') d -= 3;
 
-    // Intent clarity
     if (ir.intentStrength === 'strong' || ir.intentStrength === 'high') d += 5;
 
-    // Sentiment (retained from old intent structure fallback map)
     if (this.intent.isPositive(input)) d += 8;
     if (this.intent.isNegative(input)) d -= 10;
     if (ir.intent === INTENTS.OBJECTION) d -= 8;
     
-    // UserType Tone Map
     if (ir.userType === 'direct') d += 5;
     if (ir.userType === 'exploratory') d += 2;
     if (ir.userType === 'skeptical') d -= 5;
@@ -401,12 +548,11 @@ export class ResponseOrchestrator {
       // Flags
       fastTrack:       ctx.engagementScore > 65 || ctx.urgency === 'high',
       isInterruption:  ir.isInterruption,
-      // Objection only dominates when no stronger service intent exists
       isObjection:     (ir.intent === INTENTS.OBJECTION || this.objections.isObjection(input))
-                       && !SERVICE_INTENTS.has(ir.intent),
+                       && !this.SERVICE_INTENTS.has(ir.intent),
       isPositive:      this.intent.isPositive(input),
       isNegative:      this.intent.isNegative(input),
-      hasService:      SERVICE_INTENTS.has(ir.intent),
+      hasService:      this.SERVICE_INTENTS.has(ir.intent),
       hasIntent:       ir.intent !== INTENTS.UNKNOWN && ir.intentStrength !== 'weak',
       isGeneral:       ir.intent === INTENTS.GENERAL_INQUIRY,
       isLow:           ir.intent === INTENTS.LOW_INTENT,
@@ -416,6 +562,10 @@ export class ResponseOrchestrator {
       hasProblem:      !!ctx.leadData.problem,
       inFlow:          this.sm.isInFlow(),
       unclearStreak:   this._unclear,
+      isFlowMismatch:  this.sm.isInFlow() && this.SERVICE_INTENTS.has(ir.intent) && ir.intentStrength !== 'weak' && this.sm.getState() !== this.flows.intentToFlow(ir.intent),
+      
+      // Conversion Anchor flag
+      needsCTA:        this._shouldInjectCTA(this, ir)
     };
   }
 
@@ -428,8 +578,13 @@ export class ResponseOrchestrator {
     // Objection overrides everything except ENDED
     if (ev.isObjection && ev.state !== STATES.ENDED) return 'handle_objection';
 
-    // Interruption overrides flow
-    if (ev.isInterruption) return 'reroute';
+    // Interruption or flow mismatch overrides flow logic and guarantees a reroute
+    if (ev.isInterruption || ev.isFlowMismatch) return 'reroute';
+
+    // ── CONVERSION ANCHOR: inject CTA if stalled ────────────
+    if (ev.needsCTA && ev.state !== STATES.GREETING && ev.state !== STATES.ENDED && ev.state !== STATES.CLOSING) {
+      return 'inject_cta';
+    }
 
     switch (ev.state) {
 
@@ -456,25 +611,20 @@ export class ResponseOrchestrator {
       case STATES.FLOW_APP:
         if (ev.state === STATES.FLOW_GENERAL && ev.hasService) return 'position_solution';
         
-        // Check if flow is EXHAUSTED (all steps including positioning have been shown)
         { const s = this.flows.getStep(ev.state, ev.flowStep);
           if (!s && ev.flowStep > 0) {
-            // All flow steps delivered — now close based on sentiment
             if (ev.isPositive) return 'close';
             if (ev.isNegative) return 'handle_objection';
-            return 'close'; // Default: attempt soft close after full flow
+            return 'close';
           }
         }
 
-        // Fast-path close ONLY after ALL flow steps have been shown + high engagement
         if (ev.fastTrack && ev.flowStep >= 4 && (ev.hasGoal || ev.hasProblem)) return 'close';
 
         return 'explore_context';
 
       case STATES.FLOW_GENERAL:
-        // If a specific service intent is detected, pivot to that flow
         if (ev.hasService) return 'position_solution';
-        // Only close after all general flow steps done AND we have enough context
         if (ev.flowStep >= 2 && (ev.hasGoal || ev.hasProblem) && ev.isPositive) return 'close';
         return 'explore_context';
 
@@ -482,11 +632,9 @@ export class ResponseOrchestrator {
         return ev.hasLead ? 'close' : 'capture_lead';
 
       case STATES.CLOSING:
-        // User agreed → capture lead data if needed
         if (ev.isPositive && !ev.hasLead) return 'capture_lead';
         if (ev.isPositive && ev.hasLead) return 'close';
         if (ev.isNegative) return 'exit';
-        // User provided new info while in closing → acknowledge and re-explore
         if (ev.hasService || ev.hasIntent) return 'explore_context';
         return 'close';
 
@@ -560,6 +708,9 @@ export class ResponseOrchestrator {
       case 'clarify':
         return { type: ACT.FALLBACK };
 
+      case 'inject_cta':
+        return { type: ACT.CTA };
+
       case 'ended':
         return { type: ACT.ENDED };
 
@@ -570,23 +721,22 @@ export class ResponseOrchestrator {
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  STEP 6 — GENERATE RESPONSE
-  // ═══════════════════════════════════════════════════════════════
-
-  // ═══════════════════════════════════════════════════════════════
   //  STEP 6 — GENERATE RESPONSE (Module-Routed)
   // ═══════════════════════════════════════════════════════════════
 
   _step6_generateResponse(act, ir, input) {
     const ctx = this.sm.getContext();
     const ld  = this.leads.getData();
-    let response;
 
     switch (act.type) {
 
       // ── EXIT / ENDED ──────────────────────────────────────────
       case ACT.EXIT:
         this._transTo(STATES.ENDED);
+        // Trigger webhook on exit if we have lead data
+        if (this.leads.getCompleteness() > 0) {
+          this._triggerWebhook();
+        }
         return this.closing.getExit();
 
       case ACT.ENDED:
@@ -605,7 +755,10 @@ export class ResponseOrchestrator {
         const level = this.sm.getEngagementLevel();
         const cl = this.closing.getClose(level);
         this._transTo(STATES.CLOSING);
-        // If we know their name, personalize
+        // Trigger webhook on close
+        if (this.leads.getCompleteness() > 0) {
+          this._triggerWebhook('final');
+        }
         if (ld.name) return `${ld.name}, ${cl.response.charAt(0).toLowerCase()}${cl.response.slice(1)}`;
         return cl.response;
       }
@@ -615,11 +768,11 @@ export class ResponseOrchestrator {
         this._transTo(STATES.LEAD_CAPTURE);
         const next = this.leads.getNextCapture();
         if (!next) {
-          // All data captured — transition to close
+          // All data captured — trigger webhook and close
+          this._triggerWebhook('final');
           return this.closing.getClose(this.sm.getEngagementLevel()).response;
         }
         this._capField = next.field;
-        // Add a warm bridge before the capture question
         const bridge = this.personality.getPhrase('bridge');
         return `${bridge} ${next.prompt}`;
       }
@@ -631,7 +784,6 @@ export class ResponseOrchestrator {
           const step = this.flows.getStep(act.flow, 0);
           if (step) {
             this.sm.advanceFlowStep();
-            // If we have an insight, lead with it, then ask the flow question
             if (ir.insight && ir.insight !== this.kb.fallbackInsight) {
               const ack = this.personality.getPhrase('acknowledge');
               return `${ack} ${ir.insight}. ${step.prompt}`;
@@ -639,7 +791,6 @@ export class ResponseOrchestrator {
             return step.prompt;
           }
         }
-        // Fallthrough: use builder if flow entry fails
         return this._buildInsightResponse(ir, ctx, ld);
       }
 
@@ -654,7 +805,6 @@ export class ResponseOrchestrator {
             return `${redirect} ${step.prompt}`;
           }
         }
-        // Flow complete — bridge to close
         return this._bridgeToClose(ld);
       }
 
@@ -672,11 +822,21 @@ export class ResponseOrchestrator {
         return this._buildInsightResponse(ir, ctx, ld);
       }
 
+      // ── CTA INJECTION (Conversion Anchor) ─────────────────────
+      case ACT.CTA: {
+        this._turnsSinceGoalProgress = 0; // Reset after injection
+        this._lastCTATurn = this.sm.getContext().turnCount; // Log invocation
+        console.log(`[Orchestrator] Invoking CTA element`);
+        const cta = this._getCTA();
+        const ack = this.personality.getPhrase('acknowledge');
+        return `${ack} ${cta}`;
+      }
+
       // ── ASK QUESTION (Discovery) ──────────────────────────────
       case ACT.ASK: {
         const activeFlow = ctx.activeFlow;
 
-        // ── GENERAL FLOW PIVOT: if service intent detected, switch to that flow ──
+        // ── GENERAL FLOW PIVOT ──
         if (activeFlow === STATES.FLOW_GENERAL) {
           const serviceFlow = this.flows.intentToFlow(ir.intent);
           if (serviceFlow && this._transToFlow(serviceFlow)) {
@@ -690,7 +850,7 @@ export class ResponseOrchestrator {
           }
         }
 
-        // ── ACTIVE SERVICE FLOW: use the flow's questions ────────
+        // ── ACTIVE SERVICE FLOW ──
         if (activeFlow && this.flows.hasFlow(activeFlow) && activeFlow !== STATES.FLOW_GENERAL) {
           const step = this.flows.getStep(activeFlow, ctx.flowStep);
           if (step) {
@@ -700,11 +860,10 @@ export class ResponseOrchestrator {
             }
             return this.personality.compose(step.prompt, { acknowledge: true });
           }
-          // Flow questions exhausted — bridge to close
           return this._bridgeToClose(ld);
         }
 
-        // ── GENERAL FLOW: use the general flow's own steps ───────
+        // ── GENERAL FLOW ──
         if (activeFlow === STATES.FLOW_GENERAL) {
           const step = this.flows.getStep(activeFlow, ctx.flowStep);
           if (step) {
@@ -713,7 +872,7 @@ export class ResponseOrchestrator {
           }
         }
 
-        // ── NOT IN A FLOW: use Discovery Engine ──────────────────
+        // ── NOT IN A FLOW: use Discovery Engine ──
         const flowCtx = act.flowCtx || null;
         const disc = this.discovery.getNextQuestion(flowCtx, ctx.depthLevel);
 
@@ -771,7 +930,6 @@ export class ResponseOrchestrator {
   //  TRANSITION HELPERS
   // ═══════════════════════════════════════════════════════════════
 
-  /** Try a single transition. Returns true on success. */
   _transTo(target) {
     if (this.sm.canTransition(target)) {
       this.sm.transition(target);
@@ -780,17 +938,13 @@ export class ResponseOrchestrator {
     return false;
   }
 
-  /** Navigate to a flow state through whatever path is available. */
   _transToFlow(targetFlow) {
-    // Already there
     if (this.sm.getState() === targetFlow) return true;
 
-    // Direct
     if (this.sm.canTransition(targetFlow)) {
       this.sm.transition(targetFlow);
       return true;
     }
-    // Via INTENT_DETECTED
     if (this.sm.canTransition(STATES.INTENT_DETECTED)) {
       this.sm.transition(STATES.INTENT_DETECTED, { intent: this.sm.getContext().intent });
       if (this.sm.canTransition(targetFlow)) {
@@ -801,4 +955,3 @@ export class ResponseOrchestrator {
     return false;
   }
 }
-

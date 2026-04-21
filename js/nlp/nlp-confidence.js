@@ -1,5 +1,5 @@
 export function scoreConfidence(extracted, intentData, contextMemory) {
-  let baseScore = intentData.primaryIntent !== 'INTENT_UNKNOWN' ? (intentData.intentScores[intentData.primaryIntent] || 0) : 0;
+  let baseScore = intentData.primaryIntent !== 'UNKNOWN' ? (intentData.intentScores[intentData.primaryIntent] || 0) : 0;
   
   // Normalize baseScore
   baseScore = Math.min(1.0, baseScore * 0.1); 
@@ -19,7 +19,7 @@ export function scoreConfidence(extracted, intentData, contextMemory) {
   if (contextMemory && contextMemory.intent) {
     if (intentData.primaryIntent === contextMemory.intent) {
       contextMatchBonus = 0.2;
-    } else if (intentData.primaryIntent !== 'INTENT_UNKNOWN' && !['INTENT_GENERAL_INQUIRY', 'INTENT_POSITIVE', 'INTENT_NEGATIVE'].includes(intentData.primaryIntent)) {
+    } else if (intentData.primaryIntent !== 'UNKNOWN' && !['GENERAL_INQUIRY', 'POSITIVE', 'NEGATIVE'].includes(intentData.primaryIntent)) {
       contradictionPenalty = 0.25;
     }
   }

@@ -11,6 +11,8 @@
  * Rule: Natural, not robotic. Never ask all at once.
  */
 
+import { AppContext } from '../config/loader.js';
+
 export class LeadCapture {
 
   constructor() {
@@ -150,20 +152,25 @@ export class LeadCapture {
    * Save lead data to localStorage
    */
   save() {
-    const leads = JSON.parse(localStorage.getItem('go_leads') || '[]');
+    const config = AppContext.getConfig();
+    const storageKey = `leads_${(config.company_name || 'default').toLowerCase().replace(/\s+/g, '_')}`;
+    const leads = JSON.parse(localStorage.getItem(storageKey) || '[]');
     leads.push({
       ...this._leadData,
+      client_id: config.company_name,
       capturedAt: new Date().toISOString(),
       completeness: this.getCompleteness()
     });
-    localStorage.setItem('go_leads', JSON.stringify(leads));
+    localStorage.setItem(storageKey, JSON.stringify(leads));
   }
 
   /**
    * Load all saved leads from localStorage
    */
   static loadAll() {
-    return JSON.parse(localStorage.getItem('go_leads') || '[]');
+    const config = AppContext.getConfig();
+    const storageKey = `leads_${(config.company_name || 'default').toLowerCase().replace(/\s+/g, '_')}`;
+    return JSON.parse(localStorage.getItem(storageKey) || '[]');
   }
 
   /**

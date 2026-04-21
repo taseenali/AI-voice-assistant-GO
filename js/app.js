@@ -2,6 +2,7 @@
  * App Controller — Entry Point & UI Manager
  *
  * Wires together:
+ *   - Config Engine (loaded FIRST — before anything else)
  *   - ConversationStateMachine
  *   - ResponseOrchestrator
  *   - SpeechIO
@@ -13,21 +14,74 @@
  *   - Voice orb state management
  *   - Lead panel updates
  *   - State display
+ *   - Dynamic UI branding via config
  */
 
 import { ConversationStateMachine, STATES } from './state-machine.js';
 import { ResponseOrchestrator }              from './response-orchestrator.js';
 import { SpeechIO }                          from './speech-io.js';
+import { AppContext, loadConfig, getClientFromURL } from './config/loader.js';
 
 class App {
 
   constructor() {
-    // ─── Core Systems ─────────────────────────────────────
-    this.stateMachine = new ConversationStateMachine();
-    this.orchestrator = new ResponseOrchestrator(this.stateMachine);
-    this.speechIO     = new SpeechIO();
+    // ─── State (pre-init) ──────────────────────────────────
+    this._isProcessing   = false;
+    this._voiceMode      = false;
+    this._interimDisplay = null;
+    this._isDebug        = false;
 
-    // ─── DOM References ───────────────────────────────────
+    // Boot the app asynchronously — config loads BEFORE engine init
+    this._boot();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ASYNC BOOT — Config-first initialization
+  // ═══════════════════════════════════════════════════════════
+
+  async _boot() {
+    try {
+      // 1. Load config BEFORE anything else
+      const clientId = getClientFromURL();
+      const config = await loadConfig(clientId);
+      AppContext.setConfig(config);
+
+      console.log(`[App] Booted with client: "${clientId}" | Company: "${config.company_name}"`);
+
+      // 2. Initialize core systems (config is now available globally)
+      this.stateMachine = new ConversationStateMachine(config);
+      this.orchestrator = new ResponseOrchestrator(this.stateMachine);
+      this.speechIO     = new SpeechIO();
+
+      // 3. Cache DOM references
+      this._cacheDOMRefs();
+
+      // 4. Apply config-driven branding to UI
+      this._applyBranding(config);
+
+      // 5. Wire up events
+      this._bindEvents();
+      this._setupSpeechCallbacks();
+      this._setupStateListener();
+      this._checkBrowserSupport();
+
+      // 6. Start conversation
+      this._startConversation();
+
+    } catch (err) {
+      console.error('[App] Critical boot failure:', err);
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#ff4444;">
+          <p>Failed to initialize. Please refresh the page.</p>
+        </div>`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  DOM & BRANDING
+  // ═══════════════════════════════════════════════════════════
+
+  _cacheDOMRefs() {
     this.$orb           = document.getElementById('voice-orb');
     this.$orbCore       = document.getElementById('orb-core');
     this.$orbStatus     = document.getElementById('orb-status');
@@ -47,27 +101,51 @@ class App {
     this.$leadTimeline  = document.getElementById('lead-timeline');
     this.$leadTenure    = document.getElementById('lead-tenure');
     this.$leadScore     = document.getElementById('lead-score');
+  }
 
-    // ─── State ────────────────────────────────────────────
-    this._isProcessing   = false;
-    this._voiceMode      = false;
-    this._interimDisplay = null;
-    this._isDebug        = false;
+  /**
+   * Apply config-driven branding to the UI.
+   * Replaces all hardcoded company references in the DOM.
+   */
+  _applyBranding(config) {
+    // Header title
+    const $title = document.querySelector('.header__title');
+    if ($title) $title.textContent = config.company_name;
 
-    this._init();
+    // Header logo (first 2 chars or initials)
+    const $logo = document.querySelector('.header__logo');
+    if ($logo) {
+      const words = config.company_name.split(' ');
+      $logo.textContent = words.length >= 2
+        ? words[0][0] + words[1][0]
+        : config.company_name.substring(0, 2).toUpperCase();
+    }
+
+    // Page title
+    document.title = `${config.company_name} — AI Voice Assistant`;
+
+    // Meta description
+    const $metaDesc = document.querySelector('meta[name="description"]');
+    if ($metaDesc) {
+      $metaDesc.setAttribute('content',
+        `AI Voice Assistant for ${config.company_name} — Your intelligent business consultant powered by voice.`
+      );
+    }
+
+    // Sidebar about text
+    const $aboutCard = document.querySelector('.info-card:last-of-type p');
+    if ($aboutCard) {
+      $aboutCard.textContent = `I'm your AI-powered ${config.role || 'business consultant'}. I help identify the right solutions for your needs.`;
+    }
+
+    // Footer
+    const $footer = document.querySelector('.system-info a');
+    if ($footer) $footer.textContent = config.company_name;
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  INITIALIZATION
+  //  EVENT BINDING
   // ═══════════════════════════════════════════════════════════
-
-  _init() {
-    this._bindEvents();
-    this._setupSpeechCallbacks();
-    this._setupStateListener();
-    this._checkBrowserSupport();
-    this._startConversation();
-  }
 
   _bindEvents() {
     // Send button
@@ -206,10 +284,12 @@ class App {
     if (!this._isDebug) return;
     const ctx = this.stateMachine.getContext();
     const state = this.stateMachine.getState();
+    const config = AppContext.getConfig();
     const dbg = document.getElementById('debug-overlay');
     if (dbg) {
       dbg.innerHTML = `
         <strong style="color: #fff">DEBUG MODE ACTIVE</strong><hr style="border-color:#333; margin:8px 0">
+        <div><strong>Client:</strong> ${config.company_name || 'N/A'}</div>
         <div><strong>State:</strong> ${state}</div>
         <div><strong>Intent:</strong> ${ctx.intent || 'None'}</div>
         <div><strong>Goal:</strong> ${ctx.conversationGoal || 'None'}</div>
@@ -284,6 +364,8 @@ class App {
   // ═══════════════════════════════════════════════════════════
 
   _addMessage(role, text) {
+    const config = AppContext.getConfig();
+
     const wrapper = document.createElement('div');
     wrapper.className = `message message--${role}`;
 
@@ -299,7 +381,7 @@ class App {
     const meta = document.createElement('div');
     meta.className = 'message__meta';
     meta.textContent = role === 'user' ? 'You' :
-                       role === 'assistant' ? 'Genuine Optimum' : 'System';
+                       role === 'assistant' ? (config.company_name || 'Assistant') : 'System';
 
     wrapper.appendChild(bubble);
     wrapper.appendChild(meta);
@@ -380,10 +462,6 @@ class App {
         [STATES.GREETING]:        'Greeting',
         [STATES.DISCOVERY]:       'Discovery',
         [STATES.INTENT_DETECTED]: 'Intent Detected',
-        [STATES.FLOW_WEBSITE]:    'Website Flow',
-        [STATES.FLOW_SEO]:        'SEO Flow',
-        [STATES.FLOW_AI]:         'AI Systems Flow',
-        [STATES.FLOW_APP]:        'App Dev Flow',
         [STATES.FLOW_GENERAL]:    'General Inquiry',
         [STATES.LEAD_CAPTURE]:    'Lead Capture',
         [STATES.CLOSING]:         'Closing',

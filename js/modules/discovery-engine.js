@@ -14,12 +14,19 @@
  *   Level 1: Basic need
  *   Level 2: Business context
  *   Level 3: Pain points
+ *
+ * CONFIG-DRIVEN: Context-specific questions are loaded from config.services[].discovery_questions.
+ * Depth-based generic questions remain engine-level (they are universal).
  */
+
+import { AppContext } from '../config/loader.js';
 
 export class DiscoveryEngine {
 
   constructor() {
-    // ─── Question Banks by Depth ──────────────────────────
+    const config = AppContext.getConfig();
+
+    // ─── Question Banks by Depth (engine-level — universal) ──
 
     this._questions = {
       // Level 1: Open discovery — understand the basic need
@@ -48,30 +55,24 @@ export class DiscoveryEngine {
       ]
     };
 
-    // ─── Context-Specific Follow-ups ──────────────────────
+    // ─── Context-Specific Follow-ups (from config) ──────────
+    this._contextQuestions = {};
 
-    this._contextQuestions = {
-      website: [
-        "Do you currently have a website, or would this be your first?",
-        "What's the main goal for your website — getting leads, selling products, or showcasing your work?",
-        "Is there a timeline you're working with for this?"
-      ],
-      seo: [
-        "How are you currently getting your clients — referrals, online, or something else?",
-        "Do you have any idea how you rank on Google right now?",
-        "How important is online visibility to your revenue?"
-      ],
-      ai: [
-        "What tasks or processes are taking up the most time in your business?",
-        "Have you looked into automation before, or is this new territory for you?",
-        "How many people on your team are handling these repetitive tasks?"
-      ],
-      app: [
-        "Tell me more about the idea — what problem would this app solve?",
-        "Have you thought about which platforms you'd want it on — mobile, web, or both?",
-        "Is this something for your internal team or for your clients?"
-      ]
-    };
+    if (config.services && Array.isArray(config.services)) {
+      // Map each service to a context key for the flow system
+      const contextKeys = ['website', 'seo', 'ai', 'app'];
+      
+      config.services.forEach((svc, index) => {
+        // Use standard context key if available, otherwise use the intent_key lowercase
+        const ctxKey = index < contextKeys.length 
+          ? contextKeys[index] 
+          : svc.intent_key.toLowerCase();
+        
+        if (svc.discovery_questions && svc.discovery_questions.length > 0) {
+          this._contextQuestions[ctxKey] = [...svc.discovery_questions];
+        }
+      });
+    }
 
     this._currentDepth    = 0;
     this._questionsAsked  = [];
@@ -82,7 +83,7 @@ export class DiscoveryEngine {
 
   /**
    * Get the next discovery question based on depth and context.
-   * @param {string|null} context - Optional context key ('website', 'seo', 'ai', 'app')
+   * @param {string|null} context - Optional context key ('website', 'seo', 'ai', 'app', or any custom key)
    * @param {number} externalDepth - Current depth from orchestrator (1-5)
    * @returns {{ question: string, depth: number }}
    */

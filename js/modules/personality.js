@@ -4,18 +4,25 @@
  * consultative. Never robotic, never aggressive, never scripted.
  * 
  * Uses round-robin selection for deterministic, non-repeating phrase rotation.
+ * 
+ * CONFIG-DRIVEN: Greetings and tone behavior are loaded from AppContext config.
+ * No hardcoded company names or business-specific language.
  */
+
+import { AppContext } from '../config/loader.js';
 
 export class Personality {
 
   constructor() {
-    // ─── Greeting Pool ──────────────────────────────────────
-    this._greetings = [
-      "Hey there! Welcome to Genuine Optimum. I help businesses find the right tech solutions to grow. What brings you here today?",
-      "Hi! Thanks for reaching out to Genuine Optimum. I'd love to understand what you're looking for — what's on your mind?",
-      "Hello! Welcome to Genuine Optimum. We help businesses leverage technology to scale. What challenge can I help you with today?",
-      "Hey! Great to have you here. I'm with Genuine Optimum — we help businesses solve real problems with smart technology. What are you working on right now?"
-    ];
+    const config = AppContext.getConfig();
+
+    // ─── Greeting Pool (from config) ─────────────────────────
+    this._greetings = (config.greetings && config.greetings.length > 0)
+      ? [...config.greetings]
+      : ['Hello! How can I help you today?'];
+
+    // ─── Tone Setting ────────────────────────────────────────
+    this._tone = config.tone || 'professional';
 
     // ─── Transition Phrases ─────────────────────────────────
     this._phrases = {
@@ -68,28 +75,46 @@ export class Personality {
         "Alright, getting back to the main point —",
         "With that sorted —"
       ],
-      softClose: [
-        "Would you like us to help you with this?",
-        "I can arrange a quick consultation if you'd like.",
-        "Want me to set something up so our team can dive deeper into this?",
-        "Shall we explore this further together?",
-        "I'd love to show you how this could work specifically for your business.",
-        "Want me to put together a quick plan for you?",
-        "Does it make sense to take the next step on this?"
-      ],
-      exit: [
-        "No worries at all! Feel free to reach out anytime.",
-        "Totally understand. We're here whenever you're ready.",
-        "All good! You know where to find us when the time is right.",
-        "I appreciate you taking the time. We'll be here when you need us."
-      ]
+      softClose: this._buildSoftClosePool(config),
+      exit: this._buildExitPool(config)
     };
 
     // ─── Round-Robin Counters ────────────────────────────────
     this._counters = {};
 
     // ─── Response Length Limits ──────────────────────────────
-    this.MAX_SENTENCES = 4;
+    this.MAX_SENTENCES = 3;
+  }
+
+  /**
+   * Build soft-close pool from config, falling back to generic defaults.
+   */
+  _buildSoftClosePool(config) {
+    if (config.closing_responses && config.closing_responses.soft && config.closing_responses.soft.length > 0) {
+      return [...config.closing_responses.soft];
+    }
+    return [
+      "Would you like us to help you with this?",
+      "I can arrange a quick consultation if you'd like.",
+      "Want me to set something up so our team can dive deeper into this?",
+      "Shall we explore this further together?",
+      "Does it make sense to take the next step on this?"
+    ];
+  }
+
+  /**
+   * Build exit pool from config, falling back to generic defaults.
+   */
+  _buildExitPool(config) {
+    if (config.closing_responses && config.closing_responses.exit && config.closing_responses.exit.length > 0) {
+      return [...config.closing_responses.exit];
+    }
+    return [
+      "No worries at all! Feel free to reach out anytime.",
+      "Totally understand. We're here whenever you're ready.",
+      "All good! You know where to find us when the time is right.",
+      "I appreciate you taking the time. We'll be here when you need us."
+    ];
   }
 
   // ─── Public Methods ───────────────────────────────────────
@@ -104,6 +129,11 @@ export class Personality {
     const pool = this._phrases[type];
     if (!pool) return '';
     return this._roundRobin(`phrase_${type}`, pool);
+  }
+
+  /** Get the current tone setting */
+  getTone() {
+    return this._tone;
   }
 
   /** Enforce tone rules on a response string */
@@ -125,12 +155,30 @@ export class Personality {
   /** Build a response with optional acknowledge + body */
   compose(body, { acknowledge = false, bridge = false, encourage = false } = {}) {
     const parts = [];
-    if (acknowledge) parts.push(this.getPhrase('acknowledge'));
-    if (encourage)   parts.push(this.getPhrase('encourage'));
-    if (bridge)      parts.push(this.getPhrase('bridge'));
+
+    // Only add acknowledge prefix if the body doesn't already open with one.
+    // Prevents double-acknowledgment: "Got it. Got it. Here's the insight."
+    if (acknowledge && !this._startsWithAck(body)) {
+      parts.push(this.getPhrase('acknowledge'));
+    }
+    if (encourage) parts.push(this.getPhrase('encourage'));
+    if (bridge)    parts.push(this.getPhrase('bridge'));
     parts.push(body);
 
     return this.styleResponse(parts.join(' '));
+  }
+
+  /** Check if a string already opens with an acknowledgment-style phrase */
+  _startsWithAck(text) {
+    if (!text) return false;
+    const t = text.toLowerCase().trim();
+    const ackStarters = [
+      'right,', 'makes sense', 'got it', 'i see', 'exactly', 'understood',
+      'okay,', 'ok,', 'sure,', "that's", 'fair enough', 'noted',
+      'interesting', 'alright,', 'i understand', 'good to know', 'absolutely',
+      'i hear', 'great,', 'perfect,', 'good,', 'yes,', 'indeed', 'of course'
+    ];
+    return ackStarters.some(s => t.startsWith(s));
   }
 
   // ─── Private: Deterministic Round-Robin ────────────────────

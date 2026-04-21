@@ -10,10 +10,6 @@ export const STATES = {
   GREETING:        'GREETING',
   DISCOVERY:       'DISCOVERY',
   INTENT_DETECTED: 'INTENT_DETECTED',
-  FLOW_WEBSITE:    'FLOW_WEBSITE',
-  FLOW_SEO:        'FLOW_SEO',
-  FLOW_AI:         'FLOW_AI',
-  FLOW_APP:        'FLOW_APP',
   FLOW_GENERAL:    'FLOW_GENERAL',
   LEAD_CAPTURE:    'LEAD_CAPTURE',
   CLOSING:         'CLOSING',
@@ -48,32 +44,12 @@ const TRANSITIONS = {
     STATES.ENDED
   ],
   [STATES.INTENT_DETECTED]: [
-    STATES.FLOW_WEBSITE,
-    STATES.FLOW_SEO,
-    STATES.FLOW_AI,
-    STATES.FLOW_APP,
     STATES.FLOW_GENERAL,
     STATES.DISCOVERY
   ],
-  [STATES.FLOW_WEBSITE]: [
-    STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
-    STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_WEBSITE
-  ],
-  [STATES.FLOW_SEO]: [
-    STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
-    STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_SEO
-  ],
-  [STATES.FLOW_AI]: [
-    STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
-    STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_AI
-  ],
-  [STATES.FLOW_APP]: [
-    STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
-    STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_APP
-  ],
+
   [STATES.FLOW_GENERAL]: [
-    STATES.LEAD_CAPTURE, STATES.FLOW_WEBSITE, STATES.FLOW_SEO,
-    STATES.FLOW_AI, STATES.FLOW_APP, STATES.OBJECTION,
+    STATES.LEAD_CAPTURE, STATES.OBJECTION,
     STATES.DISCOVERY, STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_GENERAL
   ],
   [STATES.LEAD_CAPTURE]: [
@@ -83,8 +59,7 @@ const TRANSITIONS = {
     STATES.ENDED, STATES.OBJECTION, STATES.LEAD_CAPTURE, STATES.FALLBACK
   ],
   [STATES.OBJECTION]: [
-    STATES.DISCOVERY, STATES.CLOSING, STATES.FLOW_WEBSITE,
-    STATES.FLOW_SEO, STATES.FLOW_AI, STATES.FLOW_APP,
+    STATES.DISCOVERY, STATES.CLOSING,
     STATES.ENDED, STATES.FALLBACK
   ],
   [STATES.FALLBACK]: [
@@ -97,16 +72,41 @@ const TRANSITIONS = {
 
 // ─── Flow States Set ───────────────────────────────────────────
 const FLOW_STATES = new Set([
-  STATES.FLOW_WEBSITE, STATES.FLOW_SEO,
-  STATES.FLOW_AI, STATES.FLOW_APP, STATES.FLOW_GENERAL
+  STATES.FLOW_GENERAL
 ]);
 
 // ─── State Machine Class ──────────────────────────────────────
 export class ConversationStateMachine {
 
-  constructor() {
+  constructor(config = null) {
     this._listeners = [];
+    if (config) {
+      this.initFromConfig(config);
+    }
     this.reset();
+  }
+
+  /** Dynamically register service states */
+  initFromConfig(config) {
+    const services = config.services || [];
+    services.forEach(svc => {
+      if (!svc.intent_key) return;
+      const stateName = `FLOW_SERVICE_${svc.intent_key.toUpperCase()}`;
+      
+      // Inject to STATES
+      STATES[stateName] = stateName;
+      FLOW_STATES.add(stateName);
+
+      // Inject to TRANSITIONS
+      TRANSITIONS[STATES.INTENT_DETECTED].push(stateName);
+      TRANSITIONS[STATES.FLOW_GENERAL].push(stateName);
+      TRANSITIONS[STATES.OBJECTION].push(stateName);
+      
+      TRANSITIONS[stateName] = [
+        STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
+        STATES.CLOSING, STATES.FALLBACK, stateName
+      ];
+    });
   }
 
   /** Reset to initial state */
@@ -197,6 +197,8 @@ export class ConversationStateMachine {
       timestamp: Date.now(),
       data
     });
+
+    console.log(`[StateMachine] Transition: ${oldState} \u2192 ${newState}`);
 
     // Notify listeners
     this._notify(oldState, newState);
