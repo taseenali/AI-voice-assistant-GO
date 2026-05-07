@@ -2,7 +2,7 @@
  * Discovery Engine Module
  * Maps to: 04_discovery_engine.md
  *
- * Understands the user's problem, business context, and urgency.
+ * Understands the user's health concern, clinical context, and urgency.
  * Moves from Vague → Specific → Actionable.
  *
  * Rules:
@@ -11,9 +11,9 @@
  *   - Keep it conversational
  *
  * Depth Levels:
- *   Level 1: Basic need
- *   Level 2: Business context
- *   Level 3: Pain points
+ *   Level 1: Basic health need
+ *   Level 2: Clinical context
+ *   Level 3: Severity & Pain points
  *
  * CONFIG-DRIVEN: Context-specific questions are loaded from config.services[].discovery_questions.
  * Depth-based generic questions remain engine-level (they are universal).
@@ -29,29 +29,29 @@ export class DiscoveryEngine {
     // ─── Question Banks by Depth (engine-level — universal) ──
 
     this._questions = {
-      // Level 1: Open discovery — understand the basic need
+      // Level 1: Open discovery — understand the medical need
       1: [
-        "What challenge are you facing right now with your business?",
-        "What's the main thing you're looking to solve or improve?",
-        "What brought you here today? I'd love to understand what you're working on.",
-        "Is there a specific area of your business you'd like to improve?"
+        "What brings you in to see us today?",
+        "How can I help you with your health concerns today?",
+        "Are you experiencing any specific symptoms you'd like to discuss?",
+        "Is this for a new health issue or a follow-up on an existing one?"
       ],
 
-      // Level 2: Business context — understand the environment
+      // Level 2: Clinical context — understand the situation
       2: [
-        "Can you tell me a bit about your business — what do you do?",
-        "How are you currently handling this in your business?",
-        "Have you tried anything so far to address this?",
-        "What does your current setup look like for this?",
-        "Who are your typical clients or customers?"
+        "How long has this been bothering you?",
+        "Have you seen a doctor about this before?",
+        "Are you currently taking any medications for this?",
+        "Does anything make the symptoms better or worse?",
+        "Have you had any similar issues in the past?"
       ],
 
-      // Level 3: Pain points — dig into the real problem
+      // Level 3: Severity — dig into the impact
       3: [
-        "What's the biggest impact this problem is having on your business right now?",
-        "How much time or money do you think this is costing you?",
-        "If this were solved tomorrow, what would change for your business?",
-        "What would an ideal solution look like for you?"
+        "On a scale of 1 to 10, how would you rate your discomfort right now?",
+        "Is this affecting your daily activities or sleep?",
+        "Are you experiencing any other related symptoms, like a fever or dizziness?",
+        "What are you hoping to achieve with today's visit?"
       ]
     };
 
@@ -59,15 +59,8 @@ export class DiscoveryEngine {
     this._contextQuestions = {};
 
     if (config.services && Array.isArray(config.services)) {
-      // Map each service to a context key for the flow system
-      const contextKeys = ['website', 'seo', 'ai', 'app'];
-      
-      config.services.forEach((svc, index) => {
-        // Use standard context key if available, otherwise use the intent_key lowercase
-        const ctxKey = index < contextKeys.length 
-          ? contextKeys[index] 
-          : svc.intent_key.toLowerCase();
-        
+      config.services.forEach((svc) => {
+        const ctxKey = svc.intent_key.toLowerCase();
         if (svc.discovery_questions && svc.discovery_questions.length > 0) {
           this._contextQuestions[ctxKey] = [...svc.discovery_questions];
         }
@@ -99,10 +92,10 @@ export class DiscoveryEngine {
     let skipLevel2 = false;
     
     if (memory) {
-      const probNode = memory.getEntityWithMeta('problem');
-      const bizNode = memory.getEntityWithMeta('business');
+      const probNode = memory.getEntityWithMeta('reason_for_visit');
+      const practiceNode = memory.getEntityWithMeta('medical_practice');
       if (probNode && probNode.confidence >= 0.6) skipLevel1 = true;
-      if (bizNode && bizNode.confidence >= 0.6) skipLevel2 = true;
+      if (practiceNode && practiceNode.confidence >= 0.6) skipLevel2 = true;
     }
 
     let effectiveTargetDepth = targetDepth;

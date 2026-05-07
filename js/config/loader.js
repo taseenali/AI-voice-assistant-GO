@@ -2,7 +2,7 @@
  * Config Loader — Dynamic Client Configuration System
  *
  * Responsibilities:
- *   - Read client ID from URL param (?client=abc-roofing)
+ *   - Read client ID from URL param (?client=medical-clinic)
  *   - Fetch /configs/{clientId}.json
  *   - Fallback to /configs/default.json on failure
  *   - Validate config structure
@@ -19,6 +19,18 @@ import { validateConfig } from './validator.js';
 // ─── Global Application Context ─────────────────────────────────
 export const AppContext = {
   _config: null,
+  _readyPromise: null,
+  _readyResolve: null,
+
+  /**
+   * Initialize the readiness promise
+   */
+  _initReady() {
+    if (this._readyPromise) return;
+    this._readyPromise = new Promise(resolve => {
+      this._readyResolve = resolve;
+    });
+  },
 
   /**
    * Store the loaded config globally.
@@ -26,6 +38,12 @@ export const AppContext = {
    */
   setConfig(config) {
     this._config = Object.freeze(config);
+    if (this._readyResolve) {
+      this._readyResolve();
+    } else {
+      // If setConfig called before initReady (unlikely but safe)
+      this._readyPromise = Promise.resolve();
+    }
   },
 
   /**
@@ -46,6 +64,16 @@ export const AppContext = {
    */
   isLoaded() {
     return this._config !== null;
+  },
+
+  /**
+   * Wait for the configuration to be loaded.
+   * @returns {Promise<void>}
+   */
+  async waitForConfig() {
+    this._initReady();
+    if (this.isLoaded()) return;
+    return this._readyPromise;
   }
 };
 
@@ -78,7 +106,7 @@ export async function loadConfig(clientId) {
   // ── Attempt client-specific config ──────────────────────
   if (clientId && clientId !== 'default') {
     try {
-      const res = await fetch(`/configs/${clientId}.json`);
+      const res = await fetch(`/api/config?client=${clientId}`);
       if (res.ok) {
         config = await res.json();
         console.log(`[ConfigLoader] Loaded client config: ${clientId}`);
@@ -93,7 +121,7 @@ export async function loadConfig(clientId) {
   // ── Fallback to default config ──────────────────────────
   if (!config) {
     try {
-      const res = await fetch('/configs/default.json');
+      const res = await fetch('/api/config?client=default');
       if (res.ok) {
         config = await res.json();
         console.log('[ConfigLoader] Loaded default config.');
@@ -132,7 +160,7 @@ function getEmergencyFallback() {
     tone: 'professional',
     primary_goal: 'capture_lead',
     secondary_goals: ['qualify_customer'],
-    role: 'AI business consultant',
+    role: 'AI medical receptionist',
     services: [],
     service_definitions: {},
     greetings: [
@@ -154,19 +182,33 @@ function getEmergencyFallback() {
       "Let me help — what type of help are you looking for?"
     ],
     out_of_scope_responses: [
-      "That's outside my area, but I'd love to help with your business needs."
+      "That's outside my area, but I'd love to help with your healthcare needs."
     ],
     service_domain_tokens: [
-      'business', 'help', 'service', 'solution'
+      'health', 'medical', 'doctor', 'clinic', 'appointment', 'care'
     ],
     webhook_url: '',
+    // SSYNC-03/SYNC-01: DO NOT hardcode real secrets here.
+    // Emergency fallback must never contain production credentials.
+    // webhook_secret is injected at runtime via env vars (Option A per SSYNC-03).
+    webhook_secret: '',
     calendar_url: '',
-    qualification_fields: ['name', 'goal', 'problem', 'business', 'timeline'],
+    ai_tier: 1,            // SYNC-01 fix: required per SYNC-MAP shape spec
+    llm_model: 'llama3.2', // G-027
+    ollama_endpoint: "http://localhost:11434",
+    emergency_keywords: [],
+    emergency_response: 'Please call 911 immediately for medical emergencies.',
+    qualification_fields: ['name', 'patient_type', 'reason_for_visit', 'dob', 'insurance_provider'],
     knowledge_base: {},
     closing_responses: {
       soft: ['Would you like to take this forward?'],
       direct: ["Let's get you started."],
+      confirmations: ['Great! We will be in touch shortly.'],  // SYNC-01 fix: was missing from fallback
       exit: ['Thanks for chatting! Feel free to reach out anytime.']
-    }
+    },
+    emergency_keywords: [],
+    emergency_response: 'Please call 911 immediately for medical emergencies.',
+    calendar_id: '',
+    calendar_enabled: false
   };
 }

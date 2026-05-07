@@ -26,15 +26,18 @@ export class ConversationFlows {
       config.services.forEach(svc => {
         if (!svc.intent_key) return;
         const flowState = `FLOW_SERVICE_${svc.intent_key.toUpperCase()}`;
-        
-        if (svc.flow_steps && svc.flow_steps.length > 0) {
+
+        // Prefer explicit flow_steps; fall back to discovery_questions
+        const rawSteps = (svc.flow_steps && svc.flow_steps.length > 0)
+          ? svc.flow_steps.map(step => ({ id: step.id, prompt: step.prompt, expect: step.expect }))
+          : (svc.discovery_questions && svc.discovery_questions.length > 0)
+            ? svc.discovery_questions.map((q, i) => ({ id: `dq_${i}`, prompt: q, expect: 'user_response' }))
+            : null;
+
+        if (rawSteps) {
           this._flows[flowState] = {
-            name: svc.name,
-            steps: svc.flow_steps.map(step => ({
-              id:     step.id,
-              prompt: step.prompt,
-              expect: step.expect
-            }))
+            name: svc.display_name || svc.name || svc.intent_key,
+            steps: rawSteps
           };
         }
 

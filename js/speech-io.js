@@ -30,6 +30,8 @@ export class SpeechIO {
     this.onSpeakStart  = null;
     this.onSpeakEnd    = null;
     this.onError       = null;
+    // SEC-04: Fired when voice fails hard (not-allowed, network) — triggers text-only fallback
+    this.onPrivacyFallback = null;
 
     this._initRecognition();
     this._loadVoices();
@@ -110,7 +112,13 @@ export class SpeechIO {
 
     this._recognition.onerror = (event) => {
       this._isListening = false;
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      // SEC-04: Hard errors (not-allowed, network) indicate voice is unavailable or denied.
+      // Trigger text-only fallback path. 'no-speech' and 'aborted' are non-fatal.
+      const hardErrors = ['not-allowed', 'service-not-allowed', 'network', 'audio-capture'];
+      if (hardErrors.includes(event.error)) {
+        console.warn('[SpeechIO] Hard recognition error — routing to text fallback:', event.error);
+        if (this.onPrivacyFallback) this.onPrivacyFallback(event.error);
+      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
         console.error('[SpeechIO] Recognition error:', event.error);
         if (this.onError) this.onError(event.error);
       }
@@ -141,6 +149,25 @@ export class SpeechIO {
     }
   }
 
+  // ─── Public: Audio Unlock ─────────────────────────────────
+
+  /**
+   * Call this synchronously inside a user-gesture handler (click/keydown) BEFORE
+   * any async work. Chrome gates speechSynthesis on user activation; firing a
+   * near-silent utterance here keeps the engine warm for the async speak() call
+   * that follows after processInput() resolves.
+   */
+  unlockAudio() {
+    if (!this._synthesis) return;
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      u.rate   = 16;
+      if (this._selectedVoice) u.voice = this._selectedVoice;
+      this._synthesis.speak(u);
+    } catch (_) {}
+  }
+
   // ─── Public: Listen ───────────────────────────────────────
 
   startListening() {
@@ -160,6 +187,12 @@ export class SpeechIO {
       return true;
     } catch (e) {
       console.error('[SpeechIO] Failed to start recognition:', e);
+      // G-015/G-030: Proactive iOS / Safari Fallback
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS || e.name === 'NotAllowedError') {
+        console.warn('[SpeechIO] iOS or NotAllowed fallback triggered proactively.');
+        if (this.onPrivacyFallback) this.onPrivacyFallback('not-allowed');
+      }
       return false;
     }
   }
@@ -176,60 +209,42 @@ export class SpeechIO {
   async speak(text) {
     if (!this._synthesis) return;
 
-    console.log("SPEAK CALLED:", text);
-
     this.stopSpeaking();
     this._cancelPlayback = false;
-    this._isSpeaking = true;
+    this._isSpeaking     = true;
     this._activeSpeechToken++;
-    const currentToken = this._activeSpeechToken;
+    const currentToken   = this._activeSpeechToken;
 
     if (this.onSpeakStart) this.onSpeakStart();
 
     try {
-      // 0. Force Browser Audio Unlock (immediately use synthesis within synchronous gesture payload)
-      const unlockUtterance = new SpeechSynthesisUtterance('');
-      unlockUtterance.volume = 0;
-      this._synthesis.speak(unlockUtterance);
+      if (!this._selectedVoice) this._loadVoices();
 
-      // 1. Simulated Thinking Delay based on input length (widened variance for realism)
       const wordCount = text.split(/\s+/).length;
-      let initialDelay = this._randWait(250, 600);
-      if (wordCount > 5) initialDelay = this._randWait(400, 900);
-      if (wordCount > 12) initialDelay = this._randWait(700, 1300);
 
-      await this._wait(initialDelay);
+      // Short thinking pause — audio engine is already warm from unlockAudio()
+      // called synchronously in the user-gesture handler before this async chain.
+      const delay = wordCount <= 5 ? this._randWait(100, 250) : this._randWait(200, 450);
+      await this._wait(delay);
       if (this._cancelPlayback) return;
 
-      // 2. Chunking Logic (Bypass if short or simple)
-      let chunks;
-      if (wordCount <= 10 || !/[.,;:—]/.test(text)) {
-        chunks = [text]; // Speak entirely natively to avoid stilted pacing
-      } else {
-        chunks = this._chunkText(text);
-      }
+      const chunks = wordCount <= 15 || !/[.,;:—]/.test(text)
+        ? [text]
+        : this._chunkText(text);
 
-      console.log("CHUNKS:", chunks);
-
-      // 3. Process Chunks with Variation
-      for (const chunk of chunks) {
+      for (let i = 0; i < chunks.length; i++) {
+        if (this._cancelPlayback || currentToken !== this._activeSpeechToken) break;
+        await this._speakUtterance(chunks[i], i, chunks.length, currentToken);
         if (this._cancelPlayback || currentToken !== this._activeSpeechToken) break;
 
-        await this._speakUtterance(chunk, chunks.indexOf(chunk), chunks.length, currentToken);
-
-        if (this._cancelPlayback || currentToken !== this._activeSpeechToken) break;
-
-        // 4. Structured Pauses
-        if (chunks.indexOf(chunk) < chunks.length - 1) {
-          const isHeavyBreak = /[.!?;:—]$/.test(chunk.trim());
-          const pauseLength = isHeavyBreak ? this._randWait(250, 400) : this._randWait(150, 250);
-          await this._wait(pauseLength);
+        if (i < chunks.length - 1) {
+          const heavy = /[.!?;:—]$/.test(chunks[i].trim());
+          await this._wait(heavy ? this._randWait(80, 150) : this._randWait(30, 80));
         }
       }
 
-      // 5. Conversational Breathing Space (200-400ms max)
       if (!this._cancelPlayback && currentToken === this._activeSpeechToken) {
-        await this._wait(this._randWait(200, 400));
+        await this._wait(this._randWait(100, 180));
       }
     } catch (err) {
       console.error("Speech error:", err);
@@ -246,9 +261,10 @@ export class SpeechIO {
       if (token !== this._activeSpeechToken) return resolve();
       const utterance  = new SpeechSynthesisUtterance(textChunk);
       
-      if (this._selectedVoice) {
-        utterance.voice  = this._selectedVoice;
-      }
+      // Re-check voices at speak-time — Chrome loads them asynchronously
+      // so the constructor snapshot may have been empty on the first utterance.
+      if (!this._selectedVoice) this._loadVoices();
+      if (this._selectedVoice) utterance.voice = this._selectedVoice;
       
       // Delivery Variation: subtle rate/pitch weighting
       let rate = 0.95;
@@ -276,6 +292,33 @@ export class SpeechIO {
 
       this._synthesis.speak(utterance);
     });
+  }
+
+  /**
+   * Speak a single TTS chunk immediately (used by LLM streaming onToken).
+   * Queues utterances without resetting the active speech token so sequential
+   * chunks play in order without gaps.
+   */
+  speakChunk(text) {
+    if (!this._synthesis || !text || !text.trim()) return;
+    const utterance = new SpeechSynthesisUtterance(text.trim());
+    if (!this._selectedVoice) this._loadVoices();
+    if (this._selectedVoice) utterance.voice = this._selectedVoice;
+    utterance.rate   = 0.95;
+    utterance.pitch  = 1.0;
+    utterance.volume = 1.0;
+    if (!this._isSpeaking) {
+      this._isSpeaking = true;
+      if (this.onSpeakStart) this.onSpeakStart();
+    }
+    utterance.onend = () => {
+      // Only fire onSpeakEnd when the synthesis queue drains completely
+      if (!this._synthesis.speaking) {
+        this._isSpeaking = false;
+        if (this.onSpeakEnd) this.onSpeakEnd();
+      }
+    };
+    this._synthesis.speak(utterance);
   }
 
   stopSpeaking() {
@@ -347,5 +390,13 @@ export class SpeechIO {
 
   setVoice(voice) {
     this._selectedVoice = voice;
+  }
+
+  /**
+   * SEC-04: Returns the standardized privacy disclosure string.
+   * Must be shown in the UI before or at the point the mic is activated.
+   */
+  getPrivacyNotice() {
+    return 'Voice interactions are processed by your browser and may be sent to a third-party speech recognition service. You can use text input at any time.';
   }
 }

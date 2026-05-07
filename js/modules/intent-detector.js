@@ -7,7 +7,7 @@
  *
  * CONFIG-DRIVEN: Service intents (keywords + phrases) are loaded from config.services.
  * Generic intents (GENERAL_INQUIRY, LOW_INTENT, OBJECTION, POSITIVE, NEGATIVE)
- * remain engine-level — they are not business-specific.
+ * remain engine-level — they are not clinical-specific.
  */
 
 import { AppContext } from '../config/loader.js';
@@ -51,13 +51,12 @@ export class IntentDetector {
     // ─── Generic Intents (Engine-level, NOT config-specific) ─
     this._intentConfig[INTENTS.GENERAL_INQUIRY] = {
       keywords: [
-        'services', 'what do you do', 'offerings', 'help me',
-        'options', 'solutions'
+        'services', 'help', 'options', 'care', 'clinic', 'medical', 'health',
+        'appointment', 'doctor'
       ],
       phrases: [
-        'what do you do', 'what do you offer', 'tell me about',
-        'how can you help', 'what can you do', 'what services',
-        'what do you guys do', 'how does this work'
+        'what do you do', 'how can you help', 'what can you do', 'what services',
+        'how does this work', 'medical help', 'need a doctor'
       ],
       weight: 0.8
     };
@@ -73,15 +72,15 @@ export class IntentDetector {
 
     this._intentConfig[INTENTS.OBJECTION] = {
       keywords: [
-        'expensive', 'cost', 'price', 'budget', 'afford',
-        'cheap', 'free', 'discount'
+        'expensive', 'cost', 'price', 'insurance', 'afford',
+        'too much'
       ],
       phrases: [
         'too expensive', 'how much', 'what does it cost',
         'not sure about this', 'think about it', 'maybe later',
         'not interested', 'no thanks', 'don\'t need',
         'can\'t afford', 'too much money', 'not right now',
-        'not ready', 'need to think'
+        'not ready', 'do you take insurance'
       ],
       weight: 0.9
     };

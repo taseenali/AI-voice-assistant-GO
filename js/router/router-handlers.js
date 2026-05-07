@@ -5,7 +5,7 @@
  * Every response:
  *   - ≤ 2 sentences
  *   - ≤ 1 guiding question
- *   - redirects toward business context
+ *   - redirects toward clinical context
  * 
  * Uses round-robin selection — no consecutive repetition.
  *
@@ -26,10 +26,10 @@ export class RouterHandlers {
     // ── Greeting Responses (from config) ─────────────────────
     this._greetings = this._interpolatePool(
       config.greeting_responses || [
-        "Hi! Welcome to {{company_name}}. What can I help you with today?",
-        "Hey there! I'm here to help. What's the main challenge you're working on right now?",
-        "Hello! Good to have you here. What brings you in today?",
-        "Hi — great timing. What challenge can I help you tackle today?"
+        "Hi! Welcome to {{company_name}}. How can I assist you with your health today?",
+        "Hey there! I'm here to help. What's the main health concern you're working on right now?",
+        "Hello! Good to have you here. Are you looking to schedule an appointment or ask a question?",
+        "Hi — great timing. What can I help you with today regarding your care?"
       ],
       config
     );
@@ -37,20 +37,20 @@ export class RouterHandlers {
     // ── Noise / Unclear Responses (from config) ──────────────
     this._noise = this._interpolatePool(
       config.noise_responses || [
-        "I didn't quite catch that — what would you like help with?",
-        "Could you share a bit more? I want to make sure I point you in the right direction.",
-        "I want to help — what's the main thing you're trying to improve?",
-        "Let me make sure I understand you correctly. What are you working on?"
+        "Just to be clear, is there a specific symptom or concern you'd like to address first?",
+        "What's the one thing you'd most want to discuss with the doctor?",
+        "If you could address one health concern tomorrow, what would it be?",
+        "What would you say is the biggest health challenge for you right now?"
       ],
       config
     );
 
-    // ── Noise Escalation (from config) ───────────────────────
+    // ── Noise Escalation (from config) ───────────────
     this._noiseEscalated = this._interpolatePool(
       config.noise_escalated_responses || [
-        "Let me simplify — are you looking for help with your business?",
-        "We specialize in {{service_summary}}. Does any of those sound relevant to you?",
-        "Happy to help — I just need a bit more to go on. What type of business do you run?"
+        "Let me simplify — are you looking for help with your medical care?",
+        "We specialize in {{service_summary}}. Does any of that sound relevant to you?",
+        "Happy to help — I just need a bit more to go on. What kind of care are you looking for?"
       ],
       config
     );
@@ -58,10 +58,10 @@ export class RouterHandlers {
     // ── Meta Responses (from config) ─────────────────────────
     this._meta = this._interpolatePool(
       config.meta_responses || [
-        "I'm an AI assistant for {{company_name}}. What can I help you with?",
-        "I'm here to help with your business needs. What's on your mind?",
-        "{{company_name}} provides expert solutions. What challenge are you facing?",
-        "Think of me as your advisor. What area would you like to explore?"
+        "I'm an AI medical assistant for {{company_name}}. How can I assist you?",
+        "I'm here to help with your healthcare needs. What's on your mind?",
+        "{{company_name}} provides expert medical care. What health concern are you facing?",
+        "Think of me as your health guide. What area would you like to explore?"
       ],
       config
     );
@@ -69,10 +69,10 @@ export class RouterHandlers {
     // ── Out-of-Scope Responses (from config) ─────────────────
     this._outOfScope = this._interpolatePool(
       config.out_of_scope_responses || [
-        "That's outside what I can help with. What are you looking to improve?",
+        "That's outside what I can help with. What medical needs are you looking to address?",
         "I'm focused on {{service_summary}}. Is there something along those lines I can help with?",
-        "That's not our area, but I'd love to help with your business needs. What's the challenge?",
-        "We don't cover that — but I can help with {{service_summary}}. What are you working on?"
+        "That's not our area, but I'd love to help with your healthcare needs. What's the concern?",
+        "We don't cover that — but I can help with {{service_summary}}. What symptoms are you experiencing?"
       ],
       config
     );
@@ -143,11 +143,11 @@ export class RouterHandlers {
    */
   _buildServiceSummary(config) {
     if (!config.services || !Array.isArray(config.services) || config.services.length === 0) {
-      return 'business solutions';
+      return 'medical care';
     }
 
-    const names = config.services.map(s => s.name).filter(Boolean);
-    if (names.length === 0) return 'business solutions';
+    const names = config.services.map(s => s.display_name || s.name).filter(Boolean);
+    if (names.length === 0) return 'medical care';
     if (names.length === 1) return names[0];
     if (names.length === 2) return `${names[0]} and ${names[1]}`;
 

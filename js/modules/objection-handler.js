@@ -22,9 +22,9 @@ export class ObjectionHandler {
         keywords: ['expensive', 'afford', 'cheap', 'budget', 'too much', 'money'],
         phrases: ['how much does it cost', 'what does it cost', "what's the price", 'too expensive', "can't afford", 'out of budget'],
         responses: [
-          "I completely understand — budget matters. The good news is we work with businesses of all sizes and find solutions that fit. The real question is: what's the cost of NOT solving this problem?",
-          "That's a fair concern. What we find is that the right investment pays for itself pretty quickly. Would it help to understand the typical return businesses see from this?",
-          "I hear you. Rather than thinking of it as a cost, think of it as what your business gains — more clients, more time, more revenue. We can always start with something that fits your budget."
+          "I completely understand — cost is a factor. The good news is we accept many insurance plans and find solutions for our patients. The real question is: how soon can we address this to get you feeling better?",
+          "That's a fair concern. We find that early intervention often prevents more costly treatments later on. Would it help to understand the typical insurance coverage for this?",
+          "I hear you. Rather than thinking of it as a cost, think of it as an investment in your health and well-being. We can always explore the most cost-effective treatment options."
         ]
       },
 
@@ -33,7 +33,7 @@ export class ObjectionHandler {
         keywords: ['not sure', 'think about it', 'maybe', 'need time', 'consider', 'unsure'],
         responses: [
           "That's completely fine — it's a big decision. Would it help if I shared a bit more about how this typically works? No pressure at all.",
-          "Totally understand. A lot of our best clients had the same feeling before they saw the results. What specific part are you unsure about?",
+          "Totally understand. A lot of our patients had the same feeling before they saw the results. What specific part are you unsure about?",
           "No rush at all. What if we scheduled a quick, no-commitment consultation? That way, you can get all your questions answered before making any decisions."
         ]
       },
@@ -41,8 +41,8 @@ export class ObjectionHandler {
       exploring: {
         keywords: ['just looking', 'just checking', 'exploring', 'browsing', 'no commitment'],
         responses: [
-          "Absolutely, exploring is a great first step! While you're here, is there a particular area of your business you've been thinking about improving?",
-          "No problem at all! A lot of our clients started exactly where you are. What's one thing about your business that you wish worked better?",
+          "Absolutely, exploring your options is a great first step! While you're here, is there a particular health concern you've been thinking about?",
+          "No problem at all! A lot of our patients started exactly where you are. What's one thing about your health that you wish was better?",
           "That's smart — doing your research first. I'm here to answer any questions and share some insights that might help. What caught your interest?"
         ]
       },
@@ -60,7 +60,7 @@ export class ObjectionHandler {
         keywords: ['not right now', 'later', 'not ready', 'next month', 'next year', 'eventually'],
         responses: [
           "Timing is important, I get that. Just so we're ready when you are — what timeframe are you thinking?",
-          "Makes sense. A lot of businesses plan ahead. Want me to keep your details so we can reconnect when you're ready?",
+          "Makes sense. A lot of patients plan ahead. Want me to keep your details so we can reconnect when you're ready?",
           "No rush! Would it be helpful if we scheduled a brief chat for when the timing is better?"
         ]
       }
@@ -94,7 +94,7 @@ export class ObjectionHandler {
     // Generic objection handling
     return {
       type: 'generic',
-      response: "I appreciate you sharing that. Every business is different, and we always aim to find what works best for you. Would it help to discuss this in more detail?",
+      response: "I appreciate you sharing that. Every situation is different, and we always aim to find the best care for you. Would it help to discuss this with our medical team?",
       shouldExit: false
     };
   }

@@ -30,19 +30,19 @@ export class ClosingEngine {
     this._softCloses = (closingConfig.soft && closingConfig.soft.length > 0)
       ? [...closingConfig.soft]
       : [
-          "Would you like to take this forward? I can arrange a quick consultation to discuss specifics.",
-          "This sounds like something we can definitely help with. Would you like us to look into this for you?",
-          "I think there's a real opportunity here. Want me to set up a quick call so we can map out a plan?",
-          "Based on everything you've shared, I'm confident we can make a real difference. Shall I get the ball rolling?"
+          "Would you like to schedule an appointment to discuss this with our medical team?",
+          "I think it would be best for you to see a specialist. Shall I arrange a time for you?",
+          "Based on what you've told me, I'd suggest booking a consultation. Would you like me to do that now?",
+          "We can certainly help you with this. Would you like to get on the doctor's schedule?"
         ];
 
     // ─── Direct Close Responses (from config) ────────────
     this._directCloses = (closingConfig.direct && closingConfig.direct.length > 0)
       ? [...closingConfig.direct]
       : [
-          "Let's get you started. I'll pass your details to our team and they'll reach out to set up next steps.",
-          "Great — let's make this happen. Our team will follow up with a tailored plan for you.",
-          "Perfect. I'll set everything in motion. You'll hear from our team very soon."
+          "Great, I've noted your details. I'll pass this to our scheduling team and they'll call you to confirm.",
+          "I'll get that appointment request processed for you right away. Expect a call from us shortly.",
+          "Perfect. I've sent your information to our clinical staff. They'll reach out to finalize the time."
         ];
 
     // ─── Confirmation Follow-ups (from config) ───────────

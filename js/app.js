@@ -67,8 +67,9 @@ class App {
       this._setupStateListener();
       this._checkBrowserSupport();
 
-      // 6. Start conversation
-      this._startConversation();
+      // 6. Gate first interaction behind a user gesture so Chrome TTS autoplay works.
+      //    Tap-to-Start overlay calls _startConversation() on click.
+      this._bindTapToStart();
 
     } catch (err) {
       console.error('[App] Critical boot failure:', err);
@@ -97,7 +98,7 @@ class App {
     this.$engagementVal = document.getElementById('engagement-value');
     this.$leadPanel     = document.getElementById('lead-panel');
     this.$leadName      = document.getElementById('lead-name');
-    this.$leadBusiness  = document.getElementById('lead-business');
+    this.$leadPractice  = document.getElementById('lead-practice');
     this.$leadGoal      = document.getElementById('lead-goal');
     this.$leadProblem   = document.getElementById('lead-problem');
     this.$leadTimeline  = document.getElementById('lead-timeline');
@@ -130,14 +131,14 @@ class App {
     const $metaDesc = document.querySelector('meta[name="description"]');
     if ($metaDesc) {
       $metaDesc.setAttribute('content',
-        `AI Voice Assistant for ${config.company_name} — Your intelligent business consultant powered by voice.`
+        `AI Voice Assistant for ${config.company_name} — Your intelligent medical receptionist powered by voice.`
       );
     }
 
     // Sidebar about text
     const $aboutCard = document.querySelector('.info-card:last-of-type p');
     if ($aboutCard) {
-      $aboutCard.textContent = `I'm your AI-powered ${config.role || 'business consultant'}. I help identify the right solutions for your needs.`;
+      $aboutCard.textContent = `I'm your AI-powered ${config.role || 'medical receptionist'}. I help coordinate your clinical care and scheduling.`;
     }
 
     // Footer
@@ -221,7 +222,18 @@ class App {
       this._updateStateDisplay(newState);
       this._updateEngagement(context.engagementScore);
       this._updateLeadPanel(context.leadData);
+      
       if (this._isDebug) this._updateDebugOverlay();
+
+      // G-044: Handle Booking Confirmation Transition
+      if (newState === STATES.BOOKING_CONFIRMATION) {
+        this._checkCalendarAvailability();
+      }
+      
+      // If we move from BOOKING_CONFIRMATION to ENDED (verbal yes), trigger book
+      if (oldState === STATES.BOOKING_CONFIRMATION && newState === STATES.ENDED) {
+        this._handleBookingConfirmation();
+      }
     });
   }
 
@@ -231,6 +243,30 @@ class App {
       this.$micBtn.title = 'Voice input not supported in this browser. Use Chrome or Edge.';
       this.$orbStatus.textContent = 'Text mode only';
     }
+  }
+
+  // P0-1: Gate first gesture so Chrome's TTS autoplay policy is satisfied.
+  _bindTapToStart() {
+    const overlay = document.getElementById('tap-to-start-overlay');
+    const btn     = document.getElementById('tap-to-start-btn');
+    const config  = AppContext.getConfig();
+
+    // Update overlay title with loaded company name
+    const titleEl = document.getElementById('tap-overlay-title');
+    if (titleEl && config.company_name) titleEl.textContent = config.company_name;
+
+    if (!overlay || !btn) {
+      // Fallback: no overlay in DOM, start directly (text-mode safe)
+      this._startConversation();
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      // Unlock audio synchronously while inside the user-gesture handler
+      this.speechIO.unlockAudio();
+      overlay.style.display = 'none';
+      this._startConversation();
+    }, { once: true });
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -269,6 +305,11 @@ class App {
       this.$textInput.value = '';
       return;
     }
+
+    // Unlock speech synthesis synchronously while still inside the user-gesture
+    // handler. Chrome gates TTS on user activation; by the time speak() is called
+    // (after the async processInput chain), the gesture window has closed.
+    this.speechIO.unlockAudio();
 
     this.$textInput.value = '';
     this._processUserInput(text);
@@ -403,15 +444,30 @@ class App {
     }
 
     // 7. Generate Response Pipeline
-    const response = this.orchestrator.processInput(input);
-    console.log('[Timing] Response executed');
+    // onToken fires for each TTS-ready chunk streamed from the LLM proxy.
+    // Rule: only fires if LLM streaming is active; rule-based responses use speak() below.
+    let streamedSpeech = false;
+    const onToken = (chunk) => {
+      if (inputId !== this.currentInputId) return; // stale — discard
+      streamedSpeech = true;
+      this.speechIO.speakChunk(chunk);
+    };
+
+    let response = null;
+    try {
+      response = await this.orchestrator.processInput(input, onToken);
+      console.log('[Timing] Response executed');
+    } catch (pipelineErr) {
+      console.error('[App] Pipeline error:', pipelineErr);
+    }
 
     // Remove thinking indicator securely
     this._clearThinking();
 
     if (response) {
       this._addMessage('assistant', response);
-      if (typeof response === 'string') {
+      // Only call speak() if the LLM didn't already stream speech chunks
+      if (!streamedSpeech && typeof response === 'string') {
         this.speechIO.speak(response);
       }
     }
@@ -583,22 +639,105 @@ class App {
   _updateLeadPanel(leadData) {
     if (!this.$leadPanel) return;
 
-    const hasData = leadData && (leadData.name || leadData.business || leadData.goal || leadData.problem);
+    const hasData = leadData && (leadData.name || leadData.medical_practice || leadData.care_goal || leadData.reason_for_visit);
     
     if (hasData) {
       this.$leadPanel.classList.add('lead-panel--active');
     }
     
-    if (this.$leadName)     this.$leadName.textContent     = leadData.name     || '—';
-    if (this.$leadBusiness) this.$leadBusiness.textContent  = leadData.business || '—';
-    if (this.$leadGoal)     this.$leadGoal.textContent      = leadData.goal     || '—';
-    if (this.$leadProblem)  this.$leadProblem.textContent   = leadData.problem  || '—';
-    if (this.$leadTimeline) this.$leadTimeline.textContent  = leadData.timeline || '—';
-    if (this.$leadTenure)   this.$leadTenure.textContent    = leadData.tenure   || '—';
+    if (this.$leadName)     this.$leadName.textContent     = leadData.name               || '—';
+    if (this.$leadPractice) this.$leadPractice.textContent = leadData.medical_practice   || '—';
+    if (this.$leadGoal)     this.$leadGoal.textContent      = leadData.dob                || '—';
+    if (this.$leadProblem)  this.$leadProblem.textContent   = leadData.reason_for_visit   || '—';
+    if (this.$leadTimeline) this.$leadTimeline.textContent  = leadData.insurance_provider || '—';
+    if (this.$leadTenure)   this.$leadTenure.textContent    = leadData.urgency            || '—';
 
     if (this.$leadScore) {
       const completeness = this.orchestrator.getLeadCompleteness();
       this.$leadScore.textContent = `${completeness}%`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  CALENDAR INTEGRATION (G-044)
+  // ═══════════════════════════════════════════════════════════
+
+  async _checkCalendarAvailability() {
+    const ctx = this.stateMachine.getContext();
+    const config = AppContext.getConfig();
+    const appointment_time = ctx.leadData.appointment_time;
+    const startTime = ctx.leadData.appointment_iso;
+    
+    if (!startTime) {
+      console.warn('[App] No ISO time extracted. Skipping availability check.');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      console.log(`[App] Checking availability for ${appointment_time} (${startTime})`);
+      const response = await fetch('/api/calendar/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          calendar_id: config.calendar_id, 
+          startTime,
+          endTime: new Date(new Date(startTime).getTime() + 30 * 60000).toISOString() // +30 mins
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+      
+      if (result.available) {
+        console.log('[App] Slot is available');
+        this._lastCalendarResult = result;
+      } else {
+        console.warn('[App] Slot is BUSY');
+        this._lastCalendarResult = result;
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.error('[App] Availability check failed:', err.name === 'AbortError' ? 'Timeout' : err.message);
+    }
+  }
+
+  async _handleBookingConfirmation() {
+    const ctx = this.stateMachine.getContext();
+    const config = AppContext.getConfig();
+    const ld = ctx.leadData;
+
+    console.log('[App] Verbal confirmation received. Creating calendar event...');
+
+    try {
+      const response = await fetch('/api/calendar/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          calendar_id: config.calendar_id,
+          startTime: ld.appointment_iso,
+          endTime: new Date(new Date(ld.appointment_iso).getTime() + 30 * 60000).toISOString(),
+          patientName: ld.name,
+          reason: ld.reason_for_visit,
+          leadId: Date.now() // Simple unique ID
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('[App] Booking SUCCESS:', result.eventId);
+        this._addMessage('system', '📅 <strong>Appointment Confirmed</strong><br>Your visit has been scheduled on the clinic calendar.');
+      } else {
+        console.error('[App] Booking FAILED:', result.message || result.error);
+        this._addMessage('system', `⚠️ <strong>Booking Error</strong><br>${result.message || 'The system was unable to create the event. Staff have been notified.'}`);
+      }
+    } catch (err) {
+      console.error('[App] Booking request failed:', err.message);
+      this._addMessage('system', '⚠️ <strong>Connection Error</strong><br>Failed to reach the calendar service.');
     }
   }
 

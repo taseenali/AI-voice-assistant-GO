@@ -5,7 +5,7 @@
  * Assembles: [Acknowledgment?] + [Context?] + [Insight] + [Outcome?] + [Question]
  * 
  * Features:
- *   - Context Priority: Goal > Problem > Business > Tenure
+ *   - Context Priority: Reason for Visit > Patient Type > Insurance > DOB
  *   - Question Intelligence: Clarify, Diagnose, Confirm, Close
  *   - Anti-overconstruction Guard
  *   - Round-robin selection (zero consecutive repetition)
@@ -29,23 +29,23 @@ export class ResponseBuilder {
     // Expanded question banks (multiple per type, round-robin)
     this._questionBank = {
       CLARIFY: [
-        "Just to be clear, is there a specific area you'd like to improve first?",
-        "What's the one thing you'd most want to fix right now?",
-        "If you could improve one thing about your business tomorrow, what would it be?",
-        "What would you say is the biggest bottleneck for you right now?"
+        "Just to be clear, is there a specific symptom or concern you'd like to address first?",
+        "What's the one thing you'd most want to discuss with the doctor?",
+        "If you could address one health concern tomorrow, what would it be?",
+        "What would you say is the biggest health challenge for you right now?"
       ],
       DIAGNOSE: [
-        "How is that currently impacting your growth?",
-        "What does that look like day to day for your business?",
-        "How long has this been an issue?",
-        "What have you tried so far to address this?",
-        "What's the gap between where you are and where you want to be?"
+        "How is that currently affecting your daily activities?",
+        "What does that look like day to day for your health?",
+        "How long have you been noticing these symptoms?",
+        "What have you tried so far to manage this?",
+        "How would you describe your main goal for seeking care?"
       ],
       CONFIRM: [
-        "Does it make sense to explore a solution for this now?",
-        "Based on what you've shared, does this align with what you're looking for?",
-        "Would it be helpful if I walked you through how we'd approach this?",
-        "Does this sound like the right direction for your business?"
+        "Does it make sense to schedule an appointment to explore this further?",
+        "Based on what you've shared, does this align with the care you're looking for?",
+        "Would it be helpful if I walked you through how our clinic would approach your care?",
+        "Does this sound like the right direction for your health?"
       ],
       CLOSE: [
         "I can set up a quick consultation to dive deeper — want me to do that?",
@@ -108,10 +108,10 @@ export class ResponseBuilder {
 
   _getInjectableContext(ld) {
     const priority = [
-      { key: 'goal', template: "Since your goal is [VAL]," },
-      { key: 'problem', template: "Knowing that you're dealing with [VAL]," },
-      { key: 'business', template: "For a [VAL] business," },
-      { key: 'tenure', template: "With [VAL] of experience," }
+      { key: 'patient_type', template: "As a [VAL] patient," },
+      { key: 'reason_for_visit', template: "Knowing that you're seeking care for [VAL]," },
+      { key: 'insurance_provider', template: "For a patient with [VAL] coverage," },
+      { key: 'dob', template: "Based on your records," }
     ];
 
     // Pick ONE context snippet (keeps responses tight)

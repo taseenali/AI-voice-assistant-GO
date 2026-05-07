@@ -33,7 +33,7 @@ export class NLPEngine {
     // 5. Temporal Reasoning (Multi-turn stabilization)
     const temporalData = this.temporal.process({
       intent: intentData.primaryIntent,
-      intentStrength: confidence.intent > 0.7 ? "high" : confidence.intent > 0.4 ? "moderate" : "weak",
+      intentStrength: (confidence.intent * 0.4) + (confidence.problem * 0.3) + (confidence.care_goal * 0.15) + (confidence.medical_practice * 0.15) > 0.4 ? "moderate" : "weak",
       confidence,
       userType
     }, contextMemory);
@@ -51,13 +51,21 @@ export class NLPEngine {
       pivotAcknowledgment: temporalData.pivotAcknowledgment,
       userProfile: temporalData.userProfile,
       strategy,
-      intentStrength: confidence.intent > 0.7 ? "high" : confidence.intent > 0.4 ? "moderate" : "weak",
-      business: ext.business,
-      goal: ext.goal,
+      intentStrength: (() => {
+        let densityScore = 0;
+        if (ext.medical_practice) densityScore += 0.1;
+        if (ext.care_outcome) densityScore += 0.15;
+        if (ext.care_goal) densityScore += 0.1;
+        if (ext.problem) densityScore += 0.1;
+        if (ext.urgency && ext.urgency.type !== 'weak') densityScore += 0.1;
+        return densityScore > 0.3 ? "high" : densityScore > 0.1 ? "moderate" : "weak";
+      })(),
+      medical_practice: ext.medical_practice,
+      care_goal: ext.care_goal,
       problem: ext.problem,
       urgency: ext.urgency,
-      growth_outcome: ext.growth_outcome,
-      tenure: ext.tenure,
+      care_outcome: ext.care_outcome,
+      patient_history: ext.patient_history,
       userType,
       multiIntents: intentData,
       confidence,

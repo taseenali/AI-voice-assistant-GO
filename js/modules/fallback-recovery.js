@@ -20,7 +20,7 @@ export class FallbackRecovery {
     const services = config.services || [];
     let serviceListStr = "our core services";
     if (services.length > 0) {
-      const names = services.map(s => s.name.toLowerCase());
+      const names = services.map(s => (s.display_name || s.name || 'service').toLowerCase());
       if (names.length === 1) serviceListStr = names[0];
       else if (names.length === 2) serviceListStr = `${names[0]} and ${names[1]}`;
       else serviceListStr = `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
@@ -32,34 +32,34 @@ export class FallbackRecovery {
       gentle: [
         "I didn't quite catch that — could you tell me a bit more about what you're looking for?",
         "I want to make sure I understand you correctly. Could you rephrase that for me?",
-        "Hmm, I'm not sure I followed. Are you looking for help with a specific business challenge?",
+        "Hmm, I'm not sure I followed. Are you looking for help with a specific health concern or a question about our clinic?",
         "Could you clarify that? I want to make sure I point you in the right direction."
       ],
 
       // Level 1: Second confusion — guided redirect
       guided: [
-        "Let me help narrow things down. Are you looking for help with a website, marketing, automation, or an app?",
-        "No worries! Let me ask this differently — what's the biggest challenge your business is facing right now?",
-        "I want to help — could you tell me what kind of business you're running and what problem you'd like to solve?"
+        "Let me help narrow things down. Are you looking to schedule a checkup, dental care, or do you have a specific medical question?",
+        "No worries! Let me ask this differently — what's the main reason for your visit today?",
+        "I want to help — could you tell me what symptoms you're experiencing or what kind of care you're looking for?"
       ],
 
       // Level 2: Third confusion — simplified options
       simplified: [
-        `Let me make this simple. We help businesses with projects like ${serviceListStr}. Which one sounds closest to what you need?`,
+        `Let me make this simple. We help patients with services like ${serviceListStr}. Which one sounds closest to what you need?`,
         `I think we might be going in circles! Here's what we do best: ${serviceListStr}. Does any of that sound relevant to you?`
       ],
 
       // Level 3+: Offer human handoff
       escalated: [
-        "I think it might be best to connect you with someone from our team who can help you directly. Would you like to arrange a quick call?",
-        "I appreciate your patience! I think a short conversation with one of our consultants would be more helpful. Want me to set that up?"
+        "I think it might be best to connect you with our scheduling team who can help you directly. Would you like to arrange a quick call?",
+        "I appreciate your patience! I think a short conversation with one of our staff members would be more helpful. Want me to set that up?"
       ]
     };
 
     // ─── Redirect Responses (for irrelevant topics) ───────
     this._redirects = [
-      "That's an interesting question! But let me steer us back — are you looking for any help growing your business?",
-      "I appreciate the thought! My focus is on helping you with business solutions though. Is there a challenge you're facing that I might be able to help with?",
+      "That's an interesting question! But let me steer us back — are you looking for any help with your medical care?",
+      "I appreciate the thought! My focus is on helping you with healthcare needs though. Is there a health concern you're facing that I might be able to help with?",
       `Good question, but that's a bit outside my area! I specialize in ${serviceListStr}. Is there something along those lines I can help with?`
     ];
   }

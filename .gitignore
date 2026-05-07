@@ -1,0 +1,57 @@
+# ─── DEPENDENCIES ────────────────────────────────────────────────────────
+# External packages and modules
+node_modules/
+
+# ─── ENVIRONMENT & SECRETS ──────────────────────────────────────────────
+# Local environment variables (never commit real secrets)
+.env
+.env.local
+.env.*.local
+# Ensure .env.example is tracked as a template
+!.env.example
+
+# ─── BUILD OUTPUT ──────────────────────────────────────────────────────
+# Production build artifacts
+dist/
+
+# ─── OPERATIONAL INTELLIGENCE ──────────────────────────────────────────
+# Ignore large archives and heavy data files but keep documentation
+operational-intelligence-files/**/*.zip
+operational-intelligence-files/**/scratch/
+*.csv
+
+# ─── AI TOOLING ────────────────────────────────────────────────────────
+# AI assistant workspace settings and context
+.claude/
+
+# ─── OS SPECIFIC ───────────────────────────────────────────────────────
+# System-generated files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# ─── EDITOR SPECIFIC ───────────────────────────────────────────────────
+# IDE settings and temporary files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ─── LOGS ──────────────────────────────────────────────────────────────
+# Debug and error logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── TESTING ───────────────────────────────────────────────────────────
+# Test coverage and results
+coverage/
+.nyc_output/
+.vitest-results/

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AI Voice Assistant — Your intelligent business consultant powered by voice.">
-  <title>AI Voice Assistant</title>
+  <meta name="description" content="AI Voice Assistant — Your AI Medical Receptionist — available 24/7.">
+  <title>MedVoice AI</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,35 +107,35 @@
 
       <!-- Lead Data -->
       <div class="info-card lead-panel" id="lead-panel">
-        <div class="info-card__title">Lead Information</div>
+        <div class="info-card__title">Patient Information</div>
         <div class="lead-panel__grid">
           <div class="lead-field">
             <span class="lead-field__label">Name</span>
             <span class="lead-field__value" id="lead-name">—</span>
           </div>
           <div class="lead-field">
-            <span class="lead-field__label">Business</span>
-            <span class="lead-field__value" id="lead-business">—</span>
+            <span class="lead-field__label">Patient Type</span>
+            <span class="lead-field__value" id="lead-practice">—</span>
           </div>
           <div class="lead-field">
-            <span class="lead-field__label">Goal</span>
-            <span class="lead-field__value" id="lead-goal">—</span>
+            <span class="lead-field__label">DOB</span>
+            <span class="lead-field__value" id="lead-dob">—</span>
           </div>
           <div class="lead-field">
-            <span class="lead-field__label">Problem</span>
-            <span class="lead-field__value" id="lead-problem">—</span>
+            <span class="lead-field__label">Reason for Visit</span>
+            <span class="lead-field__value" id="lead-reason">—</span>
           </div>
           <div class="lead-field">
-            <span class="lead-field__label">Timeline</span>
-            <span class="lead-field__value" id="lead-timeline">—</span>
+            <span class="lead-field__label">Insurance</span>
+            <span class="lead-field__value" id="lead-insurance">—</span>
           </div>
           <div class="lead-field">
-            <span class="lead-field__label">Tenure</span>
-            <span class="lead-field__value" id="lead-tenure">—</span>
+            <span class="lead-field__label">Urgency</span>
+            <span class="lead-field__value" id="lead-urgency">—</span>
           </div>
         </div>
         <div class="lead-score">
-          <span class="lead-score__label">Lead Score</span>
+          <span class="lead-score__label">Data Score</span>
           <span class="lead-score__value" id="lead-score">0%</span>
         </div>
       </div>
@@ -144,18 +144,150 @@
       <div class="info-card">
         <div class="info-card__title">About</div>
         <p style="font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.5;">
-          I'm your AI-powered business consultant. I help identify the right technology solutions for your business growth.
+          I'm your AI-powered medical receptionist. I help coordinate care, answer questions about our clinic, and schedule your appointments.
         </p>
       </div>
 
-      <!-- Footer -->
+      <!-- SEC-04: Privacy Disclosure Footer -->
       <div class="system-info">
         Built with ❤️ by <a href="#">AI Engine</a><br>
-        <span style="opacity: 0.6;">v1.0 MVP</span>
+        <span style="opacity: 0.6;">v1.0 MVP</span><br>
+        <span style="opacity: 0.5; font-size: 0.7rem; line-height: 1.4; display: block; margin-top: 6px;">
+          🔒 Voice is processed by your browser and may be sent to a third-party service.
+          <a href="#" style="color: var(--accent-primary); text-decoration: underline;">Learn more</a>
+        </span>
       </div>
 
     </aside>
 
+  </div>
+
+  <!-- P0-1: Tap-to-Start overlay — gates first user gesture so Chrome TTS autoplay unlock works -->
+  <div id="tap-to-start-overlay" style="
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(6, 8, 16, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Inter, sans-serif;
+    backdrop-filter: blur(12px);
+  ">
+    <div style="
+      text-align: center;
+      padding: 48px 40px;
+      max-width: 440px;
+      width: 90%;
+      background: rgba(12, 16, 28, 0.92);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 20px;
+      box-shadow: 0 0 80px rgba(0, 212, 255, 0.06), 0 24px 64px rgba(0, 0, 0, 0.6);
+    ">
+      <div style="
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 24px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 40% 40%, rgba(0,212,255,0.3), rgba(124,92,255,0.15));
+        border: 2px solid rgba(0,212,255,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+      ">🎙️</div>
+      <h1 id="tap-overlay-title" style="
+        color: #e8ecf4;
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0 0 10px 0;
+        letter-spacing: -0.01em;
+      ">AI Medical Receptionist</h1>
+      <p style="
+        color: rgba(232, 236, 244, 0.6);
+        font-size: 0.88rem;
+        line-height: 1.65;
+        margin: 0 0 8px 0;
+      ">Your AI-powered assistant is ready to help you schedule appointments and answer questions.</p>
+      <p style="
+        color: rgba(232, 236, 244, 0.35);
+        font-size: 0.75rem;
+        line-height: 1.5;
+        margin: 0 0 28px 0;
+      ">Voice is processed locally by your browser. Text input is always available.</p>
+      <button id="tap-to-start-btn" style="
+        width: 100%;
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #00d4ff 0%, #7c5cff 100%);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-family: Inter, sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      " onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+        Tap to Begin
+      </button>
+    </div>
+  </div>
+
+  <!-- TCPA / SEC-04: Voice Consent Banner (hidden by default, shown by app.js on first mic click) -->
+  <div id="voice-consent-banner" style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.72);
+    align-items: center;
+    justify-content: center;
+    font-family: Inter, sans-serif;
+  ">
+    <div style="
+      background: #1a1a2e;
+      border: 1px solid rgba(99,102,241,0.4);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    ">
+      <h2 style="color: #fff; font-size: 1.1rem; margin: 0 0 12px 0;">🎤 Enable Voice Input?</h2>
+      <p style="color: rgba(255,255,255,0.7); font-size: 0.88rem; line-height: 1.6; margin: 0 0 20px 0;">
+        This assistant uses your browser's built-in voice recognition. Your audio may be sent to a
+        third-party speech recognition service (e.g., Google). By clicking
+        <strong>Allow Voice</strong>, you consent to this. You can use
+        <strong>text input</strong> at any time without consent.
+      </p>
+      <p style="color: rgba(255,255,255,0.4); font-size: 0.78rem; margin: 0 0 24px 0;">
+        Consent is not required to use this service. No recording is stored on our servers.
+      </p>
+      <div style="display: flex; gap: 12px;">
+        <button id="voice-consent-grant" style="
+          flex: 1;
+          padding: 12px;
+          background: #6366f1;
+          color: #fff;
+          border: none;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+        ">Allow Voice</button>
+        <button id="voice-consent-decline" style="
+          flex: 1;
+          padding: 12px;
+          background: transparent;
+          color: rgba(255,255,255,0.6);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 10px;
+          font-size: 0.9rem;
+          cursor: pointer;
+        ">Use Text Only</button>
+      </div>
+    </div>
   </div>
 
   <!-- App Script (ES Module) -->

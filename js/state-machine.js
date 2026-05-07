@@ -11,11 +11,12 @@ export const STATES = {
   DISCOVERY:       'DISCOVERY',
   INTENT_DETECTED: 'INTENT_DETECTED',
   FLOW_GENERAL:    'FLOW_GENERAL',
-  LEAD_CAPTURE:    'LEAD_CAPTURE',
-  CLOSING:         'CLOSING',
-  OBJECTION:       'OBJECTION',
-  FALLBACK:        'FALLBACK',
-  ENDED:           'ENDED'
+  LEAD_CAPTURE:         'LEAD_CAPTURE',
+  BOOKING_CONFIRMATION: 'BOOKING_CONFIRMATION',
+  CLOSING:              'CLOSING',
+  OBJECTION:            'OBJECTION',
+  FALLBACK:             'FALLBACK',
+  ENDED:                'ENDED'
 };
 
 // ─── Conversation Goals ────────────────────────────────────────
@@ -41,11 +42,13 @@ const TRANSITIONS = {
     STATES.INTENT_DETECTED,
     STATES.FALLBACK,
     STATES.DISCOVERY,
-    STATES.ENDED
+    STATES.ENDED,
+    STATES.LEAD_CAPTURE  // Patient confirms booking intent → skip ahead to data collection
   ],
   [STATES.INTENT_DETECTED]: [
     STATES.FLOW_GENERAL,
-    STATES.DISCOVERY
+    STATES.DISCOVERY,
+    STATES.LEAD_CAPTURE  // Direct booking confirmation from intent gate
   ],
 
   [STATES.FLOW_GENERAL]: [
@@ -53,10 +56,13 @@ const TRANSITIONS = {
     STATES.DISCOVERY, STATES.CLOSING, STATES.FALLBACK, STATES.FLOW_GENERAL
   ],
   [STATES.LEAD_CAPTURE]: [
-    STATES.CLOSING, STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.FALLBACK
+    STATES.CLOSING, STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.FALLBACK, STATES.BOOKING_CONFIRMATION
+  ],
+  [STATES.BOOKING_CONFIRMATION]: [
+    STATES.ENDED, STATES.CLOSING, STATES.FALLBACK
   ],
   [STATES.CLOSING]: [
-    STATES.ENDED, STATES.OBJECTION, STATES.LEAD_CAPTURE, STATES.FALLBACK
+    STATES.ENDED, STATES.OBJECTION, STATES.LEAD_CAPTURE, STATES.FALLBACK, STATES.BOOKING_CONFIRMATION
   ],
   [STATES.OBJECTION]: [
     STATES.DISCOVERY, STATES.CLOSING,
@@ -81,7 +87,7 @@ export class ConversationStateMachine {
   constructor(config = null) {
     this._listeners = [];
     this._deferredIntentStack = [];
-    this.maxStackSize = 1;
+    this.maxStackSize = 3;
 
     if (config) {
       this.initFromConfig(config);
@@ -105,9 +111,12 @@ export class ConversationStateMachine {
       TRANSITIONS[STATES.FLOW_GENERAL].push(stateName);
       TRANSITIONS[STATES.OBJECTION].push(stateName);
       
+      const allServiceStates = services.filter(s => s.intent_key).map(s => `FLOW_SERVICE_${s.intent_key.toUpperCase()}`);
+
       TRANSITIONS[stateName] = [
         STATES.LEAD_CAPTURE, STATES.OBJECTION, STATES.DISCOVERY,
-        STATES.CLOSING, STATES.FALLBACK, stateName
+        STATES.CLOSING, STATES.FALLBACK, stateName,
+        ...allServiceStates // Enable lateral switches to any other service flow
       ];
     });
   }
@@ -119,19 +128,54 @@ export class ConversationStateMachine {
       state:            STATES.IDLE,
       intent:           null,
       intentStrength:   0,
-      urgency:          'low',
+      urgency_level:    'low',
       engagementScore:  50,
       conversationGoal: GOALS.IDENTIFY_PROBLEM,
       contextMemory:    [],
       leadData: {
-        name:          null,
-        business:      null,
-        goal:          null,
-        tenure:        null,
-        problem:       null,
-        contactMethod: null,
-        budget:        null,
-        timeline:      null
+        name:               null,
+        patient_type:       null,
+        dob:                null,
+        reason_for_visit:   null,
+        insurance_provider: null,
+        insurance_id:       null,
+        urgency:            null,
+        contactMethod:      null
+      },
+      confirmations: ['Great! We will be in touch shortly.'],
+      exit: ['Thanks for chatting! Feel free to reach out anytime.'],
+      emergency_keywords: [
+        "chest pain", "heart attack", "crushing pain", "squeezing chest",
+        "can't breathe", "difficulty breathing", "trouble breathing", "choking",
+        "stroke", "face drooping", "arm weakness", "sudden confusion",
+        "severe bleeding", "bleeding heavily", "blood loss", "uncontrolled bleeding",
+        "suicide", "kill myself", "want to die", "end my life",
+        "labor", "baby coming", "water broke", "contractions",
+        "baby not breathing", "child unconscious", "infant not moving",
+        "car accident", "severe burn", "overdose", "poisoning"
+      ],
+      leadPrompts: {
+        patient_type: [
+          "Are you a new or returning patient?",
+          "Have you visited our clinic before?"
+        ],
+        dob: [
+          "Could I get your date of birth, just for our medical records?",
+          "What is your date of birth?"
+        ],
+        reason_for_visit: [
+          "What's the main thing you're looking to address today?",
+          "Could you describe the reason for your visit?",
+          "What symptoms or concerns should the doctor know about?"
+        ],
+        insurance_provider: [
+          "Who is your primary health insurance provider?",
+          "What insurance will you be using for this visit?"
+        ],
+        urgency: [
+          "How quickly do you need to be seen?",
+          "Is this an urgent matter or a routine checkup?"
+        ]
       },
       history:        [],
       flowStep:       0,
@@ -286,6 +330,10 @@ export class ConversationStateMachine {
     });
   }
 
+  getMemory() {
+    return [...this._context.contextMemory];
+  }
+
   // ─── Engagement Scoring ────────────────────────────────────
 
   adjustEngagement(delta) {
@@ -340,23 +388,22 @@ export class ConversationStateMachine {
   getLeadCompleteness() {
     const ld = this._context.leadData;
     let score = 0;
-    if (ld.name)          score += 25;
-    if (ld.business)      score += 15;
-    if (ld.goal)          score += 15;
-    if (ld.tenure)        score += 10;
-    if (ld.problem)       score += 20;
-    if (ld.contactMethod) score += 5;
-    if (ld.timeline)      score += 10;
+    if (ld.name)               score += 25;
+    if (ld.patient_type)       score += 15;
+    if (ld.reason_for_visit)   score += 25;
+    if (ld.dob)                score += 15;
+    if (ld.insurance_provider) score += 10;
+    if (ld.urgency)            score += 10;
     return score;
   }
 
   getNextLeadField() {
     const ld = this._context.leadData;
-    if (!ld.name)     return 'name';
-    if (!ld.goal)     return 'goal';
-    if (!ld.problem)  return 'problem';
-    if (!ld.business) return 'business';
-    if (!ld.timeline) return 'timeline';
+    if (!ld.name)               return 'name';
+    if (!ld.patient_type)       return 'patient_type';
+    if (!ld.reason_for_visit)   return 'reason_for_visit';
+    if (!ld.dob)                return 'dob';
+    if (!ld.insurance_provider) return 'insurance_provider';
     return null;
   }
 

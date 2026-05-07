@@ -1,0 +1,1629 @@
+%% ============================================================
+%% MedVoice AI Receptionist — Complete Manufacturing Guide
+%% Overleaf-compatible LaTeX document
+%% Compile with: pdflatex (Overleaf default compiler)
+%% ============================================================
+
+\documentclass[12pt, a4paper]{report}
+
+%% ── Encoding & Fonts ──────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+%% ── Page Layout ───────────────────────────────────────────
+\usepackage[
+  a4paper,
+  top=2.8cm,
+  bottom=2.8cm,
+  left=3cm,
+  right=3cm,
+  headheight=15pt
+]{geometry}
+
+%% ── Colors ────────────────────────────────────────────────
+\usepackage[dvipsnames]{xcolor}
+\definecolor{accentblue}{RGB}{25, 80, 150}
+\definecolor{lightblue}{RGB}{230, 240, 255}
+\definecolor{codebg}{RGB}{247, 247, 247}
+\definecolor{codeframe}{RGB}{200, 200, 200}
+\definecolor{alertred}{RGB}{180, 40, 40}
+\definecolor{successgreen}{RGB}{30, 120, 60}
+\definecolor{warningorange}{RGB}{180, 100, 20}
+\definecolor{mutedgray}{RGB}{100, 100, 100}
+\definecolor{quotebarcolor}{RGB}{25, 80, 150}
+\definecolor{tablehead}{RGB}{240, 245, 255}
+
+%% ── Code Listings ─────────────────────────────────────────
+\usepackage{listings}
+\lstset{
+  backgroundcolor   = \color{codebg},
+  frame             = single,
+  rulecolor         = \color{codeframe},
+  basicstyle        = \small\ttfamily,
+  breaklines        = true,
+  breakatwhitespace = false,
+  showstringspaces  = false,
+  numbers           = none,
+  xleftmargin       = 8pt,
+  xrightmargin      = 8pt,
+  framexleftmargin  = 8pt,
+  framexrightmargin = 8pt,
+  aboveskip         = 8pt,
+  belowskip         = 8pt,
+  tabsize           = 2,
+  keepspaces        = true,
+  columns           = flexible,
+  literate          =
+    {->}{{$\rightarrow$}}2
+    {=>}{{$\Rightarrow$}}2
+}
+
+%% ── Tables ────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{colortbl}
+
+%% ── Lists ─────────────────────────────────────────────────
+\usepackage{enumitem}
+\setlist[itemize]{itemsep=2pt, parsep=0pt}
+\setlist[enumerate]{itemsep=2pt, parsep=0pt}
+
+%% ── Headers & Footers ────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{mutedgray}\textit{MedVoice AI --- Manufacturing Guide}}
+\fancyhead[R]{\small\color{mutedgray}\textit{Pass 8 $\cdot$ 2026-05-02}}
+\fancyfoot[C]{\small\color{mutedgray}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+%% ── Section Formatting ───────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries\color{accentblue}}
+  {\normalfont\large\color{mutedgray}Chapter \thechapter}
+  {8pt}
+  {\huge}
+\titlespacing{\chapter}{0pt}{0pt}{20pt}
+
+\titleformat{\section}
+  {\normalfont\large\bfseries\color{accentblue}}
+  {\thesection}{1em}{}
+\titlespacing{\section}{0pt}{18pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing{\subsection}{0pt}{12pt}{4pt}
+
+%% ── Callout Boxes ────────────────────────────────────────
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+\newtcolorbox{infobox}{
+  colback   = lightblue,
+  colframe  = accentblue,
+  coltitle  = white,
+  fonttitle = \bfseries,
+  boxrule   = 0.8pt,
+  arc       = 4pt,
+  left      = 8pt, right = 8pt,
+  top       = 6pt, bottom = 6pt,
+  breakable
+}
+
+\newtcolorbox{warningbox}{
+  colback   = {RGB}{255,248,230},
+  colframe  = warningorange,
+  boxrule   = 0.8pt,
+  arc       = 4pt,
+  left      = 8pt, right = 8pt,
+  top       = 6pt, bottom = 6pt,
+  breakable
+}
+
+\newtcolorbox{alertbox}{
+  colback   = {RGB}{255,235,235},
+  colframe  = alertred,
+  boxrule   = 0.8pt,
+  arc       = 4pt,
+  left      = 8pt, right = 8pt,
+  top       = 6pt, bottom = 6pt,
+  breakable
+}
+
+\newtcolorbox{quotebox}{
+  colback   = {RGB}{248,248,248},
+  colframe  = quotebarcolor,
+  leftrule  = 4pt,
+  toprule   = 0pt,
+  bottomrule= 0pt,
+  rightrule = 0pt,
+  arc       = 0pt,
+  left      = 10pt, right = 8pt,
+  top       = 6pt, bottom = 6pt,
+  breakable
+}
+
+%% ── Hyperlinks ───────────────────────────────────────────
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = accentblue,
+  urlcolor   = accentblue,
+  pdftitle   = {MedVoice AI Receptionist --- Complete Manufacturing Guide},
+  pdfauthor  = {MedVoice Development Team},
+}
+
+%% ── Inline Code Helper ───────────────────────────────────
+\newcommand{\ic}[1]{\texttt{\small\color{accentblue!70!black}#1}}
+
+%% ── Paragraph spacing ────────────────────────────────────
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{7pt}
+
+%% ── Chapter Page Style ───────────────────────────────────
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\small\color{mutedgray}\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+%% ════════════════════════════════════════════════════════
+%%  DOCUMENT BEGIN
+%% ════════════════════════════════════════════════════════
+\begin{document}
+
+%% ── Title Page ───────────────────────────────────────────
+\begin{titlepage}
+  \thispagestyle{empty}
+  \vspace*{2cm}
+
+  {\color{mutedgray}\large\textsc{MedVoice AI Platform}}\\[0.3cm]
+  {\color{accentblue}\rule{\linewidth}{1.5pt}}\\[0.5cm]
+
+  {\Huge\bfseries How to Build a Medical AI\\[0.3cm]
+  Receptionist}\\[0.5cm]
+
+  {\color{accentblue}\rule{\linewidth}{0.6pt}}\\[0.5cm]
+
+  {\large A Complete Manufacturing Guide\\
+  \textit{Written for a serious student building this from scratch}}
+
+  \vspace{1cm}
+
+  \begin{quotebox}
+    \textbf{Before you read this:} You have already built $\sim$33\% of a production
+    medical AI receptionist. The code exists. Most of it works. This document explains
+    what you built, why every decision was made, what is genuinely broken, and exactly
+    what you need to do to finish it. You are not starting over. You are learning what
+    you already have, and then moving forward with precision.
+  \end{quotebox}
+
+  \vfill
+
+  \begin{tabular}{ll}
+    \textbf{Version}  & Pass 8 \\
+    \textbf{Date}     & 2026-05-02 \\
+    \textbf{Platform} & MedVoice AI --- Multi-tenant Medical Receptionist \\
+    \textbf{Status}   & $\sim$33\% complete toward production \\
+  \end{tabular}
+
+  \vspace{1cm}
+  {\color{mutedgray}\footnotesize Every claim in this document is sourced from actual source code.
+  No assumptions. No invented behavior.}
+\end{titlepage}
+
+%% ── Table of Contents ────────────────────────────────────
+\tableofcontents
+\clearpage
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 0
+%% ════════════════════════════════════════════════════════
+\chapter{The Problem You Are Solving}
+
+\section{What a Medical Receptionist Actually Does}
+
+Before writing a single line of code, you must understand the human job you are
+replacing. A real medical receptionist does these things on every phone call:
+
+\begin{enumerate}
+  \item Answers the phone within 3 rings
+  \item Greets the caller warmly and identifies the practice
+  \item Figures out why they are calling (appointment? question? emergency?)
+  \item If emergency --- routes immediately to 911 or clinical staff
+  \item If appointment --- collects: name, date of birth, reason for visit, insurance info, urgency
+  \item Checks the calendar for availability
+  \item Proposes a time slot
+  \item Confirms the booking
+  \item Sends a confirmation (SMS or email)
+  \item Handles objections (``do you take my insurance?'', ``how much does it cost?'')
+  \item Answers common questions (``what are your hours?'', ``where are you located?'')
+  \item Logs the interaction
+\end{enumerate}
+
+That is the job. Every component in your codebase maps to one or more of those 12 tasks.
+When something feels ``broken,'' it is because one of those 12 tasks is not being done
+correctly.
+
+\section{Why This Is a Business Opportunity}
+
+Medical practices receive 30--80 calls per day. A receptionist costs \$35,000--\$55,000
+per year. They miss calls after hours, during lunch, and when busy. Every missed call is
+a lost patient worth \$200--\$2,000 in lifetime value.
+
+The existing software solutions (Ruby Receptionist, Conversational AI, etc.) cost
+\$150--\$900/month and require large setup teams. Your product at \$29--\$59/month for
+Tier 1 is in blue ocean territory.
+
+\begin{warningbox}
+  The catch: medical data is protected by HIPAA. This changes everything about how you
+  store, transmit, and log data. It is not a checkbox --- it is a legal liability. This
+  is why several items in your issues register say ``OPEN --- blocks first medical
+  client.''
+\end{warningbox}
+
+\section{What Your Product Does Today (Honest)}
+
+Right now, MedVoice AI is a \textbf{web widget} that:
+
+\begin{itemize}
+  \item Greets a patient by voice using the browser's text-to-speech
+  \item Understands what they say (typed or spoken)
+  \item Asks the right questions to collect their info
+  \item Knows when something is an emergency and tells them to call 911
+  \item Fires a webhook to n8n when lead data is captured
+  \item Has scaffolding for calendar booking and phone calls (but neither is live)
+\end{itemize}
+
+What it does \textbf{NOT} do yet:
+
+\begin{itemize}
+  \item Answer phone calls (Twilio is wired but not live)
+  \item Actually check a real Google Calendar (code exists, never tested with real credentials)
+  \item Store patient records anywhere persistently
+  \item Run on a production server accessible to real patients
+  \item Meet HIPAA compliance (no BAA signed, logs go to stdout)
+\end{itemize}
+
+\begin{infobox}
+  You are about 33\% of the way to a product a real clinic can use. That is not a
+  failure --- that is normal. Every real product is about 33\% done at this stage.
+\end{infobox}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 1
+%% ════════════════════════════════════════════════════════
+\chapter{How to Think About Building This}
+
+\section{The Mental Model: Layers of a Voice AI}
+
+Think of your product as four layers stacked on top of each other:
+
+\begin{lstlisting}
++------------------------------------------+
+|  LAYER 4: THE BUSINESS LAYER             |
+|  Calendar, Webhooks, Audit Logs, HIPAA   |
++------------------------------------------+
+|  LAYER 3: THE CONVERSATION BRAIN         |
+|  State Machine, Pipeline, Modules        |
++------------------------------------------+
+|  LAYER 2: THE LANGUAGE UNDERSTANDING     |
+|  NLP, Intent Detection, Entity Extract.  |
++------------------------------------------+
+|  LAYER 1: THE VOICE CHANNEL              |
+|  Speech Recognition, Text-to-Speech      |
++------------------------------------------+
+\end{lstlisting}
+
+Each layer depends on the layer below it. If Layer 1 is broken (voice doesn't work),
+nothing above it matters. This is why the first Pass 8 fix was TTS autoplay --- it was a
+Layer 1 failure that made the product appear completely dead.
+
+\section{Why It Is Not One Big AI Model}
+
+A common beginner mistake is thinking you can just send every user message to ChatGPT
+and let it handle everything. You cannot --- for three reasons:
+
+\textbf{Reason 1: Safety.} If a patient says ``I'm having chest pain,'' you need a
+deterministic, guaranteed response (``Call 911 NOW'') that fires in milliseconds. You
+cannot afford the 2--5 second LLM latency, and you cannot risk the LLM misclassifying
+the emergency. This is why \ic{emergency-detector.js} runs BEFORE everything --- even
+before routing --- and uses pure keyword matching.
+
+\textbf{Reason 2: Structure.} A booking flow requires collecting specific fields in
+sequence (name, DOB, reason, insurance). An LLM left to itself will hallucinate
+confirmations, skip fields, and invent insurance providers. The state machine forces the
+conversation into a structured path.
+
+\textbf{Reason 3: Cost.} LLM API calls cost money per token. A medical receptionist
+handles hundreds of conversations per month. Pure-LLM would be economically unviable at
+\$29/month pricing. The rule-based engine (Tier 1) handles 90\% of conversations for
+free.
+
+The LLM (Tier 2) is a quality upgrade, not a replacement for the rule-based engine. It
+handles nuanced responses, complex questions, and natural rephrasing --- but the
+structure, safety, and data collection are always rule-based.
+
+\section{The Design Principle You Must Never Violate}
+
+\begin{alertbox}
+  \textbf{Safety-critical paths are never LLM-controlled.}
+
+  Emergency detection, data collection, state transitions, and webhook dispatch are all
+  deterministic rule-based code. The LLM handles only the ``what to say'' layer, not the
+  ``what to do'' layer. This is not a technical limitation --- it is a deliberate
+  architectural decision made in Pass 2 and documented in \ic{ENVIRONMENT.md}.
+\end{alertbox}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 2
+%% ════════════════════════════════════════════════════════
+\chapter{Layer 1: The Voice Channel}
+
+\textbf{Files:} \ic{js/speech-io.js}, \ic{index.html} (tap-to-start overlay)
+
+\section{What the Browser Gives You for Free}
+
+Modern browsers have two built-in APIs for voice:
+
+\begin{enumerate}
+  \item \textbf{\ic{SpeechRecognition}} --- converts microphone audio to text. This is
+        the ``input'' side.
+  \item \textbf{\ic{SpeechSynthesis}} --- converts text to spoken audio through the
+        speaker. This is the ``output'' side.
+\end{enumerate}
+
+These are available with zero external dependencies in Chrome and Edge. Safari partially
+supports them. Firefox does not support \ic{SpeechRecognition} at all.
+
+Your \ic{SpeechIO} class wraps both APIs in a single clean interface.
+
+\section{The Input Side (Speech Recognition)}
+
+When you call \ic{speechIO.startListening()}, it starts the browser's microphone and
+begins transcribing. The API fires two types of results:
+
+\begin{itemize}
+  \item \textbf{Interim results} (partial) --- fires continuously while the user is
+        speaking. You see ``I need to'' before they finish saying ``I need to book an
+        appointment.''
+  \item \textbf{Final results} --- fires when the user stops speaking and the API is
+        confident it has the complete utterance.
+\end{itemize}
+
+Your code handles both. Final results call \ic{\_processUserInput(transcript)} which
+starts the pipeline. Interim results are shown in the UI as a live preview (the
+\ic{\_showInterim()} method).
+
+\textbf{The interrupt problem:} What happens when the assistant is speaking (TTS playing)
+and the user starts talking? By default, the TTS and recognition run simultaneously and
+produce garbage. Your code solves this with \ic{\_isMeaningfulInterrupt()} --- if the
+user says at least 2 non-filler words while TTS is playing, it cancels the TTS and
+processes the user's partial input as an interrupt. This is called \textbf{barge-in} in
+voice interface design.
+
+\section{The Output Side (Speech Synthesis)}
+
+\ic{speechSynthesis.speak(utterance)} adds an utterance to a queue and speaks it. This
+seems simple. It has one brutal problem in Chrome:
+
+\textbf{Chrome's Autoplay Policy:} Chrome blocks any audio from playing unless it was
+triggered by a direct user gesture (a click or keypress). If your code tries to call
+\ic{speak()} after an async operation (like fetching config or waiting for the LLM), the
+gesture context is gone and Chrome silently refuses.
+
+Your solution: the \textbf{Tap-to-Start overlay} (\ic{index.html} +
+\ic{app.js:\_bindTapToStart()}). When the user clicks the ``Start'' button, the click
+handler immediately calls \ic{unlockAudio()} --- which fires a near-silent utterance
+synchronously while still inside the gesture. This ``warms up'' the audio engine. Then
+it starts the conversation. All future \ic{speak()} calls work because the engine is
+already warm.
+
+\begin{infobox}
+  This is the fix for \textbf{P0-1} (resolved in Pass 8). Before this fix, the greeting
+  was never spoken and the product appeared completely silent on first open.
+\end{infobox}
+
+\section{How TTS Quality Works}
+
+\ic{speak(text)} does not just fire one utterance. It:
+
+\begin{enumerate}
+  \item Waits a random 100--450ms (simulates thinking --- reduces robot feeling)
+  \item Splits long text at punctuation marks into 2--3 chunks
+  \item Speaks each chunk with subtle rate/pitch variation (first chunk slightly faster,
+        last slightly slower)
+  \item Adds small pauses between chunks (30--150ms)
+\end{enumerate}
+
+This is the difference between a robotic voice assistant and one that sounds like it is
+actually thinking and speaking naturally.
+
+\section{The Streaming TTS Upgrade (Pass 8)}
+
+When the LLM generates a response, it does not produce the full text at once --- it
+streams token by token. If you wait for the full text before speaking, there is a 3--5
+second silence that feels broken.
+
+The \ic{speakChunk(text)} method fixes this. The LLM proxy
+(\ic{server/routes/llm-proxy.js}) buffers tokens until it hits a punctuation mark, then
+sends the buffered chunk. \ic{speakChunk()} immediately queues that chunk for speech.
+The patient hears the first sentence while the LLM is still generating the second.
+
+The \ic{streamedSpeech} flag in \ic{app.js:\_processUserInput()} prevents the normal
+\ic{speak()} from firing afterward --- because the chunks already handled it.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 3
+%% ════════════════════════════════════════════════════════
+\chapter{Layer 2: Language Understanding}
+
+\textbf{Files:} \ic{js/nlp/nlp-core.js} and 7 sub-modules, \ic{js/modules/intent-detector.js}
+
+\section{What ``Understanding'' Actually Means Here}
+
+When a patient says ``I've been having this headache for three days and I think I need to
+see a neurologist,'' your system needs to extract:
+
+\begin{itemize}
+  \item \textbf{Intent:} they want a medical consultation (possibly a specialist)
+  \item \textbf{Problem:} headache
+  \item \textbf{Duration:} 3 days
+  \item \textbf{Urgency:} medium (not emergency, but has been going on)
+  \item \textbf{Service interest:} neurology / general consult
+\end{itemize}
+
+It also needs to know: is this person being direct? Exploratory? Confused? Skeptical?
+That determines what tone the response should have.
+
+This is what the NLP layer does. It is \textbf{NOT machine learning} --- it is a
+carefully engineered pipeline of rule-based text analysis functions.
+
+\section{The NLP Pipeline (8 Steps, One Call)}
+
+When \ic{nlp.analyze(input, context)} is called from the orchestrator, it runs through
+8 sub-modules in sequence:
+
+\textbf{Step 1 --- \ic{nlp-preprocess.js}:} Tokenize and clean. Convert
+``I'M having HEADACHES!!'' to \ic{["i'm", "having", "headaches"]}. Lowercase, strip
+punctuation noise.
+
+\textbf{Step 2 --- \ic{nlp-semantic.js}:} Synonym expansion. Map informal language to
+standard vocabulary. ``Wanna see a doc'' becomes ``want to see a doctor.'' This prevents
+you from having to put ``doc'' AND ``doctor'' AND ``physician'' AND ``GP'' in every
+keyword list.
+
+\textbf{Step 3 --- \ic{nlp-extractor.js}:} Extract structured clinical entities. Scan
+the text for patterns that indicate:
+\begin{itemize}
+  \item \ic{medical\_practice} --- clinic name or specialty references
+  \item \ic{care\_goal} --- what they want to achieve (``schedule a visit'', ``get
+        checked'')
+  \item \ic{problem} --- what is wrong (``headache'', ``knee pain'', ``feeling sick'')
+  \item \ic{urgency} --- how urgent (``three days now'', ``can't wait'', ``not urgent'')
+  \item \ic{patient\_history} --- prior visit references
+\end{itemize}
+
+\textbf{Step 4 --- \ic{nlp-intent.js}:} Detect primary and secondary intent. What is
+the main thing they want? Returns \ic{primaryIntent}, \ic{secondaryIntent}, and a
+\ic{multiIntents} array with type tags (\ic{primary}, \ic{dependent}, \ic{override},
+\ic{modifier}). The type tags drive multi-intent resolution in the orchestrator's Step 5.
+
+\textbf{Step 5 --- \ic{nlp-user-model.js}:} Classify behavioral type. Is this person
+\ic{direct} (decisive, short), \ic{exploratory} (curious, tentative), \ic{skeptical}
+(doubtful, objecting), or \ic{confused} (contradicting themselves, unclear)? This
+affects tone selection.
+
+\textbf{Step 6 --- \ic{nlp-confidence.js}:} Score confidence per field. Did we extract
+\ic{medical\_practice} with high or low certainty? Confidence scores gate what gets
+stored in lead data --- a low-confidence extraction is held back to avoid overwriting a
+more reliable prior value.
+
+\textbf{Step 7 --- \ic{nlp-temporal.js}:} Multi-turn stabilization. Tracks intent
+across the conversation. If the patient said ``dental'' 3 turns ago but is now talking
+generally, the \ic{stableIntent} is still ``dental.'' Also detects contradictions (they
+said yes then said no) and flags \ic{pivotAcknowledgment} so the response can address
+the pivot naturally.
+
+\textbf{Step 8 --- \ic{nlp-behavior.js}:} Strategy mapping. Based on user profile from
+temporal, return an approach recommendation: be \ic{direct}, \ic{educational},
+\ic{reassuring}, or \ic{empathetic}. Verbose or concise. Open-ended or closed questions.
+
+\section{The Keyword Layer (Separate from NLP)}
+
+\ic{IntentDetector} in \ic{js/modules/intent-detector.js} is a completely separate
+system from NLP. It does pure keyword/phrase matching.
+
+Why have two systems? The NLP layer is good at extracting meaning from complex sentences.
+The keyword layer is good at catching explicit service requests in any sentence structure.
+
+\textbf{Example:} ``I need dental care'' --- the NLP might score this as
+\ic{GENERAL\_INQUIRY} because ``I need'' is ambiguous. The keyword layer matches
+``dental'' directly to \ic{DENTAL} intent with \ic{confidence=0.15} from the keyword
+weight.
+
+The orchestrator's Step 1 merges both: if the keyword layer finds a service intent AND
+is more confident than NLP (or NLP says UNKNOWN), keyword wins. Otherwise NLP wins.
+
+\section{How Services Become Intents}
+
+This is the config-driven architecture working in practice. In
+\ic{medical-clinic.json}:
+
+\begin{lstlisting}[language=json]
+{
+  "intent_key": "DENTAL",
+  "keywords": ["dental", "teeth", "tooth"],
+  "phrases": ["tooth pain", "root canal", "dental checkup"]
+}
+\end{lstlisting}
+
+When \ic{IntentDetector} is constructed, it reads this and dynamically adds \ic{DENTAL}
+to its intent map. There is no hardcoded \ic{DENTAL} anywhere in the engine. If you
+change the config to \ic{CARDIOLOGY} with its own keywords, the engine automatically
+supports cardiology intents without any code changes.
+
+This is how you support multiple medical practices with a single codebase.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 4
+%% ════════════════════════════════════════════════════════
+\chapter{The Conversation Brain: State Machine}
+
+\textbf{File:} \ic{js/state-machine.js}
+
+\section{What a State Machine Is (First Principles)}
+
+A conversation is not a random sequence of messages. It has a shape. Think of a booking
+call:
+
+\begin{enumerate}
+  \item Greeting phase
+  \item Problem discovery phase
+  \item Service identification phase
+  \item Data collection phase
+  \item Confirmation phase
+  \item Close
+\end{enumerate}
+
+A state machine is a formal way to represent this shape. At any moment, the conversation
+is in exactly \textbf{ONE} state. Each state has rules about which other states it can
+move to.
+
+Without a state machine, you get conversations that loop forever, ask the same question
+twice, try to close before collecting data, or congratulate the patient after they said
+no. These are not edge cases --- they are what happens to every conversation AI that does
+not have explicit state management.
+
+\section{Your States and What They Mean}
+
+\begin{lstlisting}
+IDLE             -- App loaded, nothing happening yet
+GREETING         -- Greeting has been spoken, waiting for first input
+DISCOVERY        -- Figuring out what the patient wants
+INTENT_DETECTED  -- We know what they want, routing to a flow
+FLOW_SERVICE_*   -- Dynamic states, one per service (FLOW_SERVICE_DENTAL, etc.)
+FLOW_GENERAL     -- General inquiry flow
+LEAD_CAPTURE     -- Collecting name, DOB, reason, insurance
+BOOKING_CONFIRM  -- Verbal confirmation of appointment slot
+CLOSING          -- Wrapping up the conversation
+OBJECTION        -- Handling "how much does it cost?" type pushback
+FALLBACK         -- Patient is confused or unclear -- recovery mode
+ENDED            -- Conversation is over
+\end{lstlisting}
+
+\ic{FLOW\_SERVICE\_DENTAL}, \ic{FLOW\_SERVICE\_GENERAL\_CONSULT}, etc.\ are not
+hardcoded. They are generated when the state machine is initialized with the config. Each
+service in your config automatically gets its own conversation flow state.
+
+\section{Why Transitions Are Explicit}
+
+The transition table defines exactly what can follow what.
+\ic{DISCOVERY -> LEAD\_CAPTURE} means: from Discovery, we can jump directly to
+collecting data (if the patient says ``yes, book me in'' immediately). This transition
+was added in Pass 8 to fix the booking flow bug.
+
+\ic{ENDED -> IDLE} is the only transition out of ENDED --- this is how a new
+conversation starts without reloading the page.
+
+If you try to transition to a state that is not in the allowed list, the state machine
+logs a warning and returns \ic{false}. This prevents impossible conversation states.
+
+\section{The Context Object}
+
+Every module in the system can access the current conversation context through the state
+machine. The context carries:
+
+\begin{itemize}
+  \item What state we are in
+  \item What the patient's intent is
+  \item Their engagement score (0--100)
+  \item All collected lead data (name, DOB, reason, insurance, etc.)
+  \item The active flow and current step number
+  \item The full conversation history
+  \item How many unclear inputs in a row
+\end{itemize}
+
+The engagement score (50 at start, adjusted each turn) drives the ``fast track'' mode:
+if the patient is highly engaged (score $>$ 65), we skip some steps and move faster to
+capture and close. If they are disengaged (score $<$ 40), we slow down and focus on
+problem discovery.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 5
+%% ════════════════════════════════════════════════════════
+\chapter{The Input Gateway: Pre-Pipeline Router}
+
+\textbf{Files:} \ic{js/router/conversation-router.js}, \ic{js/router/router-handlers.js}
+
+\section{Why Not Every Input Goes Through the 6-Step Pipeline}
+
+The 6-step pipeline is designed for meaningful medical inputs. But patients also say:
+
+\begin{itemize}
+  \item ``Hi'' (greeting)
+  \item ``Um\ldots'' (noise)
+  \item ``What is MedVoice?'' (meta question about the system)
+  \item ``Can you recommend a good pizza place?'' (completely out of scope)
+  \item ``Wait, hang on'' (interrupt)
+\end{itemize}
+
+Running these through the full pipeline wastes processing, confuses the intent detector,
+and often returns the wrong response. The router is a fast pre-filter that handles these
+cases with simple canned responses and never touches the pipeline.
+
+\section{The 6 Route Types}
+
+\textbf{CORE} --- This is a genuine medical input. Route to the 6-step pipeline.
+``I need to book an appointment for my knee pain.''
+
+\textbf{GREETING} --- Social opening. ``Hi'', ``Hello'', ``Hey there''. Return a
+friendly greeting from \ic{config.greeting\_responses}. Do not start the pipeline.
+
+\textbf{NOISE} --- Meaningless input. Single words, filler sounds, very short phrases
+with no medical signal. ``Um'', ``ok'', ``k''. Return a gentle redirecting question.
+After 2+ noise inputs in a row, escalate to a more direct response.
+
+\textbf{META} --- Question about the system. ``Are you an AI?'', ``What can you do?'',
+``Who made you?''. Return a brief identity response from \ic{config.meta\_responses}.
+
+\textbf{OUT\_OF\_SCOPE} --- Completely unrelated. Cooking, sports, politics, gaming.
+Return a polite redirect back to medical topics.
+
+\textbf{INTERRUPT} --- User wants to pause or change direction. ``Wait'', ``hang on'',
+``actually'', ``scratch that''. Return a brief ``Take your time, what would you like?''
+style response.
+
+\section{How the Router Decides}
+
+The router does not use ML or NLP. It uses a strict priority stack:
+
+\begin{enumerate}
+  \item If input has a domain signal (medical keyword) AND is $\geq$3 words $\to$ CORE
+        immediately (fast path)
+  \item If input contains an interrupt phrase AND has a domain signal $\to$ CORE
+        (e.g., ``actually I need dental work'' --- treat as intent pivot, not a pause)
+  \item Check greeting patterns
+  \item Check meta phrases (from config)
+  \item Check out-of-scope regex patterns
+  \item Check interrupt phrases (when there is NO domain signal)
+  \item Check noise (pure filler, very short, or low NLP confidence)
+  \item Default $\to$ CORE
+\end{enumerate}
+
+\textbf{Domain signal detection:} The router reads
+\ic{config.service\_domain\_tokens} --- in your medical config these are words like
+\ic{pain}, \ic{doctor}, \ic{appointment}, \ic{symptoms}, \ic{dental}, \ic{health}. If
+any of these appear as a whole word in the input, the input has a domain signal.
+
+The domain tokens are in the config, not the code. This means a dental clinic config
+can have \ic{["tooth", "braces", "cavity"]} and the router automatically treats those as
+medical domain words without any code changes.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 6
+%% ════════════════════════════════════════════════════════
+\chapter{The Decision Engine: The 6-Step Pipeline}
+
+\textbf{File:} \ic{js/response-orchestrator.js}
+
+This is the most important file in the entire codebase. Every meaningful conversation
+turn runs through this pipeline. You need to understand each step well enough to debug
+it when something goes wrong.
+
+\section{Why 6 Steps (Not 1)?}
+
+A common approach is to have one big function: ``look at the state, look at the input,
+decide what to say.'' This works for 10 test cases and fails for 100. The problem is
+that decisions compound: what you decide in step 3 should not be re-evaluated in step 5.
+By separating concerns into 6 steps, each step has one job and one job only.
+
+Think of it like an assembly line. Step 1 measures the part. Step 2 shapes it. Step 3
+tests it. They do not reverse each other.
+
+\section{Step 0 --- Emergency Check (Before the Pipeline)}
+
+\begin{lstlisting}
+emergencyDetector.scan(input)
+\end{lstlisting}
+
+This runs before EVERYTHING. Before routing. Before state machine checks. Before any NLP.
+
+If the patient says ``I'm having chest pain'' or ``I took too many pills,'' this fires a
+hardcoded emergency response and returns immediately. The pipeline never runs.
+
+\begin{alertbox}
+  \textbf{Why this must be deterministic:} If you let the LLM handle emergency
+  detection, the LLM might respond ``That sounds uncomfortable. Have you tried drinking
+  water?'' The keyword scanner cannot hallucinate. It matches ``chest pain'' or it does
+  not.
+\end{alertbox}
+
+\section{Step 1 --- Detect Intent}
+
+Runs two systems in parallel and merges them:
+\begin{itemize}
+  \item \ic{nlp.analyze()} --- full NLP snapshot (semantic understanding)
+  \item \ic{intent.detect()} --- keyword matching (direct signal)
+\end{itemize}
+
+If they disagree, the merge rules decide which wins. If keyword detection finds a service
+intent (\ic{DENTAL}, \ic{URGENT\_CARE}) and NLP is uncertain or also finds a service
+intent, keyword detection takes precedence.
+
+After merging, handles \textbf{multi-intent inputs}: ``I have a toothache and I also
+need to schedule a follow-up.'' The intent detector returns two intents. Step 1 assigns
+types (\ic{primary}, \ic{dependent}) and either fires one now and defers the other, or
+applies an override if the user corrected themselves.
+
+Then \textbf{deferred intent resolution}: if this input is an acknowledgment (``yeah'',
+``okay'', ``got it'') and the current flow is stable and there is a deferred intent
+waiting --- pop it and fire it now.
+
+Finally, the \textbf{Knowledge Engine} checks if the KB has a high-confidence match for
+this input and can recommend an intent stronger than what NLP found.
+
+\section{Step 2 --- Update Context}
+
+Extracts all structured data from the NLP snapshot and stores it in two places: the
+state machine context (for routing decisions) and the LeadCapture module (for webhook
+payload).
+
+Specific to medical context:
+\begin{itemize}
+  \item \ic{medical\_practice} --- what clinic or specialty they mentioned
+  \item \ic{care\_goal} --- what they want to accomplish
+  \item \ic{problem} --- their symptom or condition
+  \item \ic{patient\_history} --- references to prior visits
+  \item \ic{name} --- extracted from strict intro patterns only
+        (``my name is X'', ``I'm X'') --- not from arbitrary mentions
+  \item \ic{appointment\_time} --- extracted by \ic{nlp-temporal-extractor.js}
+        and converted to ISO timestamp for Google Calendar
+\end{itemize}
+
+\textbf{Engagement scoring} happens here. Each turn adds or subtracts points. High-detail
+input adds +8. High urgency adds +10. Negative response subtracts -10. This score drives
+pacing decisions downstream.
+
+\section{Step 3 --- Evaluate State}
+
+Computes a flat set of boolean flags that summarize the current situation:
+
+\begin{lstlisting}
+fastTrack?      -- patient is very engaged or has high urgency
+isInterruption? -- they changed topic mid-flow
+isObjection?    -- cost/timing pushback
+isPositive?     -- explicit agreement
+isNegative?     -- explicit refusal
+hasService?     -- intent is a specific service
+inFlow?         -- currently in a multi-step flow
+isFlowMismatch? -- in a flow but patient asking about different service
+hasLead?        -- enough data collected to close
+needsCTA?       -- stalled for 3+ turns without progress
+\end{lstlisting}
+
+These flags are what Step 4 reads. Step 4 does NOT read the raw NLP data --- it only
+reads these flags. This is the separation of concerns: evaluation is separate from
+decision.
+
+\section{Step 4 --- Choose Goal}
+
+Takes the evaluation flags and returns one goal string. This is the highest-level
+decision: what should this conversation be trying to accomplish right now?
+
+Goals: \ic{identify\_problem}, \ic{explore\_context}, \ic{position\_solution},
+\ic{capture\_lead}, \ic{close}, \ic{handle\_objection}, \ic{reroute}, \ic{exit},
+\ic{inject\_cta}
+
+The priority order:
+\begin{enumerate}
+  \item CTA confirmation check (was the patient just asked ``Would you like to book?''
+        --- respond to that first)
+  \item Flow mismatch (patient asked about something else mid-flow --- reroute)
+  \item Objection (always handle objections when they appear)
+  \item CTA injection (if stalled for too long)
+  \item State-specific logic (each state has its own decision table)
+\end{enumerate}
+
+\begin{infobox}
+  \textbf{The CTA System (Conversion Anchor):} If the conversation has gone 3+ turns
+  without meaningful progress toward booking, inject a direct call-to-action: ``Would
+  you like me to go ahead and book that appointment for you?'' This is stored as
+  \ic{\_ctaShown = true}. On the next turn, if the patient says yes $\to$ jump directly
+  to lead capture. If they say no $\to$ exit gracefully. This prevents conversations
+  that circle forever.
+\end{infobox}
+
+\section{Step 5 --- Select Action}
+
+Maps goal strings to action objects. This is pure mapping --- no logic, no side effects.
+
+\begin{lstlisting}
+capture_lead      -> { type: ACT.CAPTURE }
+position_solution -> { type: ACT.POSITION, flow: 'FLOW_SERVICE_DENTAL' }
+inject_cta        -> { type: ACT.CTA }
+\end{lstlisting}
+
+The action objects carry additional data (like which flow to enter) that Step 6 needs.
+
+\section{Step 6 --- Generate Response}
+
+The action object determines what text to return. Before the rule-based engine, there is
+an LLM hook:
+
+\begin{lstlisting}
+If LLM is enabled AND action is not EXIT/ENDED/CLOSE:
+  --> Try llm.generate(input, history, onToken)
+  --> If success: return LLM response (skip rule-based entirely)
+  --> If failure (timeout/unavailable): fall through to rule-based
+\end{lstlisting}
+
+The rule-based engine handles each action type:
+
+\begin{itemize}
+  \item \ic{ACT.POSITION} --- enter a flow. Transition to the service flow state.
+        Return the first flow step prompt.
+  \item \ic{ACT.CAPTURE} --- collect the next lead field. Ask ``What's your name?'' /
+        ``What's your date of birth?'' / ``What insurance provider do you use?'' in
+        order.
+  \item \ic{ACT.CLOSE} --- if \ic{primary\_goal=book\_appointment} AND
+        \ic{calendar\_enabled=true}: go to BOOKING\_CONFIRMATION and ask to confirm
+        the slot. Otherwise: speak a closing phrase and fire the final webhook.
+  \item \ic{ACT.OBJECTION} --- get a rebuttal from ObjectionHandler.
+  \item \ic{ACT.CTA} --- get a CTA template from config, set \ic{\_ctaShown = true}.
+  \item \ic{ACT.ASK} --- if in an active flow, advance to next step. If not in a flow,
+        get a discovery question from DiscoveryEngine.
+  \item \ic{ACT.EXIT} --- transition to ENDED, fire final webhook, return exit phrase.
+  \item \ic{ACT.FALLBACK} --- get a recovery phrase from FallbackRecovery.
+\end{itemize}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 7
+%% ════════════════════════════════════════════════════════
+\chapter{The Conversation Modules}
+
+These are the specialist departments. The orchestrator calls them; they do one specific
+job.
+
+\section{ConversationFlows --- The Script Department}
+
+\textbf{File:} \ic{js/modules/conversation-flows.js}
+
+Manages multi-step conversation flows built from config. Each service in your config can
+have either \ic{flow\_steps} (explicit steps with IDs) or \ic{discovery\_questions} (a
+list of questions to ask in order).
+
+When a flow starts (\ic{ACT.POSITION}), the orchestrator calls
+\ic{flows.getStep(flowName, 0)} to get the first step. After the patient responds, it
+calls \ic{sm.advanceFlowStep()} to move to step 1, then \ic{flows.getStep(flowName, 1)},
+and so on until the flow returns \ic{null} (no more steps) --- at which point the
+orchestrator bridges to lead capture.
+
+\begin{infobox}
+  \textbf{The key insight:} The flow steps come from config, not from code. You add a
+  new service to \ic{medical-clinic.json} with 3 discovery questions, and the engine
+  automatically runs a 3-step conversation flow for that service. No code changes needed.
+\end{infobox}
+
+\section{LeadCapture --- The Data Collector}
+
+\textbf{File:} \ic{js/modules/lead-capture.js}
+
+Manages structured field-by-field data collection. The fields and their order come from
+\ic{config.qualification\_fields}.
+
+For a medical practice:
+\begin{lstlisting}
+name -> patient_type -> reason_for_visit -> dob -> insurance_provider
+\end{lstlisting}
+
+Each \ic{getNextCapture()} call returns the next uncaptured field and its prompt. The
+orchestrator calls this in \ic{ACT.CAPTURE} and stores the response on the next turn.
+
+\ic{hasMinimumData()} returns true when the name is captured. At that point, a partial
+webhook fires --- this tells your n8n automation ``someone is interested'' even before
+the full booking is complete.
+
+\ic{getCompleteness()} scores 0--100. When completeness reaches 50\%+ (\ic{hasLead =
+true} in evaluateState), the orchestrator considers moving to close.
+
+\section{ClosingEngine --- The Closer}
+
+\textbf{File:} \ic{js/modules/closing-engine.js}
+
+Returns closing phrases based on engagement level. High engagement gets direct closes
+(``Let's get you booked right now.''). Low engagement gets softer approaches (``Would
+you like to take this forward?'').
+
+For medical: \ic{getExit()} returns the goodbye phrase. The actual calendar booking is
+NOT handled here --- it is handled by \ic{app.js} watching for the
+\ic{BOOKING\_CONFIRMATION -> ENDED} state transition.
+
+\section{ObjectionHandler --- The Rebuttal Specialist}
+
+\textbf{File:} \ic{js/modules/objection-handler.js}
+
+Detects and handles objections. Common medical objections:
+\begin{itemize}
+  \item ``Do you take my insurance?'' $\to$ Provide insurance information from knowledge
+        base
+  \item ``How much does it cost?'' $\to$ Describe pricing/billing approach
+  \item ``I'm not sure about this'' $\to$ Reassure and offer to explain
+  \item ``Maybe later'' $\to$ Offer to schedule for a future time
+  \item ``Not interested'' $\to$ \ic{shouldExit: true} --- respect it and exit
+\end{itemize}
+
+The handler returns \ic{\{ response, shouldExit \}}. If \ic{shouldExit} is true, the
+orchestrator transitions to ENDED.
+
+\section{FallbackRecovery --- When Nothing Works}
+
+\textbf{File:} \ic{js/modules/fallback-recovery.js}
+
+Called when the patient gives 2+ unclear inputs in a row, or when all routing fails.
+Has a tiered escalation:
+\begin{itemize}
+  \item First fallback: ``I didn't quite catch that --- could you tell me more?''
+  \item Second fallback: ``Let me try to help --- are you looking to book an appointment
+        or ask a question?''
+  \item Third fallback: ``I may not be the right fit --- would you like to speak with a
+        staff member instead?''
+\end{itemize}
+
+After enough escalations (\ic{shouldEscalate: true}), the orchestrator moves to FALLBACK
+state.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 8
+%% ════════════════════════════════════════════════════════
+\chapter{The Knowledge Engine}
+
+\textbf{File:} \ic{js/knowledge/knowledge-engine.js}
+
+This is a config-driven FAQ layer. When the patient asks something specific (``Do you
+have parking?'', ``What are your hours?'', ``Do you treat children?''), the knowledge
+engine looks up the answer in \ic{config.knowledge\_base}.
+
+The KB does two things:
+\begin{enumerate}
+  \item Returns an \ic{insight} string --- factual information to include in the
+        response
+  \item Returns a \ic{recommendedIntent} --- if the KB is very confident about a topic,
+        it can override a weak NLP intent
+\end{enumerate}
+
+For example, if the patient says ``do you do root canals'' and NLP returns
+\ic{GENERAL\_INQUIRY} with low confidence, but the KB has a high-confidence match for
+dental procedures, the KB can promote the intent to \ic{DENTAL}.
+
+The KB is not trained --- it is explicitly authored. You add entries to
+\ic{config.knowledge\_base} like:
+
+\begin{lstlisting}[language=json]
+"dental": {
+  "insight": "We provide general and cosmetic dental services including
+              fillings, cleanings, and orthodontics.",
+  "outcome": "book_dental_appointment"
+}
+\end{lstlisting}
+
+The engine matches by topic proximity, not exact keywords.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 9
+%% ════════════════════════════════════════════════════════
+\chapter{The LLM Layer (The AI Brain Upgrade)}
+
+\textbf{Files:} \ic{js/services/llm-adapter.js}, \ic{server/routes/llm-proxy.js}
+
+\section{What Ollama Is}
+
+Ollama is software that runs AI language models locally on your computer (or server).
+Instead of paying OpenAI per API call, you run \ic{llama3.2} or \ic{llama3.1:8b}
+locally for free.
+
+Your product uses Ollama as the Tier 2 AI backend. When \ic{config.ai\_tier = 2}, the
+LLM layer is active. When \ic{ai\_tier = 1}, the product runs purely on the rule-based
+engine (no LLM required).
+
+\section{Why the Browser Never Calls Ollama Directly (Security)}
+
+Before Pass 8, the browser would call \ic{http://localhost:11434} (the Ollama endpoint)
+directly. This was a critical security flaw:
+
+\begin{enumerate}
+  \item The \ic{ollama\_endpoint} was in the public config JSON, visible to anyone who
+        opened the browser's network tab
+  \item If this product were deployed to a server, anyone could point their browser at
+        your internal Ollama instance
+  \item An attacker could send arbitrary prompts to your LLM, potentially extracting
+        system prompts or patient data
+\end{enumerate}
+
+The fix (P0-4, resolved Pass 8): All LLM calls now go through
+\ic{POST /api/llm/chat} on your Node.js backend. The backend holds the
+\ic{OLLAMA\_ENDPOINT} in an environment variable. The browser never sees it.
+
+\section{How the Proxy Works (Step by Step)}
+
+\begin{enumerate}
+  \item Browser sends: \ic{POST /api/llm/chat} with \ic{\{userInput, memory, model, stream: true\}}
+  \item Backend reads \ic{OLLAMA\_ENDPOINT} from environment
+  \item Backend adds the \ic{MEDICAL\_SYSTEM\_PROMPT} (``you are a medical
+        receptionist, never diagnose, call 911 for emergencies'')
+  \item Backend builds the full message history:
+        \ic{[system, ...prior turns, user]}
+  \item Backend calls \ic{/api/chat} on Ollama with \ic{stream: true}
+  \item Ollama streams back NDJSON tokens as they are generated
+  \item Backend buffers tokens until it hits punctuation
+        (\ic{.} \ic{!} \ic{?} \ic{;})
+  \item When punctuation is hit, backend sends the buffered chunk as an SSE event:
+        \ic{data: \{"token": "Are you experiencing..."\}}
+  \item Browser receives SSE event, calls \ic{onToken()} callback
+  \item \ic{speakChunk()} immediately queues this for TTS
+  \item User hears the response while the LLM is still generating the next sentence
+\end{enumerate}
+
+This is the streaming TTS path. The total perceived latency drops from 3--5 seconds to
+0.5--1 second.
+
+\section{The Tiered Architecture}
+
+\begin{lstlisting}
+Tier 1 (ai_tier: 1) -- Rule-based only
+  No LLM. Responses are template-based. Fast, cheap, HIPAA-friendly.
+  Pricing: $29-$59/month
+
+Tier 2 (ai_tier: 2) -- LLM via proxy
+  Uses Ollama on your server. Natural, intelligent responses.
+  Emergency/close/exit still rule-based.
+  Pricing: $99-$199/month
+
+Tier 3 (ai_tier: 3) -- Local model runner
+  WebLLM or similar -- runs model in the browser. Fully offline.
+  HIPAA-friendly (no data leaves the device).
+  [Not fully implemented yet]
+\end{lstlisting}
+
+\section{The System Prompt (Current Gap --- P1-1)}
+
+Right now, \ic{server/routes/llm-proxy.js} has the system prompt hardcoded as a
+JavaScript constant called \ic{MEDICAL\_SYSTEM\_PROMPT}. This means every client gets
+the exact same instructions to the LLM, regardless of their specialty or tone
+preferences.
+
+The fix (P1-1): Move the system prompt to \ic{config.llm\_system\_prompt}. A dental
+clinic gets a dental-specific prompt. A cardiology practice gets a cardiology-specific
+one. A pediatric clinic gets age-appropriate language instructions.
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 10
+%% ════════════════════════════════════════════════════════
+\chapter{The Business Layer}
+
+\section{Webhooks: How Leads Leave the System}
+
+\textbf{File:} \ic{js/services/webhook-dispatcher.js}
+
+When a patient completes a booking conversation, your system needs to notify the clinic's
+backend. This is done via webhooks --- HTTP POST requests to an external URL (typically
+n8n automation).
+
+Your webhook system has three important features:
+
+\textbf{1. HMAC authentication:} Every POST includes an
+\ic{X-Webhook-Signature: sha256=...} header. This is a cryptographic hash of the payload
+body signed with a secret key. The n8n endpoint can verify this signature to confirm the
+request genuinely came from your system. Without this, anyone who finds the webhook URL
+could inject fake patient records.
+
+\textbf{2. Offline queue (IndexedDB outbox):} If the webhook fails (patient is offline,
+n8n is down), the payload is stored in IndexedDB. When connectivity resumes, the
+ServiceWorker (\ic{sw.js}) retries the delivery. Patients do not lose data because their
+wifi dropped for 3 seconds.
+
+\textbf{3. Idempotency keys:} Each dispatch generates a unique key. If the same payload
+is retried (due to network failure), the receiving endpoint can detect and ignore
+duplicates.
+
+Two webhook events are fired:
+\begin{itemize}
+  \item \ic{LEAD\_PARTIAL} --- fires as soon as the patient's name is captured.
+        ``Someone is interested.''
+  \item \ic{LEAD\_FINAL} --- fires on CLOSE, EXIT, or BOOKING\_CONFIRMATION. ``Here is
+        the full record.''
+\end{itemize}
+
+\section{Calendar: The Actual Booking}
+
+\textbf{File:} \ic{server/routes/calendar.js}, triggered from \ic{js/app.js}
+
+The calendar flow:
+\begin{enumerate}
+  \item State machine enters \ic{BOOKING\_CONFIRMATION} (patient said an appointment
+        time and confirmed verbally)
+  \item \ic{app.js:\_checkCalendarAvailability()} fires --- \ic{POST /api/calendar/check}
+        with ISO start/end time
+  \item Backend calls Google Calendar freebusy API --- returns whether the slot is free
+  \item State machine transitions to \ic{ENDED} (verbal confirmation)
+  \item \ic{app.js:\_handleBookingConfirmation()} fires --- \ic{POST /api/calendar/book}
+  \item Backend calls Google Calendar \ic{events.insert} --- creates the appointment
+  \item UI shows a confirmation card in the chat
+\end{enumerate}
+
+\begin{warningbox}
+  \textbf{Current status:} The code exists. The routes are written. Google Calendar API
+  credentials have NOT been tested with a real calendar ID. This is \ic{BLOCKER-01} in
+  your issues register. Until someone runs this with a real Google Cloud service account
+  and a real \ic{calendar\_id}, this entire path is SCAFFOLDED, not FUNCTIONAL.
+\end{warningbox}
+
+\textbf{What you need to make it work:}
+\begin{enumerate}
+  \item A Google Cloud project with Calendar API enabled
+  \item A Service Account with calendar editor permissions
+  \item Service account credentials JSON stored securely on the server
+  \item The clinic's Google Calendar ID in \ic{configs/medical-clinic.json}
+  \item Run an actual test: patient says ``Tuesday at 2pm'' $\to$ check fires $\to$
+        book fires $\to$ event appears on the calendar
+\end{enumerate}
+
+\section{Audit Logging (SEC-11 --- Your Most Urgent Open Issue)}
+
+\textbf{File:} \ic{server/routes/log.js}
+
+Every conversation turn fires \ic{POST /api/log/conversation}. The backend logs:
+
+\begin{lstlisting}[language=json]
+{ "sessionId": "sess_...", "clientId": "...", "turn": 3, "role": "user",
+  "state": "LEAD_CAPTURE", "intent": "DENTAL", "text": "My name is John..." }
+\end{lstlisting}
+
+The problem: it writes to \ic{stdout} (the server's console). This means:
+\begin{itemize}
+  \item If the server restarts, all logs are gone
+  \item The text field can contain PHI (name, DOB, insurance info)
+  \item A developer with server access now has patient health information
+  \item HIPAA requires PHI access to be logged, controlled, and encrypted at rest
+\end{itemize}
+
+\begin{alertbox}
+  \textbf{SEC-11 --- OPEN.} You CANNOT use this product with real patients until you
+  replace stdout logging with a HIPAA-compliant log store. Options:
+  \begin{itemize}
+    \item A HIPAA-compliant logging service (AWS CloudWatch with proper IAM)
+    \item An encrypted database table with access controls
+    \item A redacted log (strip PHI fields before logging, only log metadata)
+  \end{itemize}
+  This is the single biggest legal risk item in the codebase right now.
+\end{alertbox}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 11
+%% ════════════════════════════════════════════════════════
+\chapter{The Server}
+
+\textbf{File:} \ic{server/index.js}
+
+Your Node.js Express server serves two purposes:
+\begin{enumerate}
+  \item Security boundary (secrets never reach the browser)
+  \item External integrations (Google Calendar, Twilio, Ollama)
+\end{enumerate}
+
+\section{What It Serves}
+
+\begin{lstlisting}
+GET  /health               -- "Is the server alive?" --> { status: 'ok' }
+GET  /api/config           -- Load client config (secrets stripped)
+POST /api/calendar/check   -- Is this time slot free?
+POST /api/calendar/book    -- Create a calendar event
+POST /api/voice/webhook    -- Twilio ConversationRelay (phone calls)
+POST /api/llm/chat         -- Proxy LLM inference to Ollama
+GET  /api/llm/health       -- Is Ollama running?
+POST /api/log/conversation -- Log a turn (SEC-11: stdout only)
+\end{lstlisting}
+
+\section{How Config Security Works}
+
+When the browser requests \ic{/api/config?client=medical-clinic}, the server:
+\begin{enumerate}
+  \item Reads \ic{configs/medical-clinic.json} from disk
+  \item Strips \ic{ollama\_endpoint} from the response (never goes to browser)
+  \item Adds \ic{webhook\_url} from
+        \ic{process.env.MEDICAL\_CLINIC\_WEBHOOK\_URL} (from \ic{.env} --- not in JSON)
+  \item Adds \ic{webhook\_secret} from
+        \ic{process.env.MEDICAL\_CLINIC\_WEBHOOK\_SECRET}
+  \item Returns the merged object
+\end{enumerate}
+
+This means your \ic{configs/*.json} files can be in version control (they contain no
+secrets), while your \ic{.env} file stays private and is never committed.
+
+\section{Environment Variables You Need in \texttt{.env}}
+
+\begin{lstlisting}[language=bash]
+# Server
+PORT=3001
+ALLOWED_ORIGINS=http://localhost:3000,https://your-production-domain.com
+
+# Ollama
+OLLAMA_ENDPOINT=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+
+# Google Calendar
+GOOGLE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
+GOOGLE_CALENDAR_ID=your-calendar@group.calendar.google.com
+
+# Per-client webhooks (one set per client)
+MEDICAL_CLINIC_WEBHOOK_URL=https://your-n8n.com/webhook/abc123
+MEDICAL_CLINIC_WEBHOOK_SECRET=your_long_random_secret
+
+# Twilio (when phone goes live)
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+\end{lstlisting}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 12
+%% ════════════════════════════════════════════════════════
+\chapter{What Is Broken and Why}
+
+This is the most important chapter for moving forward. Every item here is factual ---
+sourced from your issues register, session logs, and capability matrix.
+
+\section{What Actually Works (Verified and Functional)}
+
+\begin{table}[h!]
+  \centering
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{>{\bfseries}p{5.5cm} p{8.5cm}}
+    \toprule
+    \rowcolor{tablehead}
+    Capability & Evidence \\
+    \midrule
+    Emergency detection         & Tested with 9 scenarios, all passing (Pass 6) \\
+    Web widget conversation     & Works end-to-end in browser \\
+    Intent detection            & Rule-based + NLP correctly classifies medical intents \\
+    Insurance/name/DOB collection & Lead capture module functional \\
+    Webhook delivery            & HMAC-authenticated, offline queue working \\
+    Multi-tenant config         & \ic{?client=} URL param works correctly \\
+    Chrome TTS autoplay (P0-1)  & Tap-to-start overlay resolves it \\
+    LLM streaming TTS (P0-5)   & SSE + \ic{speakChunk()} wired and working \\
+    Secret protection (P0-4)    & Browser never calls Ollama directly \\
+    \bottomrule
+  \end{tabular}
+  \caption{Verified and functional capabilities at Pass 8}
+\end{table}
+
+\section{What Is Broken or Incomplete}
+
+\textbf{1. Calendar booking is SCAFFOLDED (BLOCKER-01)}
+
+The code is written. It has never been run with real Google credentials against a real
+calendar. You do not know if it works. You cannot tell a clinic ``we book appointments''
+until you have evidence of a real booking.
+
+\textit{Fix:} Get a Google Cloud service account, point it at a test calendar, run
+through a full booking conversation, see the event appear in Google Calendar. Document
+this with a screenshot. This takes about 2 hours of setup.
+
+\textbf{2. Phone calls are SCAFFOLDED}
+
+\ic{server/routes/voice.js} exists. Twilio is configured. There is no live Twilio phone
+number purchased and connected. A patient cannot call a phone number and reach this AI.
+
+\textit{Fix:} Buy a Twilio phone number (\$1/month), configure the voice webhook URL to
+point at your deployed server, test a call. This is a \$1 fix that unlocks a major
+feature.
+
+\textbf{3. Audit logging is not HIPAA-compliant (SEC-11)}
+
+\ic{POST /api/log/conversation} $\to$ \ic{console.log()} $\to$ stdout $\to$ gone on
+server restart, visible to anyone with server access.
+
+\textit{Fix:} Replace stdout with a persistent encrypted log store. AWS CloudWatch with
+proper IAM is the simplest path if you deploy on AWS.
+
+\textbf{4. No production deployment}
+
+The product runs on \ic{localhost:3000} and \ic{localhost:3001}. No patient can access
+it. A clinic cannot embed it on their website.
+
+\textit{Fix:} Deploy the backend to Railway or Render (\$5--20/month). Deploy the
+frontend to Netlify or Vercel (free tier). Get a real HTTPS URL.
+
+\textbf{5. LLM system prompt is hardcoded}
+
+\ic{server/routes/llm-proxy.js} has \ic{MEDICAL\_SYSTEM\_PROMPT} as a constant in code.
+Every client gets the same LLM behavior. P1-1 item.
+
+\textbf{6. No returning patient lookup}
+
+The system cannot recognize a returning patient. It asks for their name every time, even
+if they called yesterday. This requires a patient database --- which does not exist yet.
+NOT\_STARTED on the capability matrix.
+
+\textbf{7. No appointment reminders or confirmation messages}
+
+After booking, no SMS or email is sent to the patient. A real receptionist would send a
+confirmation. NOT\_STARTED.
+
+\textbf{8. HIPAA BAA not signed with any vendor}
+
+Before handling real patient data, you need Business Associate Agreements (BAA) with:
+your hosting provider (AWS/GCP/Azure HIPAA tier), Twilio, and any LLM API provider.
+This is a legal/business step, not a coding step. GAP-08, OPEN.
+
+\section{Priority Order to Fix These}
+
+\textbf{If your goal is ``first real clinic demo'':}
+\begin{enumerate}
+  \item Deploy to production (frontend + backend on real HTTPS URL)
+  \item Test calendar booking end-to-end with real credentials
+  \item Replace audit logging stdout with persistent store
+  \item Connect a real Twilio phone number
+\end{enumerate}
+
+\textbf{If your goal is ``first paying client'' --- all of the above, PLUS:}
+\begin{enumerate}
+  \setcounter{enumi}{4}
+  \item Sign HIPAA BAA with hosting provider
+  \item Sign HIPAA BAA with Twilio
+  \item Decide on LLM approach (if Tier 2: sign BAA or use local Ollama only)
+  \item Implement appointment SMS confirmation (Twilio SMS)
+\end{enumerate}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 13
+%% ════════════════════════════════════════════════════════
+\chapter{The Path to a Complete Product}
+
+\section{What ``Done'' Looks Like (The Minimum Viable Production Product)}
+
+A patient calls a clinic's phone number (or opens their website). The AI:
+\begin{enumerate}
+  \item Answers immediately, identifies the clinic and itself as AI
+  \item Asks what they need
+  \item Detects emergencies and routes to 911
+  \item Collects their information through natural conversation
+  \item Checks the calendar in real-time
+  \item Books the appointment (calendar event created)
+  \item Sends the patient an SMS confirmation
+  \item Sends the clinic a webhook with all patient data
+  \item All conversation data is logged in a HIPAA-compliant store
+\end{enumerate}
+
+That is the product. You have about 60\% of it. The remaining 40\% is:
+\begin{itemize}
+  \item Production deployment
+  \item Calendar tested live
+  \item Phone calls live
+  \item SMS confirmation (new feature)
+  \item HIPAA-compliant logging
+  \item BAA agreements (legal step)
+\end{itemize}
+
+\section{The Build Sequence (What to Do Next, in Order)}
+
+\textbf{Phase A --- Make it accessible (1 week)}
+\begin{enumerate}
+  \item Deploy backend to Railway (free tier $\to$ paid when first client)
+  \item Deploy frontend to Netlify
+  \item Get HTTPS URLs
+  \item Test the entire web widget conversation on the deployed URL
+  \item Fix any bugs that appear in the deployed environment
+\end{enumerate}
+
+\textbf{Phase B --- Verify core features (1--2 weeks)}
+\begin{enumerate}
+  \setcounter{enumi}{5}
+  \item Get Google Cloud service account, enable Calendar API
+  \item Add credentials to \ic{.env} on deployed server
+  \item Do a full test booking: say appointment time $\to$ see calendar event created
+  \item Buy Twilio phone number, configure voice webhook
+  \item Do a test phone call: call the number, have a conversation, confirm it works
+\end{enumerate}
+
+\textbf{Phase C --- HIPAA foundation (1--2 weeks)}
+\begin{enumerate}
+  \setcounter{enumi}{10}
+  \item Choose HIPAA-compliant hosting (AWS with BAA, or Google Cloud HIPAA tier)
+  \item Sign HIPAA BAA with hosting provider
+  \item Sign HIPAA BAA with Twilio
+  \item Decide on LLM: Ollama (local, no BAA needed) or API (requires BAA)
+  \item Replace stdout audit logging with encrypted CloudWatch or equivalent
+\end{enumerate}
+
+\textbf{Phase D --- Polish for first demo (1 week)}
+\begin{enumerate}
+  \setcounter{enumi}{15}
+  \item Build a simple form for clinic onboarding (create a config JSON)
+  \item Add per-client LLM system prompt (P1-1)
+  \item Test with a real clinic staff member playing the patient
+  \item Fix everything that comes up
+\end{enumerate}
+
+\textbf{Phase E --- First paying client}
+\begin{enumerate}
+  \setcounter{enumi}{19}
+  \item Sign first client contract
+  \item Create their config JSON, test it
+  \item Put their number on Twilio, point to their calendar
+  \item Go live
+\end{enumerate}
+
+\section{What You Should NOT Build Next}
+
+\begin{itemize}
+  \item A beautiful admin dashboard (build it after first client, not before)
+  \item Multi-language support (English-only is fine for the first 50 clients)
+  \item Analytics and reporting (first client first, then measure)
+  \item Mobile app (web widget handles mobile fine)
+  \item Custom voice models (browser TTS is good enough for \$29/month tier)
+\end{itemize}
+
+\begin{infobox}
+  Build the minimum. Sell the minimum. Iterate from real feedback.
+\end{infobox}
+
+%% ════════════════════════════════════════════════════════
+%%  CHAPTER 14
+%% ════════════════════════════════════════════════════════
+\chapter{The Developer's Mental Model}
+
+\section{How to Debug a Broken Conversation}
+
+When a conversation behaves wrong, trace it through the pipeline:
+
+\begin{enumerate}
+  \item \textbf{What did the router classify it as?} Check browser console for
+        \ic{[Router]} logs. If it went to \ic{NOISE} or \ic{GREETING} when it should
+        have been \ic{CORE}, fix the domain tokens in config or routing priority.
+
+  \item \textbf{What intent was detected?} Look for \ic{[Intent]} and \ic{[NLP]}
+        console logs. Was the right service intent detected? Was confidence high enough?
+
+  \item \textbf{What state were we in?} Check \ic{[StateMachine] Transition:} logs. Are
+        the transitions making sense?
+
+  \item \textbf{What goal was chosen?} Look for \ic{[Orchestrator] Action triggered:}
+        log. Does the action match what you expected given the state and intent?
+
+  \item \textbf{What did LeadCapture have?} Add a
+        \ic{console.log(this.leads.getData())} before the response to see what data has
+        been collected.
+\end{enumerate}
+
+\begin{infobox}
+  This five-question trace will locate the bug within one of the 6 pipeline steps every
+  time.
+\end{infobox}
+
+\section{How to Add a New Service}
+
+To add ``Physiotherapy'' as a new service, add to \ic{configs/medical-clinic.json}:
+
+\begin{lstlisting}[language=json]
+{
+  "intent_key": "PHYSIO",
+  "display_name": "Physiotherapy",
+  "keywords": ["physio", "physiotherapy", "mobility", "sports injury"],
+  "phrases": ["sports injury", "mobility issues", "back problems"],
+  "discovery_questions": [
+    "What area of the body is giving you trouble?",
+    "Is this a new injury or a chronic condition?",
+    "Have you had physiotherapy treatment before?"
+  ]
+}
+\end{lstlisting}
+
+That is it. The engine automatically:
+\begin{itemize}
+  \item Creates \ic{FLOW\_SERVICE\_PHYSIO} state in the state machine
+  \item Adds \ic{PHYSIO} to the intent detector's service intents
+  \item Builds a 3-step flow from the discovery questions
+  \item Wires \ic{intentToFlow('PHYSIO')} to \ic{'FLOW\_SERVICE\_PHYSIO'}
+\end{itemize}
+
+No code changes. This is the multi-tenant architecture paying off.
+
+\section{How to Add a New Client}
+
+\begin{enumerate}
+  \item Create \ic{configs/new-clinic.json} (copy \ic{medical-clinic.json}, edit for the
+        new clinic)
+  \item Add to \ic{.env}:
+        \begin{lstlisting}
+NEW_CLINIC_WEBHOOK_URL=...
+NEW_CLINIC_WEBHOOK_SECRET=...
+        \end{lstlisting}
+  \item The clinic accesses the widget at:
+        \ic{https://your-domain.com?client=new-clinic}
+\end{enumerate}
+
+That is multi-tenancy. One codebase. One server. Multiple clients.
+
+%% ════════════════════════════════════════════════════════
+%%  SUMMARY
+%% ════════════════════════════════════════════════════════
+\chapter*{Summary --- Where You Are and What This Is}
+\addcontentsline{toc}{chapter}{Summary}
+
+You have built a non-trivial AI system. Let us be specific about what that means.
+
+\textbf{What is genuinely sophisticated about what you built:}
+\begin{itemize}
+  \item A config-driven multi-tenant conversation engine with dynamic state registration
+  \item A layered NLP pipeline with 8 sub-modules doing preprocessing, semantic
+        expansion, entity extraction, intent detection, user modeling, confidence scoring,
+        temporal stabilization, and behavior strategy
+  \item A pre-pipeline router that prevents unnecessary processing with a
+        priority-ordered classification system
+  \item A 6-step decision pipeline with clean separation of concerns
+  \item A streaming TTS path that makes LLM responses feel instant
+  \item A deterministic safety layer (emergency detector) that cannot be overridden by
+        any other component
+  \item HMAC-authenticated webhook delivery with offline queue and exponential backoff
+  \item Multi-tenant config system where adding a client requires zero code changes
+  \item A Chrome TTS autoplay solution that works reliably
+\end{itemize}
+
+\textbf{What is still unfinished:}
+\begin{itemize}
+  \item Calendar booking not tested with real credentials
+  \item Phone calls not live
+  \item Audit logs go to stdout (HIPAA violation)
+  \item No production deployment
+  \item No BAAs with vendors
+\end{itemize}
+
+\bigskip
+
+\begin{quotebox}
+  \large
+  \textbf{The honest assessment:} You have a working prototype that proves the
+  architecture is sound. The conversation engine works. The NLP works. The safety layer
+  works. The foundation is solid. What remains is the business layer: deployment,
+  integrations, compliance, and polish.
+
+  \medskip
+  \textbf{The product is not broken. It is unfinished.}
+
+  \medskip
+  The difference matters. A broken product needs architectural rethinking. An unfinished
+  product needs execution. You are in the execution phase now.
+\end{quotebox}
+
+\vfill
+{\color{mutedgray}\footnotesize This document was written directly from source code at
+Pass 8 (2026-05-02). Every claim has a file that proves it.}
+
+\end{document}

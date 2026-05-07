@@ -6,9 +6,9 @@ export function scoreConfidence(extracted, intentData, contextMemory) {
 
   // Density (Multi-reinforcing signals)
   let densityScore = 0;
-  if (extracted.business) densityScore += 0.1;
-  if (extracted.growth_outcome) densityScore += 0.15; // Growth outcomes are strong indicators
-  if (extracted.goal) densityScore += 0.1;
+  if (extracted.medical_practice) densityScore += 0.1;
+  if (extracted.care_outcome) densityScore += 0.15; // Health outcomes are strong indicators
+  if (extracted.care_goal) densityScore += 0.1;
   if (extracted.problem) densityScore += 0.1;
   if (extracted.urgency && extracted.urgency.type !== 'weak') densityScore += 0.1;
 
@@ -36,15 +36,15 @@ export function scoreConfidence(extracted, intentData, contextMemory) {
   };
 
   const conf = {
-    business: Math.min(1.0, propConf(extracted.business)),
-    goal: Math.min(1.0, propConf(extracted.goal)),
+    medical_practice: Math.min(1.0, propConf(extracted.medical_practice)),
+    care_goal: Math.min(1.0, propConf(extracted.care_goal)),
     problem: Math.min(1.0, propConf(extracted.problem)),
     intent: finalIntentConf,
     contradiction: contradictionPenalty > 0
   };
 
   // Higher weighting for intent and problem clarity
-  const overall = (conf.intent * 0.4) + (conf.problem * 0.3) + (conf.goal * 0.15) + (conf.business * 0.15);
+  const overall = (conf.intent * 0.4) + (conf.problem * 0.3) + (conf.care_goal * 0.15) + (conf.medical_practice * 0.15);
 
   return {
     ...conf,

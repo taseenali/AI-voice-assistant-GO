@@ -10,7 +10,7 @@
  *   6. generate_response()  → What do we say? (acknowledge → guide → advance)
  *
  * Features:
- *   - Auto-extraction (name, business, urgency from ANY input)
+ *   - Auto-extraction (name, medical_practice, urgency from ANY input)
  *   - Fast-track mode (engagement > 70 or urgency high)
  *   - Interruption handling (detect pivot, acknowledge, reroute)
  *   - Memory-aware (never re-ask known data, reference stored context)
@@ -30,13 +30,19 @@ import { LeadCapture }              from './modules/lead-capture.js';
 import { ClosingEngine }            from './modules/closing-engine.js';
 import { ObjectionHandler }         from './modules/objection-handler.js';
 import { FallbackRecovery }         from './modules/fallback-recovery.js';
-import { Personality }              from './modules/personality.js';
+import { Personality, TONE_STATES }   from './modules/personality.js';
 import { KnowledgeEngine }          from './knowledge/knowledge-engine.js';
 import { ResponseBuilder }          from './modules/response-builder.js';
 import { MemorySynthesis }          from './modules/memory-synthesis.js';
 import { ConversationRouter, ROUTE_TYPE } from './router/conversation-router.js';
 import { RouterHandlers }           from './router/router-handlers.js';
 import { AppContext }               from './config/loader.js';
+import { webhookDispatcher }        from './services/webhook-dispatcher.js'; // GAP-ORCH-01 fix
+import { llmAdapter }               from './services/llm-adapter.js';        // G-027
+import { conversationLogger }       from './services/conversation-logger.js'; // P0-6
+import { emergencyDetector }        from './modules/emergency-detector.js';  // G-028
+import { extractDateTime }         from './nlp/nlp-temporal-extractor.js'; // GAP-ORCH-02
+
 
 // ─── Action Types ──────────────────────────────────────────────
 const ACT = {
@@ -47,6 +53,7 @@ const ACT = {
   OBJECTION:  'handle_objection',
   CLOSE:      'close',
   CLOSE_TRANSITION: 'close_transition',
+  BOOKING_CONFIRM:  'booking_confirmation',
   FALLBACK:   'fallback',
   REROUTE:    'reroute',
   RESUME:     'resume_flow',
@@ -57,10 +64,7 @@ const ACT = {
 
 // ─── Flow Context Map ──────────────────────────────────────────
 const FLOW_CTX = {
-  [STATES.FLOW_WEBSITE]: 'website',
-  [STATES.FLOW_SEO]:     'seo',
-  [STATES.FLOW_AI]:      'ai',
-  [STATES.FLOW_APP]:     'app',
+  // Medical flow contexts are dynamic from config.intent_key
 };
 
 
@@ -94,6 +98,7 @@ export class ResponseOrchestrator {
     // ── Conversion Anchor tracking ──────────────────────────
     this._turnsSinceGoalProgress = 0;
     this._CTA_THRESHOLD = 3;     // Inject CTA after this many turns without progress
+    this._ctaShown = false;      // True when CTA was just shown — next positive → capture_lead
 
     // ── Conversation Router (pre-pipeline gate) ──────────────
     this.router        = new ConversationRouter();
@@ -103,7 +108,14 @@ export class ResponseOrchestrator {
     this._webhookSentPartial = false;
     this._webhookSentFinal   = false;
     this._lastCTATurn        = -5; // prevent immediate fire
+
+    // ── G-027: LLM Adapter reference (singleton — shared across sessions) ──
+    this.llm = llmAdapter;
+
+    // ── G-028: Emergency Detector (deterministic guardrail) ──────────────
+    this.emergency = emergencyDetector;
   }
+
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -118,42 +130,31 @@ export class ResponseOrchestrator {
     return g;
   }
 
-  processInput(userInput) {
+  async processInput(userInput, onToken = null) {
     if (!userInput || !userInput.trim()) return null;
     const input = userInput.trim();
     const lower = input.toLowerCase();
 
+    // ═══ G-028: EMERGENCY DETECTOR — runs FIRST, before all routing ═════════════
+    // Deterministic keyword guardrail. Bypasses entire pipeline on match.
+    // NEVER rely on LLM for safety-critical paths (T02 architectural decision).
+    const emergencyResult = this.emergency.scan(input);
+    if (emergencyResult.detected) {
+      this.sm.addToMemory({ role: 'user',      text: input });
+      this.sm.addToMemory({ role: 'assistant', text: emergencyResult.response });
+      if (onToken) onToken(emergencyResult.voiceResponse || emergencyResult.response);
+      return emergencyResult.response;
+    }
+
     if (this.sm.getState() === STATES.ENDED) {
-      return "Thanks for chatting! Click 'New Chat' to start a new conversation.";
+      const resp = "Thanks for chatting! Click 'New Chat' to start a new conversation.";
+      if (onToken) onToken(resp);
+      return resp;
     }
 
-    // ── DEMO MODE INTERCEPT ──
-    // Config-aware: uses first two service flows for demo
-    const config = AppContext.getConfig();
-    const demoServices = (config.services || []).slice(0, 2);
-    
-    if (demoServices.length >= 1) {
-      const svc0 = demoServices[0];
-      const demoKey0 = svc0.intent_key.toLowerCase().replace(/_/g, ' ');
-      if (lower.includes(`demo ${demoKey0}`) || lower.includes(`${demoKey0} demo`)) {
-        this.sm.transition(STATES.FLOW_WEBSITE);
-        this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: svc0.intent_key, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
-        const step = this.flows.getStep(STATES.FLOW_WEBSITE, 0);
-        return step ? step.prompt : `Tell me more about what you need regarding ${svc0.name}.`;
-      }
-    }
-    if (demoServices.length >= 2) {
-      const svc1 = demoServices[1];
-      const demoKey1 = svc1.intent_key.toLowerCase().replace(/_/g, ' ');
-      if (lower.includes(`demo ${demoKey1}`) || lower.includes(`${demoKey1} demo`)) {
-        this.sm.transition(STATES.FLOW_SEO);
-        this.sm.updateContext({ engagementScore: 100, urgency: 'high', intent: svc1.intent_key, flowStep: 0, conversationGoal: GOALS.EXPLORE_CONTEXT });
-        const step = this.flows.getStep(STATES.FLOW_SEO, 0);
-        return step ? step.prompt : `Tell me more about what you need regarding ${svc1.name}.`;
-      }
-    }
+    // ── DEMO MODE INTERCEPT (Disabled for Medical Purge) ──
 
-    // ═══ CONVERSATION ROUTER — pre-pipeline gate ═══════════
+    // ═══ CONVERSION ROUTER — pre-pipeline gate ═══════════
     const quickRoute = this.router.route(input, null, this._unclear);
 
     if (quickRoute.type !== ROUTE_TYPE.CORE) {
@@ -165,12 +166,15 @@ export class ResponseOrchestrator {
       }
       
       if (quickRoute.type === ROUTE_TYPE.INTERRUPT) {
-        return this.fallback.getInterruptResponse().response;
+        const resp = this.fallback.getInterruptResponse().response;
+        if (onToken) onToken(resp);
+        return resp;
       }
 
       const routeResponse = this.routerHandlers.handle(quickRoute.type, this._unclear);
       this.sm.addToMemory({ role: 'user', text: input });
       this.sm.addToMemory({ role: 'assistant', text: routeResponse });
+      if (onToken) onToken(routeResponse);
       return routeResponse;
     }
 
@@ -191,20 +195,45 @@ export class ResponseOrchestrator {
       if (ir.multiIntents.length > 1) {
         console.log(`[Intent] Multiple detected`);
         const primary = ir.multiIntents[0];
-        const secondary = ir.multiIntents[1];
-
+        
         console.log(`[Intent] Primary → ${primary.intent}`);
 
-        // Rule 3: Override Intent (Latest token wins / replaces all)
-        if (secondary.type === 'override') {
-          ir.intent = secondary.intent;
-          if (this.sm.hasDeferredIntent()) this.sm.popDeferredIntent();
-        } 
-        // Rule 2 & 4: Dependent/Primary (Defer logic)
-        else if (secondary.type === 'dependent' || secondary.type === 'primary') {
-          ir.intent = primary.intent; // Execute primary immediately
-          this.sm.deferIntent(secondary); 
-          console.log(`[Intent] Deferred → ${secondary.intent}`);
+        // Phase 3 Fix: Positional Analysis (Fallback resolution for complex dynamically injected intents)
+        const getPos = (intentKey, defaultStr) => {
+           const str = intentKey === INTENTS.NEGATIVE ? 'no' : intentKey.replace('FLOW_', '').toLowerCase();
+           const idx = input.toLowerCase().search(new RegExp(`\\b${str}\\b`, 'i'));
+           return idx !== -1 ? idx : 999;
+        };
+
+        const pPos = primary.position !== undefined && primary.position !== 999 ? primary.position : getPos(primary.intent);
+
+        // Fix 3: Loop all remaining sequence intents correctly capturing dense conversational chains
+        for (let i = 1; i < ir.multiIntents.length; i++) {
+          const secondary = ir.multiIntents[i];
+          const sPos = secondary.position !== undefined && secondary.position !== 999 ? secondary.position : getPos(secondary.intent);
+
+          // Rule 3: Override Intent (Latest token wins / replaces all)
+          if (secondary.type === 'override') {
+            // Rule 3.1: Positional Modifier Check
+            if (secondary.intent === INTENTS.NEGATIVE && pPos !== 999 && sPos < pPos) {
+               console.log(`[IntentFix] Negative downgraded to modifier`);
+               secondary.type = 'modifier'; // Defang the override
+               ir.intent = primary.intent; 
+            } else {
+               console.log(`[IntentFix] Override applied`);
+               ir.intent = secondary.intent;
+               if (this.sm.hasDeferredIntent()) {
+                  // Purge entire stack on true context switch
+                  this.sm._deferredIntentStack = []; 
+               }
+               break; // Halts processing any further intents after a brutal context override
+            }
+          } 
+          // Rule 2 & 4: Dependent/Primary (Defer logic)
+          else if (secondary.type === 'dependent' || secondary.type === 'primary') {
+            ir.intent = primary.intent; // Execute primary immediately
+            this.sm.deferIntent(secondary); 
+          }
         }
       }
     }
@@ -266,25 +295,42 @@ export class ResponseOrchestrator {
     const ev   = this._step3_evaluateState(input, ir);
     const goal = this._step4_chooseGoal(ev);
     const act  = this._step5_selectAction(goal, ev, ir);
-    let raw    = this._step6_generateResponse(act, ir, input);
+    
+    // ── STEP 6: GENERATE RESPONSE ──
+    const response = await this._step6_generateResponse(act, ir, input, onToken);
 
     // Apply deferred resolution transition phrasing
-    if (ir && ir.isDeferredResolution) {
-      raw = `Also, regarding your other point... ${raw}`;
+    // Note: LLM responses shouldn't have arbitrary prepends that break the TTS stream,
+    // so we handle this carefully. For now, we skip prepending to LLM streams.
+    let finalResponse = response;
+    if (ir && ir.isDeferredResolution && !this.llm.isEnabled) {
+      finalResponse = `Also, regarding your other point... ${response}`;
     }
 
     // ── CONVERSION ANCHOR: Track goal progress ──────────────
     this._trackGoalProgress(goal, ev);
 
     // ── ACTION LAYER: Check Partial Lead Capture ─────────────
+    // GAP-ORCH-01 fix: route through authenticated outbox dispatcher (not raw fetch)
     if (!this._webhookSentPartial && this.leads.hasMinimumData()) {
       this._webhookSentPartial = true;
-      this._triggerWebhook('partial');
+      const ctx = this.sm.getContext();
+      webhookDispatcher.dispatch('LEAD_PARTIAL', {
+        ...this.leads.getData(),
+        conversation_stage: 'partial',
+        conversation_meta: { intent: ctx.intent || 'none', turn_count: ctx.turnCount || 0 }
+      }).catch(err => console.warn('[Orchestrator] Partial webhook dispatch failed:', err.message));
     }
 
-    this.sm.addToMemory({ role: 'assistant', text: raw });
+    this.sm.addToMemory({ role: 'assistant', text: finalResponse });
+
+    // P0-6: Fire-and-forget audit log (failures are silent — must not block pipeline)
+    const logCtx = this.sm.getContext();
+    conversationLogger.log({ turn: logCtx.turnCount, role: 'user',      text: input,         state: logCtx.state, intent: logCtx.intent || '' });
+    conversationLogger.log({ turn: logCtx.turnCount, role: 'assistant', text: finalResponse,  state: logCtx.state, intent: act.type      || '' });
+
     console.log(`[Orchestrator] Action triggered: ${act.type} logic.`);
-    return raw;
+    return finalResponse;
   }
 
   /**
@@ -313,6 +359,7 @@ export class ResponseOrchestrator {
     this._unclear      = 0;
     this._turnsSinceGoalProgress = 0;
     this._lastCTATurn  = -5;
+    this._ctaShown     = false;
     this._webhookSentPartial = false;
     this._webhookSentFinal   = false;
     // Router handlers have round-robin state — reset for fresh conversation
@@ -384,70 +431,27 @@ export class ResponseOrchestrator {
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  ACTION LAYER — Webhook & Booking
+  //  ACTION LAYER — Webhook Dispatch Helper
+  //  GAP-ORCH-01 fix: _triggerWebhook() REMOVED.
+  //  All webhook delivery now routes through webhookDispatcher.dispatch()
+  //  which provides: HMAC auth, IndexedDB outbox, exponential backoff,
+  //  dead-letter queue, and idempotency keys. No raw fetch() allowed here.
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Send lead data via webhook. Includes error handling, timeout, and retry.
-   * Prevents spam through partial and final tracking.
+   * Dispatch a final lead event through the secure, authenticated outbox.
+   * Replaces the removed _triggerWebhook() method.
+   * @param {string} stage - 'final' or 'exit'
    */
-  async _triggerWebhook(stage = 'final') {
-    if (stage === 'final' && this._webhookSentFinal) return;
-    if (stage === 'final') this._webhookSentFinal = true;
-
-    const config = AppContext.getConfig();
-    const webhookUrl = config.webhook_url;
-    
-    if (!webhookUrl) {
-      console.log(`[ActionLayer] No webhook URL configured for stage: ${stage}. Payload:`, JSON.stringify(this.leads.getData()));
-      return;
-    }
-
-    const payload = {
-      client_id:    config.company_name || 'unknown',
+  _dispatchFinalLead(stage = 'final') {
+    if (this._webhookSentFinal) return;
+    this._webhookSentFinal = true;
+    const ctx = this.sm.getContext();
+    webhookDispatcher.dispatch('LEAD_FINAL', {
+      ...this.leads.getData(),
       conversation_stage: stage,
-      lead_data:    this.leads.getData(),
-      conversation_meta: {
-        intent:      this.sm.getContext().intent || 'none',
-        turn_count:  this.sm.getContext().turnCount || 0
-      },
-      timestamp:    new Date().toISOString()
-    };
-
-    const attemptFetch = async (retryCount = 0) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
-
-      try {
-        const res = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-
-        if (res.ok) {
-          console.log(`[ActionLayer] Webhook ${stage} sent successfully.`);
-        } else {
-          console.warn(`[ActionLayer] Webhook failed (${res.status}).`);
-          if (retryCount < 1) {
-            console.log(`[ActionLayer] Retrying webhook in 2s...`);
-            setTimeout(() => attemptFetch(retryCount + 1), 2000);
-          }
-        }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        console.warn('[ActionLayer] Webhook error:', err.message);
-        if (err.name === 'AbortError' && retryCount < 1) {
-          console.log(`[ActionLayer] Webhook timed out. Retrying in 2s...`);
-          setTimeout(() => attemptFetch(retryCount + 1), 2000);
-        }
-      }
-    };
-
-    attemptFetch(0);
+      conversation_meta: { intent: ctx.intent || 'none', turn_count: ctx.turnCount || 0 }
+    }).catch(err => console.warn('[Orchestrator] Final webhook dispatch failed:', err.message));
   }
 
 
@@ -460,6 +464,33 @@ export class ResponseOrchestrator {
     const nlpData = this.nlp.analyze(input, ctx);
     
     if (!nlpData) return null;
+
+    // INTEGRATION FIX: Merge keyword-based intent detection (Config-driven services)
+    const kwData = this.intent.detect(input);
+    const isCorrection = /(actually\b|wait\b|instead\b|no\b|rather\b|not\b)/i.test(input);
+
+    if (kwData.intent !== INTENTS.UNKNOWN && (kwData.confidence >= 0.25 || !nlpData.intent || nlpData.intent === INTENTS.UNKNOWN)) {
+      // If keyword engine is confident OR NLP is clueless (e.g. service words only), keyword engine wins
+      if (this.SERVICE_INTENTS.has(kwData.intent) || nlpData.intent === INTENTS.UNKNOWN) {
+        nlpData.intent = kwData.intent;
+        nlpData.intentStrength = kwData.intentStrength;
+        nlpData.confidence.intent = kwData.confidence;
+        
+        // Ensure it's in multiIntents for Step 5 processing
+        if (nlpData.multiIntents && !nlpData.multiIntents.some(i => i.intent === kwData.intent)) {
+            nlpData.multiIntents.unshift({
+                intent: kwData.intent,
+                confidence: kwData.confidence,
+                type: isCorrection ? 'override' : 'primary',
+                position: 0 
+            });
+        } else if (isCorrection && nlpData.multiIntents) {
+            // Upgrade existing intent to override if correction keyword found
+            const match = nlpData.multiIntents.find(i => i.intent === kwData.intent);
+            if (match) match.type = 'override';
+        }
+      }
+    }
 
     const cur = ctx.intent;
     const inFlow = this.sm.isInFlow() && this.sm.getState() !== STATES.FLOW_GENERAL;
@@ -497,35 +528,35 @@ export class ResponseOrchestrator {
     const ld = this.sm.getContext().leadData;
     const turn = this.sm.getContext().turnCount;
      
-    if (nlpData.business) {
-      this.memory.storeEntity('business', nlpData.business.value, nlpData.confidence.business || 0.6, turn);
-      if (!ld.business || nlpData.confidence.business > 0.6) {
-        this.leads.capture('business', nlpData.business.value);
-        this.sm.updateLeadData({ business: nlpData.business.value });
+    if (nlpData.medical_practice) {
+      this.memory.storeEntity('medical_practice', nlpData.medical_practice.value, nlpData.confidence.medical_practice || 0.6, turn, input);
+      if (!ld.medical_practice || nlpData.confidence.medical_practice > 0.6) {
+        this.leads.capture('medical_practice', nlpData.medical_practice.value);
+        this.sm.updateLeadData({ medical_practice: nlpData.medical_practice.value });
       }
     }
     
-    if (nlpData.goal) {
-      this.memory.storeEntity('goal', nlpData.goal.value, nlpData.confidence.goal || 0.5, turn);
-      if (!ld.goal || nlpData.confidence.goal > 0.5) {
-        this.leads.capture('goal', nlpData.goal.value);
-        this.sm.updateLeadData({ goal: nlpData.goal.value });
+    if (nlpData.care_goal) {
+      this.memory.storeEntity('care_goal', nlpData.care_goal.value, nlpData.confidence.care_goal || 0.5, turn, input);
+      if (!ld.care_goal || nlpData.confidence.care_goal > 0.5) {
+        this.leads.capture('care_goal', nlpData.care_goal.value);
+        this.sm.updateLeadData({ care_goal: nlpData.care_goal.value });
       }
     }
     
     if (nlpData.problem) {
-      this.memory.storeEntity('problem', nlpData.problem.value, nlpData.confidence.problem || 0.5, turn);
+      this.memory.storeEntity('problem', nlpData.problem.value, nlpData.confidence.problem || 0.5, turn, input);
       if (!ld.problem || nlpData.confidence.problem > 0.5) {
         this.leads.capture('problem', nlpData.problem.value);
         this.sm.updateLeadData({ problem: nlpData.problem.value });
       }
     }
 
-    if (nlpData.tenure) {
-      this.memory.storeEntity('tenure', nlpData.tenure.value, nlpData.confidence.overall || 0.5, turn);
-      if (!ld.tenure || nlpData.confidence.overall > 0.5) {
-        this.leads.capture('tenure', nlpData.tenure.value);
-        this.sm.updateLeadData({ tenure: nlpData.tenure.value });
+    if (nlpData.patient_history) {
+      this.memory.storeEntity('patient_history', nlpData.patient_history.value, nlpData.confidence.overall || 0.5, turn, input);
+      if (!ld.patient_history || nlpData.confidence.overall > 0.5) {
+        this.leads.capture('patient_history', nlpData.patient_history.value);
+        this.sm.updateLeadData({ patient_history: nlpData.patient_history.value });
       }
     }
 
@@ -536,12 +567,12 @@ export class ResponseOrchestrator {
         'going', 'getting', 'doing', 'using', 'building', 'growing',
         'not', 'just', 'also', 'very', 'really', 'still', 'already'
       ]);
-      const m = input.match(/(?:my name is|i am|this is|call me|name's)\s+([A-Z][a-zA-Z]{1,19})/i);
+      const m = input.match(/(?:my name is|i am|i'm|this is|call me|name's)\s+([A-Z][a-zA-Z]{1,19})/i);
       if (m) {
         const candidate = m[1].toLowerCase();
         if (!nameBlacklist.has(candidate)) {
           const name = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-          this.memory.storeEntity('name', name, 1.0, turn);
+          this.memory.storeEntity('name', name, 1.0, turn, input);
           this.leads.capture('name', name);
           this.sm.updateLeadData({ name });
         }
@@ -549,16 +580,27 @@ export class ResponseOrchestrator {
     }
 
     if (nlpData.urgency && nlpData.urgency.value === 'high') {
-      this.memory.storeEntity('timeline', 'asap', 1.0, turn);
-      if (!ld.timeline) {
-        this.leads.capture('timeline', 'asap');
-        this.sm.updateLeadData({ timeline: 'asap' });
+      this.memory.storeEntity('urgency', 'high', 1.0, turn, input);
+      if (!ld.urgency) {
+        this.leads.capture('urgency', 'high');
+        this.sm.updateLeadData({ urgency: 'high' });
       }
+    }
+
+    // GAP-ORCH-02: Temporal Extraction
+    const temporal = extractDateTime(input);
+    if (temporal.found) {
+      console.log(`[Temporal] Extracted: ${temporal.naturalLanguage} | ISO: ${temporal.iso}`);
+      this.leads.capture('appointment_time', temporal.naturalLanguage);
+      this.sm.updateLeadData({ 
+        appointment_time: temporal.naturalLanguage,
+        appointment_iso: temporal.iso 
+      });
     }
 
     // MULTI-SIGNAL HANDLING
     if (nlpData.secondaryIntent) {
-      this.memory.storeEntity('secondary_intent', nlpData.secondaryIntent, nlpData.confidence.intent || 0.6, turn);
+      this.memory.storeEntity('secondary_intent', nlpData.secondaryIntent, nlpData.confidence.intent || 0.6, turn, input);
       if (this.SERVICE_INTENTS.has(nlpData.secondaryIntent) && !ld.problem) {
         this.sm.updateLeadData({ problem: `Prior failure/interest in ${nlpData.secondaryIntent}` });
       }
@@ -671,10 +713,9 @@ export class ResponseOrchestrator {
       hasIntent:       ir.intent !== INTENTS.UNKNOWN && ir.intentStrength !== 'weak',
       isGeneral:       ir.intent === INTENTS.GENERAL_INQUIRY,
       isLow:           ir.intent === INTENTS.LOW_INTENT,
-      hasLead:         this.leads.hasMinimumData(),
+      hasLead:         this.leads.getCompleteness() >= 50,
       hasName:         this.leads.hasField('name'),
-      hasGoal:         !!ctx.leadData.goal,
-      hasProblem:      !!ctx.leadData.problem,
+      hasReason:       this.leads.hasField('reason_for_visit'),
       inFlow:          this.sm.isInFlow(),
       unclearStreak:   this._unclear,
       isFlowMismatch:  this.sm.isInFlow() && this.SERVICE_INTENTS.has(ir.intent) && ir.intentStrength !== 'weak' && this.sm.getState() !== this.flows.intentToFlow(ir.intent),
@@ -690,6 +731,16 @@ export class ResponseOrchestrator {
   // ═══════════════════════════════════════════════════════════════
 
   _step4_chooseGoal(ev) {
+    // CTA confirmation: user is responding to "Would you like to book?"
+    if (this._ctaShown) {
+      if (ev.isPositive) { this._ctaShown = false; return 'capture_lead'; }
+      if (ev.isNegative) { this._ctaShown = false; return 'exit'; }
+      this._ctaShown = false; // Any other input clears the CTA context — treat as new input
+    }
+
+    // Phase 4: Lateral Pivot Logic (High Priority Global Override)
+    if (ev.isFlowMismatch) return 'reroute';
+
     // Objection overrides everything except ENDED
     if (ev.isObjection && ev.state !== STATES.ENDED) return 'handle_objection';
 
@@ -720,11 +771,8 @@ export class ResponseOrchestrator {
       case STATES.INTENT_DETECTED:
         return 'explore_context';
 
-      case STATES.FLOW_WEBSITE:
-      case STATES.FLOW_SEO:
-      case STATES.FLOW_AI:
-      case STATES.FLOW_APP:
-        if (ev.state === STATES.FLOW_GENERAL && ev.hasService) return 'position_solution';
+      case STATES.FLOW_GENERAL:
+        if (this.sm.isInFlow() && ev.hasService) return 'position_solution';
         
         { const s = this.flows.getStep(ev.state, ev.flowStep);
           if (!s && ev.flowStep > 0) {
@@ -734,13 +782,8 @@ export class ResponseOrchestrator {
           }
         }
 
-        if (ev.fastTrack && ev.flowStep >= 4 && (ev.hasGoal || ev.hasProblem)) return 'close';
+        if (ev.fastTrack && ev.flowStep >= 4 && (ev.hasName || ev.hasReason)) return 'close';
 
-        return 'explore_context';
-
-      case STATES.FLOW_GENERAL:
-        if (ev.hasService) return 'position_solution';
-        if (ev.flowStep >= 2 && (ev.hasGoal || ev.hasProblem) && ev.isPositive) return 'close';
         return 'explore_context';
 
       case STATES.LEAD_CAPTURE:
@@ -766,8 +809,20 @@ export class ResponseOrchestrator {
       case STATES.ENDED:
         return 'ended';
 
-      default:
+      default: {
+        // Dynamic service flow states (FLOW_SERVICE_*) — treat as active discovery flow
+        if (ev.inFlow) {
+          if (ev.isNegative)  return 'handle_objection';
+          if (ev.isObjection) return 'handle_objection';
+          // Positive response: if flow has more steps continue, otherwise advance to lead capture
+          if (ev.isPositive) {
+            const nextStep = this.flows.getStep(ev.state, this.sm.getContext().flowStep);
+            return nextStep ? 'explore_context' : 'capture_lead';
+          }
+          return 'explore_context';
+        }
         return 'identify_problem';
+      }
     }
   }
 
@@ -805,6 +860,9 @@ export class ResponseOrchestrator {
       case 'close':
         return { type: ACT.CLOSE };
 
+      case 'booking_confirmation':
+        return { type: ACT.BOOKING_CONFIRM };
+
       case 'close_transition':
         return { type: ACT.CLOSE_TRANSITION };
 
@@ -839,18 +897,35 @@ export class ResponseOrchestrator {
   //  STEP 6 — GENERATE RESPONSE (Module-Routed)
   // ═══════════════════════════════════════════════════════════════
 
-  _step6_generateResponse(act, ir, input) {
+  async _step6_generateResponse(act, ir, input, onToken) {
     const ctx = this.sm.getContext();
     const ld  = this.leads.getData();
+
+    // ── G-027: LLM ADAPTER HOOK ────────────────────────────────────
+    // If the LLM is enabled, attempt to generate the response via Ollama.
+    if (this.llm.isEnabled) {
+      // Only use LLM for active conversational turns, not for hard exits
+      if (act.type !== ACT.EXIT && act.type !== ACT.ENDED && act.type !== ACT.CLOSE) {
+        const history = this.sm.getMemory();
+        const llmResponse = await this.llm.generate(input, history, onToken);
+        if (llmResponse) {
+          return llmResponse;
+        }
+      }
+    }
+
+    // ── FALLBACK TO RULE-BASED ENGINE ──────────────────────────────
+    // If LLM is disabled, unavailable, or times out, fall back to templates.
+    let responseText = null;
 
     switch (act.type) {
 
       // ── EXIT / ENDED ──────────────────────────────────────────
       case ACT.EXIT:
         this._transTo(STATES.ENDED);
-        // Trigger webhook on exit if we have lead data
+        // GAP-ORCH-01 fix: route through authenticated outbox dispatcher
         if (this.leads.getCompleteness() > 0) {
-          this._triggerWebhook();
+          this._dispatchFinalLead('exit');
         }
         return this.closing.getExit();
 
@@ -867,15 +942,32 @@ export class ResponseOrchestrator {
 
       // ── CLOSE ─────────────────────────────────────────────────
       case ACT.CLOSE: {
+        const config = AppContext.getConfig();
+        if (config.primary_goal === 'book_appointment' && config.calendar_enabled === true) {
+          this._transTo(STATES.BOOKING_CONFIRMATION);
+          const time = ld.appointment_time || "a time that works for you";
+          return `Perfect. To finalize your appointment for ${time}, I just need to confirm your name is ${ld.name || 'correct'}. Shall I book this for you?`;
+        }
         const level = this.sm.getEngagementLevel();
         const cl = this.closing.getClose(level);
         this._transTo(STATES.CLOSING);
-        // Trigger webhook on close
+        // GAP-ORCH-01 fix: route through authenticated outbox dispatcher
         if (this.leads.getCompleteness() > 0) {
-          this._triggerWebhook('final');
+          this._dispatchFinalLead('final');
         }
         if (ld.name) return `${ld.name}, ${cl.response.charAt(0).toLowerCase()}${cl.response.slice(1)}`;
         return cl.response;
+      }
+
+      case ACT.BOOKING_CONFIRM: {
+        // This state is reached after verbal confirmation.
+        // In real flow, this would trigger the actual backend booking.
+        this._transTo(STATES.ENDED);
+        
+        // GAP-ORCH-01: Final lead dispatch occurs after booking confirmation
+        this._dispatchFinalLead('final');
+        
+        return "Excellent! I've booked that for you. You'll receive a confirmation email shortly. Take care!";
       }
 
       // ── CAPTURE LEAD DATA ─────────────────────────────────────
@@ -883,8 +975,8 @@ export class ResponseOrchestrator {
         this._transTo(STATES.LEAD_CAPTURE);
         const next = this.leads.getNextCapture();
         if (!next) {
-          // All data captured — trigger webhook and close
-          this._triggerWebhook('final');
+          // All data captured — GAP-ORCH-01 fix: route through authenticated outbox dispatcher
+          this._dispatchFinalLead('final');
           return this.closing.getClose(this.sm.getEngagementLevel()).response;
         }
         this._capField = next.field;
@@ -939,8 +1031,9 @@ export class ResponseOrchestrator {
 
       // ── CTA INJECTION (Conversion Anchor) ─────────────────────
       case ACT.CTA: {
-        this._turnsSinceGoalProgress = 0; // Reset after injection
-        this._lastCTATurn = this.sm.getContext().turnCount; // Log invocation
+        this._turnsSinceGoalProgress = 0;
+        this._lastCTATurn = this.sm.getContext().turnCount;
+        this._ctaShown = true; // Remember we asked — next positive response → capture_lead
         console.log(`[Orchestrator] Invoking CTA element`);
         const cta = this._getCTA();
         const ack = this.personality.getPhrase('acknowledge');

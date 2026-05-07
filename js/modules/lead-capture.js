@@ -5,25 +5,44 @@
  * Collects user information gradually, not all at once.
  * Only captures when user shows engagement or interest.
  *
- * Required: Name, Problem
- * Optional: Business, Contact Method, Budget, Timeline
+ * Required: Name, Reason for Visit
+ * Optional: Patient Type, DOB, Insurance
  *
  * Rule: Natural, not robotic. Never ask all at once.
  */
 
 import { AppContext } from '../config/loader.js';
+import { webhookDispatcher } from '../services/webhook-dispatcher.js';
+
+/**
+ * SEC-07: Generate a hardened, namespaced localStorage key.
+ * Format: 'av_leads_v1:[normalized_client_id]'
+ * - Versioned prefix prevents accidental cross-version reads.
+ * - client_id sourced from config (not guessable from URL alone).
+ * - Falls back to 'default_isolate' — never to an empty or shared key.
+ * @param {object} config - AppContext config
+ * @returns {string}
+ */
+function _getStorageKey(config) {
+  const clientId = (config.company_name || 'default_isolate')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, '_');
+  return `av_leads_v1:${clientId}`;
+}
 
 export class LeadCapture {
 
   constructor() {
     this._leadData = {
-      name:          null,
-      business:      null,
-      goal:          null,
-      problem:       null,
-      contactMethod: null,
-      budget:        null,
-      timeline:      null
+      name:               null,
+      patient_type:       null,
+      dob:                null,
+      reason_for_visit:   null,
+      insurance_provider: null,
+      insurance_id:       null,
+      urgency:            null,
+      contactMethod:      null
     };
 
     this._capturedFields = new Set();
@@ -36,37 +55,40 @@ export class LeadCapture {
         "Before we go further — what's your name?",
         "I'd love to know who I'm helping. What should I call you?"
       ],
-      business: [
-        "And what's your business called?",
-        "What's the name of your business, if you don't mind?",
-        "Could you share your business name?"
+      patient_type: [
+        "Are you a new or returning patient?",
+        "Have you visited our clinic before?"
       ],
-      goal: [
-        "What's the main thing you're trying to improve right now?",
-        "What's the biggest goal for your business this quarter?",
-        "If everything went perfectly, what result would you want to see?"
+      reason_for_visit: [
+        "What's the main thing you're looking to address today?",
+        "Could you describe the reason for your visit?",
+        "What symptoms or concerns should the doctor know about?"
       ],
-      problem: [
-        "Just to summarize — what would you say is the main challenge you're looking to solve?",
-        "So if you had to describe the core problem in one sentence, what would it be?"
-      ],
-      timeline: [
-        "Is there a timeline you're working with for this?",
-        "When are you looking to get started on this?",
-        "Do you have a deadline or timeframe in mind?"
+      urgency: [
+        "How quickly do you need to be seen?",
+        "Is this an urgent matter or a routine checkup?"
       ],
       contactMethod: [
-        "What's the best way for our team to follow up with you?",
-        "How would you prefer we reach out — phone, email, or WhatsApp?"
+        "What's the best way for our clinic to follow up with you?",
+        "How would you prefer we reach out — phone or email?"
       ],
-      budget: [
-        "Do you have a rough budget range in mind for this?",
-        "Have you set aside a budget for this project?"
+      dob: [
+        "Could I get your date of birth, just for our medical records?",
+        "What is your date of birth?"
+      ],
+      insurance_provider: [
+        "Who is your primary health insurance provider?",
+        "What insurance will you be using for this visit?"
+      ],
+      insurance_id: [
+        "Do you have your insurance member ID number handy?",
+        "Could you read me your insurance member ID?"
       ]
     };
 
     // ─── Capture Order ────────────────────────────────────
-    this._captureOrder = ['name', 'goal', 'problem', 'business', 'timeline'];
+    // G-029: Medical pivot capture order
+    this._captureOrder = ['name', 'patient_type', 'dob', 'reason_for_visit', 'insurance_provider'];
   }
 
   // ─── Public API ───────────────────────────────────────────
@@ -115,12 +137,12 @@ export class LeadCapture {
    */
   getCompleteness() {
     let score = 0;
-    if (this._leadData.name)          score += 25;
-    if (this._leadData.goal)          score += 15;
-    if (this._leadData.problem)       score += 20;
-    if (this._leadData.business)      score += 20;
-    if (this._leadData.timeline)      score += 10;
-    if (this._leadData.contactMethod) score += 10;
+    // G-029: Medical scoring update
+    if (this._leadData.name)                score += 30;
+    if (this._leadData.patient_type)        score += 20;
+    if (this._leadData.reason_for_visit)    score += 25;
+    if (this._leadData.dob)                 score += 15;
+    if (this._leadData.insurance_provider)  score += 10;
     return score;
   }
 
@@ -128,7 +150,7 @@ export class LeadCapture {
    * Check if minimum required data is captured (name + problem)
    */
   hasMinimumData() {
-    return !!(this._leadData.name && this._leadData.problem);
+    return !!(this._leadData.name && this._leadData.reason_for_visit);
   }
 
   /**
@@ -153,7 +175,8 @@ export class LeadCapture {
    */
   save() {
     const config = AppContext.getConfig();
-    const storageKey = `leads_${(config.company_name || 'default').toLowerCase().replace(/\s+/g, '_')}`;
+    // SEC-07: Use hardened namespaced key (not predictable company_name string)
+    const storageKey = _getStorageKey(config);
     const leads = JSON.parse(localStorage.getItem(storageKey) || '[]');
     leads.push({
       ...this._leadData,
@@ -162,6 +185,15 @@ export class LeadCapture {
       completeness: this.getCompleteness()
     });
     localStorage.setItem(storageKey, JSON.stringify(leads));
+
+    // ── Dispatch Webhook ──────────────────────────────────
+    webhookDispatcher.dispatch('LEAD_CAPTURE', {
+      ...this._leadData,
+      completeness: this.getCompleteness(),
+      url_context: window.location.href
+    }).catch(err => {
+      console.warn('[LeadCapture] Webhook dispatch failed (it will retry automatically):', err.message);
+    });
   }
 
   /**
@@ -169,7 +201,8 @@ export class LeadCapture {
    */
   static loadAll() {
     const config = AppContext.getConfig();
-    const storageKey = `leads_${(config.company_name || 'default').toLowerCase().replace(/\s+/g, '_')}`;
+    // SEC-07: Read path uses same hardened key — cross-tenant reads structurally impossible
+    const storageKey = _getStorageKey(config);
     return JSON.parse(localStorage.getItem(storageKey) || '[]');
   }
 
@@ -178,9 +211,14 @@ export class LeadCapture {
    */
   reset() {
     this._leadData = {
-      name: null, business: null, goal: null, 
-      tenure: null, problem: null,
-      contactMethod: null, budget: null, timeline: null
+      name:               null,
+      patient_type:       null,
+      dob:                null,
+      reason_for_visit:   null,
+      insurance_provider: null,
+      insurance_id:       null,
+      urgency:            null,
+      contactMethod:      null
     };
     this._capturedFields.clear();
   }

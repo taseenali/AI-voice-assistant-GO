@@ -20,6 +20,7 @@ export const INTENT_RELATIONS = {
 export function detectIntent(tokens, normalizedText, extracted = {}) {
   // Use generic categories that are always present in INTENTS
   const scores = {};
+  const positions = {};
   
   // Initialize scores for known generic intents (always exist)
   scores[INTENTS.GENERAL_INQUIRY] = 0;
@@ -36,18 +37,22 @@ export function detectIntent(tokens, normalizedText, extracted = {}) {
 
   // Generic keyword dictionaries (engine-level, not config-specific)
   const genericDict = {
-    [INTENTS.GENERAL_INQUIRY]: ['help', 'services', 'what do you do', 'options', 'clients', 'customers', 'business', 'grow', 'growth'],
+    [INTENTS.GENERAL_INQUIRY]: ['help', 'services', 'options', 'clinic', 'doctor', 'appointment', 'care', 'medical', 'health'],
     [INTENTS.POSITIVE]: ['yes', 'yeah', 'sure', 'ok', 'okay', 'definitely', 'sounds good', "let's do it", 'absolutely', 'great', 'perfect', 'love it', 'makes sense', 'move forward', 'go ahead'],
     [INTENTS.NEGATIVE]: ['no', 'nah', 'not really', 'nope', 'nevermind', 'not interested', "don't need"],
-    [INTENTS.OBJECTION]: ['expensive', 'too much money', "can't afford", 'not in the budget']
+    [INTENTS.OBJECTION]: ['expensive', 'too much money', "can't afford", 'insurance coverage']
   };
 
   // 1. Base keyword checks for generic intents
   for (const [intent, words] of Object.entries(genericDict)) {
     for (const w of words) {
       const regex = new RegExp(`\\b${w}\\b`, 'i');
-      if (regex.test(normalizedText)) {
+      const match = normalizedText.match(regex);
+      if (match) {
          scores[intent] += (w.length > 3 ? 2 : 1);
+         if (positions[intent] === undefined || match.index < positions[intent]) {
+           positions[intent] = match.index;
+         }
       }
     }
   }
@@ -59,13 +64,25 @@ export function detectIntent(tokens, normalizedText, extracted = {}) {
   if (extracted.problem && extracted.problem.value) {
     const probStr = extracted.problem.value.toLowerCase();
     for (const [intent, words] of Object.entries(genericDict)) {
-      if (words.some(w => probStr.includes(w))) scores[intent] += 3;
+      if (words.some(w => probStr.includes(w))) {
+        scores[intent] += 3;
+        const idx = normalizedText.indexOf(probStr);
+        if (idx !== -1 && (positions[intent] === undefined || idx < positions[intent])) {
+           positions[intent] = idx;
+        }
+      }
     }
   }
   if (extracted.goal && extracted.goal.value) {
     const goalStr = extracted.goal.value.toLowerCase();
     for (const [intent, words] of Object.entries(genericDict)) {
-      if (words.some(w => goalStr.includes(w))) scores[intent] += 1.5;
+      if (words.some(w => goalStr.includes(w))) {
+        scores[intent] += 1.5;
+        const idx = normalizedText.indexOf(goalStr);
+        if (idx !== -1 && (positions[intent] === undefined || idx < positions[intent])) {
+           positions[intent] = idx;
+        }
+      }
     }
   }
 
@@ -91,7 +108,8 @@ export function detectIntent(tokens, normalizedText, extracted = {}) {
      return { 
        intent: key, 
        confidence: Math.min(1.0, rawConf + bonusConf + intentWeight), 
-       type: rel 
+       type: rel,
+       position: positions[key] !== undefined ? positions[key] : 999
      };
   });
 
@@ -104,8 +122,8 @@ export function detectIntent(tokens, normalizedText, extracted = {}) {
 
   console.log(`[Intent] Detected → [${multiIntents.map(i => i.intent).join(', ')}]`);
 
-  // Keep top 2 maximum intent objects
-  const finalIntents = multiIntents.slice(0, 2);
+  // Phase 3, Fix 3: Remove Slice & Drop arbitrary constraint. Support deep intent clusters natively.
+  const finalIntents = multiIntents;
 
   let primary = finalIntents.length > 0 ? finalIntents[0].intent : INTENTS.UNKNOWN;
   let secondary = finalIntents.length > 1 ? finalIntents[1].intent : null;

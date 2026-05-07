@@ -6,7 +6,7 @@
  * into the main decision engine.
  * 
  * INTENT PRIORITY STACK (highest → lowest):
- *   1. STRONG BUSINESS INTENT — domain signal + high confidence → CORE
+ *   1. STRONG CLINICAL INTENT — domain signal + high confidence → CORE
  *   2. CORRECTION / PIVOT     — interrupt phrase + domain signal → CORE (not INTERRUPT)
  *   3. GREETING / META        — social or informational
  *   4. FLOW CONTINUATION      — default passthrough → CORE
@@ -63,13 +63,13 @@ export class ConversationRouter {
       /(?:weather|forecast|temperature|rain|snow)/i,
       /(?:recipe|how to cook|food delivery|order food|what to eat)/i,
       /(?:relationship|dating|married|divorce|breakup)/i,
-      /(?:medical advice|doctor|symptoms|diagnosis|medicine|prescription)/i,
       /(?:legal advice|lawyer|attorney|lawsuit|sue me)/i,
       /(?:homework|essay|assignment|exam help|study for)/i,
       /(?:watch|stream|download)\s+(?:movie|film|series|show)/i,
       /(?:football|soccer|cricket|basketball)\s+(?:score|match|game|result)/i,
       /(?:politics|president|government|election|vote)/i,
-      /(?:play|gaming|ps5|playstation|xbox|nintendo|fortnite)/i
+      /(?:play|gaming|ps5|playstation|xbox|nintendo|fortnite)/i,
+      /(?:stock market|crypto|investing|bitcoin|trading)/i
     ];
 
     // ── Noise triggers ───────────────────────────────────────
@@ -91,8 +91,8 @@ export class ConversationRouter {
     this._serviceDomainTokens = (config.service_domain_tokens && config.service_domain_tokens.length > 0)
       ? [...config.service_domain_tokens]
       : [
-          'business', 'help', 'service', 'solution', 'grow', 'growth',
-          'clients', 'customers', 'leads', 'revenue', 'sales'
+          'health', 'medical', 'doctor', 'clinic', 'appointment', 'care',
+          'symptoms', 'pain', 'checkup', 'treatment', 'recovery'
         ];
   }
 
@@ -100,7 +100,7 @@ export class ConversationRouter {
    * Route user input to a classification type.
    * 
    * INTENT PRIORITY STACK:
-   *   Priority 1: Strong business intent (domain signal) → CORE immediately
+   *   Priority 1: Strong clinical intent (domain signal) → CORE immediately
    *   Priority 2: Correction + domain signal → CORE (bypasses interrupt)
    *   Priority 3: Greeting / Meta / Out-of-scope
    *   Priority 4: Interrupt (only if NO domain signal attached)
@@ -127,8 +127,8 @@ export class ConversationRouter {
     const wordCount = tokens.length;
     const hasDomain = this._hasDomainSignal(normalized);
 
-    // ═══ PRIORITY 1: STRONG BUSINESS INTENT ═══════════════
-    // If input clearly contains business-relevant domain signal
+    // ═══ PRIORITY 1: STRONG CLINICAL INTENT ═══════════════
+    // If input clearly contains clinical-relevant domain signal
     // AND is long enough to be intentional, fast-track to CORE.
     if (hasDomain && wordCount >= 3) {
       return { type: ROUTE_TYPE.CORE, confidence: 0.9, reason: 'strong_domain_signal' };
@@ -178,7 +178,7 @@ export class ConversationRouter {
     }
 
     // ═══ PRIORITY 6: CORE (default passthrough) ═══════════
-    // Has meaningful business signal → route to pipeline
+    // Has meaningful clinical signal → route to pipeline
     if (hasDomain) {
       return { type: ROUTE_TYPE.CORE, confidence: 0.85, reason: 'domain_signal' };
     }

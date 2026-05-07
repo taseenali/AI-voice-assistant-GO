@@ -1,10 +1,10 @@
 const SEMANTIC_MAP = {
-  website: ["site", "webpage", "landing page", "web", "online presence"],
-  seo: ["ranking", "google traffic", "search results", "organic traffic", "visibility", "found on google", "search engine"],
-  growth_outcome: ["leads", "sales", "revenue", "customers", "clients", "inquiries", "prospects", "bookings", "jobs", "growth", "scale", "double", "triple"],
-  automation: ["workflow", "manual work", "repetitive tasks", "save time", "efficiency", "chatbots", "assistant"],
-  tenure_established: ["years", "long time", "decades", "since", "founded"],
-  tenure_startup: ["just started", "launching", "new business", "startup", "trying to start"]
+  clinic: ["practice", "hospital", "office", "doctor", "specialist"],
+  checkup: ["appointment", "exam", "visit", "consultation", "screening"],
+  care_outcome: ["recovery", "better", "improvement", "healthier", "treatment", "cure", "relief"],
+  automation: ["scheduling", "booking", "assistant", "reminder"],
+  history_established: ["years", "long time", "decades", "since", "chronic"],
+  history_new: ["just started", "recent", "new issue", "sudden", "started yesterday"]
 };
 
 export function normalizeSemantics(text) {

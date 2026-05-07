@@ -14,7 +14,14 @@ const REQUIRED_FIELDS = [
   'primary_goal',
   'greetings',
   'cta_templates',
-  'service_domain_tokens'
+  'service_domain_tokens',
+  'webhook_secret',         // SYNC-04 fix: required per SSYNC-01 — enables Pass 2 HMAC auth
+  'llm_model',              // G-027
+  'ai_tier',                // G-027
+  'ollama_endpoint',        // G-027
+  'emergency_keywords',     // SYNC-04 / SK-003
+  'emergency_response',     // SYNC-04 / SK-003
+  'calendar_id'
 ];
 
 export function validateConfig(config, fallback) {

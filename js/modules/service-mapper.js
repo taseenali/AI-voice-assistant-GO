@@ -3,7 +3,7 @@
  * Maps to: 03_service_mapping.md
  *
  * Maps detected user problems → client services (from config).
- * Always translates user language into business solutions.
+ * Always translates user language into medical solutions.
  *
  * Rule: NEVER say "We offer X." Instead, connect solution to user's stated problem.
  *

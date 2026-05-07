@@ -6,7 +6,7 @@
  * Uses round-robin selection for deterministic, non-repeating phrase rotation.
  * 
  * CONFIG-DRIVEN: Greetings and tone behavior are loaded from AppContext config.
- * No hardcoded company names or business-specific language.
+ * No hardcoded company names or clinical-specific language.
  */
 
 import { AppContext } from '../config/loader.js';
@@ -63,21 +63,21 @@ export class Personality {
         "To make sure I can help properly —"
       ],
       bridge: [
-        "Here's something that might help.",
-        "Based on what you've shared,",
-        "That's actually something we can help with.",
-        "This is right in our wheelhouse.",
-        "Here's what I'd suggest based on that.",
-        "That's a great starting point.",
+        "I understand. Here's how we can help with that.",
+        "Based on what you've shared about your symptoms,",
+        "That's definitely something our clinic handles regularly.",
+        "Our medical team has a lot of experience with this.",
+        "Here's what I'd suggest as a next step for your care.",
+        "That's very helpful context for the doctor.",
         "With that in mind,"
       ],
       encourage: [
-        "That's a great question.",
-        "You're thinking about this the right way.",
-        "A lot of businesses face this same challenge.",
-        "You're not alone in this — it's more common than you'd think.",
-        "That's actually a really smart approach.",
-        "The fact that you're looking into this tells me you're serious about growth."
+        "I understand your concern.",
+        "You're doing the right thing by looking into this.",
+        "Many of our patients have similar questions.",
+        "You're not alone in this — we're here to support you.",
+        "I appreciate you being so clear about what you're experiencing.",
+        "The fact that you're proactive about your health is a great sign."
       ],
       redirect: [
         "Perfect — picking up where we were,",

@@ -25,7 +25,7 @@ export class MemorySynthesis {
    * Ensures that newer values override older ones ONLY if confidence >= previous.
    * Manages buffer bounds to prevent overflow crashes.
    */
-  storeEntity(key, value, confidence, turn) {
+  storeEntity(key, value, confidence, turn, rawInput = "") {
     if (!key || value === undefined || value === null) return;
     
     key = String(key).toLowerCase().trim();
@@ -36,17 +36,51 @@ export class MemorySynthesis {
     if (current) {
       if (current.value === value) return; // Prevent noisy overwrite loops
       
-      if (turn >= current.turn_acquired && confidence >= current.confidence) {
-        // Valid override
-        this.memoryState.short_term.set(key, { value, confidence, turn_acquired: turn });
-        console.log(`[Memory] Stored: ${key}=${value} (Override successful)`);
+      const turnDelta = turn - current.turn_acquired;
+      let effectiveConfidence = confidence;
+      let overrideReason = null;
+      
+      // Edge Case 3: Weak Noise Input Guard (Do not override strong memory on hesitation)
+      const isWeakNoise = /(maybe|not sure|idk|i don't know|i guess)/i.test(rawInput);
+      if (isWeakNoise && turnDelta >= 1 && effectiveConfidence < current.confidence) {
+          console.log(`[Memory] Skipped overwrite for ${key} (weak noise input detected)`);
+          return;
+      }
+      
+      // Fix 2: Correction Keyword Boost
+      const isCorrection = /(wait\b|actually\b|\bno\b|instead|change|rather)/i.test(rawInput);
+      const targetsSameEntity = rawInput.toLowerCase().includes(String(value).toLowerCase()); // Scope lock
+      
+      if (isCorrection && targetsSameEntity) {
+        effectiveConfidence = Math.min(1.0, effectiveConfidence + 0.4);
+      }
+
+      // Final Decision Logic
+      const currentFlipCount = current.flip_count || 0;
+      
+      if (turnDelta >= 1 && currentFlipCount < 3) {
+        overrideReason = "recency";
+      } else if (isCorrection && effectiveConfidence >= current.confidence) {
+        overrideReason = "correction keyword";
+      } else if (effectiveConfidence >= current.confidence) {
+        overrideReason = "higher confidence";
+      }
+
+      if (overrideReason) {
+        this.memoryState.short_term.set(key, { 
+           value, 
+           confidence: effectiveConfidence, 
+           turn_acquired: turn, 
+           flip_count: currentFlipCount + 1 
+        });
+        console.log(`[MemoryFix] Override (${overrideReason}) key=${key} ${current.value} → ${value}`);
       } else {
-        console.log(`[Memory] Skipped overwrite for ${key} (lower confidence or older turn)`);
+        console.log(`[Memory] Skipped overwrite for ${key} (confidence ${effectiveConfidence.toFixed(2)} < ${current.confidence.toFixed(2)} | delta ${turnDelta} | flips ${currentFlipCount})`);
       }
     } else {
       // New insertion
       this._enforceLimit();
-      this.memoryState.short_term.set(key, { value, confidence, turn_acquired: turn });
+      this.memoryState.short_term.set(key, { value, confidence, turn_acquired: turn, flip_count: 0 });
       console.log(`[Memory] Stored: ${key}=${value}`);
     }
   }
