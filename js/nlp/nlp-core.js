@@ -59,6 +59,7 @@ export class NLPEngine {
       growth_outcome: ext.growth_outcome,
       tenure: ext.tenure,
       userType,
+      multiIntents: intentData,
       confidence,
       quality: {
         chars: input.length,

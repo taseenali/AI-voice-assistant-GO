@@ -13,6 +13,7 @@ export class FallbackRecovery {
 
   constructor() {
     this._confusionCount = 0;
+    this.interruptCount = 0;
     
     // Dynamically build the service summary for recovery prompts
     const config = AppContext.getConfig();
@@ -96,6 +97,28 @@ export class FallbackRecovery {
       level,
       shouldEscalate,
       confusionCount: this._confusionCount
+    };
+  }
+
+  /**
+   * Generates extremely concise interrupt acknowledgement.
+   * Tracks interrupt fatigue to throttle system verbosity downstream.
+   */
+  getInterruptResponse() {
+    this.interruptCount++;
+    
+    const config = AppContext.getConfig();
+    const pools = config.interrupt_phrases || [
+      "Got it — go ahead.",
+      "I'm listening.",
+      "Go ahead.",
+      "What were you thinking?",
+      "Take your time."
+    ];
+
+    return {
+      response: pools[(this.interruptCount - 1) % pools.length],
+      interruptCount: this.interruptCount
     };
   }
 

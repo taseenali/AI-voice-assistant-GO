@@ -11,6 +11,12 @@
 
 import { AppContext } from '../config/loader.js';
 
+export const TONE_STATES = {
+  DEFAULT: "professional",
+  EMPATHETIC: "empathetic",
+  URGENT: "urgent"
+};
+
 export class Personality {
 
   constructor() {
@@ -23,6 +29,11 @@ export class Personality {
 
     // ─── Tone Setting ────────────────────────────────────────
     this._tone = config.tone || 'professional';
+    this.activeToneState = TONE_STATES.DEFAULT;
+    this.toneAnchor = null;
+    this.toneTurnCounter = 0;
+    this.turnsSinceLastChange = 3;
+    this.minToneDuration = 2;
 
     // ─── Transition Phrases ─────────────────────────────────
     this._phrases = {
@@ -124,19 +135,100 @@ export class Personality {
     return this._roundRobin('_greetings', this._greetings);
   }
 
-  /** Get a round-robin phrase of a given type */
+  /** Retrieve dynamic phrases filtered via Tone Memory Anchor priorities */
+  getPhraseSetByTone(type) {
+    if (this.activeToneState === TONE_STATES.URGENT) {
+       // Urgent states aggressively skip bridging & cheer phrases natively
+       return [];
+    }
+    if (this.activeToneState === TONE_STATES.EMPATHETIC && type === 'acknowledge') {
+       return [
+         "I hear you.", 
+         "That totally makes sense.", 
+         "I completely understand.",
+         "Thanks for sharing that.",
+         "I know that can be frustrating."
+       ];
+    }
+    return this._phrases[type];
+  }
+
+  /** Get a round-robin phrase of a given type prioritizing safe configurations */
   getPhrase(type) {
-    const pool = this._phrases[type];
-    if (!pool) return '';
+    const pool = this.getPhraseSetByTone(type);
+    if (!pool || pool.length === 0) return '';
     return this._roundRobin(`phrase_${type}`, pool);
   }
 
-  /** Get the current tone setting */
-  getTone() {
-    return this._tone;
+  /** Check current active tone state mapping */
+  getToneState() {
+    return this.activeToneState;
   }
 
-  /** Enforce tone rules on a response string */
+  /**
+   * Determine exact tone priority securely.
+   */
+  _getTonePriority(tone) {
+    if (tone === TONE_STATES.URGENT) return 3;
+    if (tone === TONE_STATES.EMPATHETIC) return 2;
+    return 1;
+  }
+
+  /**
+   * Fluid tone adaption enforcing anchors, stability ceilings, prioritization rules, and decay.
+   */
+  updateTone(triggerSignal, reason = "none") {
+    this.toneTurnCounter++;
+    this.turnsSinceLastChange++;
+
+    if (!triggerSignal) triggerSignal = TONE_STATES.DEFAULT;
+
+    const currentPriority = this._getTonePriority(this.activeToneState);
+    const newPriority = this._getTonePriority(triggerSignal);
+
+    let stateChanged = false;
+
+    // Anchor Matrix: Ensure major tone signals dominate
+    if (newPriority >= 2) {
+      if (!this.toneAnchor || newPriority >= this._getTonePriority(this.toneAnchor)) {
+        this.toneAnchor = triggerSignal;
+        this.toneTurnCounter = 0;
+      }
+    }
+
+    // 1. Mandatory Escalation Layer
+    if (newPriority > currentPriority) {
+      this._commitToneChange(triggerSignal, reason);
+      stateChanged = true;
+    } 
+    // 2. Safe Decay Matrix (Bounded by Anchor expiry & strict stability metrics)
+    else if (triggerSignal === TONE_STATES.DEFAULT && this.activeToneState !== TONE_STATES.DEFAULT) {
+      if (this.turnsSinceLastChange >= 3 && this.toneTurnCounter >= 2) {
+        this.toneAnchor = null;
+        this._commitToneChange(TONE_STATES.DEFAULT, "safe decay bounds verified");
+        stateChanged = true;
+      }
+    } 
+    // 3. Forced Stability Blocks Oscillation
+    else if (triggerSignal !== this.activeToneState && triggerSignal !== TONE_STATES.DEFAULT) {
+      if (this.turnsSinceLastChange >= 3) {
+        this._commitToneChange(triggerSignal, reason);
+        stateChanged = true;
+      }
+    }
+
+    if (!stateChanged && triggerSignal === this.activeToneState) {
+      console.log(`[Tone] Maintained → ${this.activeToneState.toUpperCase()}`);
+    }
+  }
+
+  _commitToneChange(newState, reason) {
+    this.activeToneState = newState;
+    this.turnsSinceLastChange = 0;
+    console.log(`[Tone] State → ${this.activeToneState.toUpperCase()} (trigger: ${reason})`);
+  }
+
+  /** Enforce length limits on strings safely */
   styleResponse(text) {
     if (!text) return text;
 
@@ -152,17 +244,32 @@ export class Personality {
     return text;
   }
 
-  /** Build a response with optional acknowledge + body */
-  compose(body, { acknowledge = false, bridge = false, encourage = false } = {}) {
+  /** Build a response with optional acknowledge + body mapped via safe tone architectures */
+  compose(body, options = {}) {
+    const opts = {
+      acknowledge: false,
+      bridge: false,
+      encourage: false,
+      ...options
+    };
+    
+    // TONE ENGINE OVERRIDES
+    if (this.activeToneState === TONE_STATES.URGENT) {
+      opts.encourage = false; 
+      opts.acknowledge = false; 
+      opts.bridge = false;
+    } else if (this.activeToneState === TONE_STATES.EMPATHETIC) {
+      opts.acknowledge = true; // Empathetic anchoring guarantees
+    }
+
     const parts = [];
 
     // Only add acknowledge prefix if the body doesn't already open with one.
-    // Prevents double-acknowledgment: "Got it. Got it. Here's the insight."
-    if (acknowledge && !this._startsWithAck(body)) {
+    if (opts.acknowledge && !this._startsWithAck(body)) {
       parts.push(this.getPhrase('acknowledge'));
     }
-    if (encourage) parts.push(this.getPhrase('encourage'));
-    if (bridge)    parts.push(this.getPhrase('bridge'));
+    if (opts.encourage) parts.push(this.getPhrase('encourage'));
+    if (opts.bridge)    parts.push(this.getPhrase('bridge'));
     parts.push(body);
 
     return this.styleResponse(parts.join(' '));

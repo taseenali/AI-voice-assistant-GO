@@ -117,6 +117,11 @@ export class ConversationRouter {
       return { type: ROUTE_TYPE.NOISE, confidence: 1.0, reason: 'empty_input' };
     }
 
+    // Explicit system-level interrupt signal (mid-speech cutoff)
+    if (input === '__INTERRUPT__') {
+      return { type: ROUTE_TYPE.INTERRUPT, confidence: 1.0, reason: 'system_interrupt_signal' };
+    }
+
     const normalized = input.toLowerCase().trim();
     const tokens = normalized.split(/\s+/).filter(Boolean);
     const wordCount = tokens.length;

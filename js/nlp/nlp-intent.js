@@ -10,6 +10,13 @@
 
 import { INTENTS } from '../modules/intent-detector.js';
 
+export const INTENT_RELATIONS = {
+  FLOW_SERVICE: "primary",
+  META_PRICING: "dependent",
+  CONFIRMATION: "override",
+  INTERRUPTION: "interrupt"
+};
+
 export function detectIntent(tokens, normalizedText, extracted = {}) {
   // Use generic categories that are always present in INTENTS
   const scores = {};
@@ -66,15 +73,47 @@ export function detectIntent(tokens, normalizedText, extracted = {}) {
     .filter(([_, score]) => score > 0)
     .sort((a, b) => b[1] - a[1]);
 
-  let primary = INTENTS.UNKNOWN;
-  let secondary = null;
+  let multiIntents = sorted.map(([key, score]) => {
+     let rel = "dependent";
+     
+     // Apply relationship maps safely
+     if (key.includes('FLOW_') || key.includes('SERVICE') || key === INTENTS.GENERAL_INQUIRY) rel = INTENT_RELATIONS.FLOW_SERVICE;
+     if (key === INTENTS.POSITIVE || key === INTENTS.NEGATIVE) rel = INTENT_RELATIONS.CONFIRMATION;
+     if (key === 'INTERRUPTION') rel = INTENT_RELATIONS.INTERRUPTION;
+     if (key === 'META_PRICING' || key === INTENTS.OBJECTION) rel = INTENT_RELATIONS.META_PRICING;
 
-  if (sorted.length > 0) {
-    primary = sorted[0][0];
-    if (sorted.length > 1 && sorted[1][1] > 0) {
-      secondary = sorted[1][0];
-    }
-  }
+     const rawConf = Math.min(1.0, score / 10);
+     const bonusConf = (rel === 'override') ? 0.2 : 0; // Push overrides up
+     let intentWeight = 0.1; // GENERIC base
+     if (rel === INTENT_RELATIONS.FLOW_SERVICE) intentWeight = 0.3;
+     if (rel === INTENT_RELATIONS.META_PRICING) intentWeight = 0.2;
+     
+     return { 
+       intent: key, 
+       confidence: Math.min(1.0, rawConf + bonusConf + intentWeight), 
+       type: rel 
+     };
+  });
 
-  return { primaryIntent: primary, secondaryIntent: secondary, intentScores: scores };
+  // Sort strictly by confidence & priority tie-breaker
+  multiIntents.sort((a, b) => {
+    if (a.type === 'override' && b.type !== 'override') return -1;
+    if (b.type === 'override' && a.type !== 'override') return 1;
+    return b.confidence - a.confidence;
+  });
+
+  console.log(`[Intent] Detected → [${multiIntents.map(i => i.intent).join(', ')}]`);
+
+  // Keep top 2 maximum intent objects
+  const finalIntents = multiIntents.slice(0, 2);
+
+  let primary = finalIntents.length > 0 ? finalIntents[0].intent : INTENTS.UNKNOWN;
+  let secondary = finalIntents.length > 1 ? finalIntents[1].intent : null;
+
+  // Backwards compatibility for NLPEngine core dependencies
+  finalIntents.primaryIntent = primary;
+  finalIntents.secondaryIntent = secondary;
+  finalIntents.intentScores = scores;
+
+  return finalIntents;
 }

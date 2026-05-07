@@ -33,6 +33,7 @@ import { FallbackRecovery }         from './modules/fallback-recovery.js';
 import { Personality }              from './modules/personality.js';
 import { KnowledgeEngine }          from './knowledge/knowledge-engine.js';
 import { ResponseBuilder }          from './modules/response-builder.js';
+import { MemorySynthesis }          from './modules/memory-synthesis.js';
 import { ConversationRouter, ROUTE_TYPE } from './router/conversation-router.js';
 import { RouterHandlers }           from './router/router-handlers.js';
 import { AppContext }               from './config/loader.js';
@@ -81,6 +82,7 @@ export class ResponseOrchestrator {
     this.personality  = new Personality();
     this.kb           = new KnowledgeEngine();
     this.builder      = new ResponseBuilder(this.personality);
+    this.memory       = new MemorySynthesis();
 
     // ── SERVICE_INTENTS: dynamically from config ─────────────
     this.SERVICE_INTENTS = this.intent.getServiceIntentKeys();
@@ -161,6 +163,10 @@ export class ResponseOrchestrator {
       } else {
         this._unclear = 0;
       }
+      
+      if (quickRoute.type === ROUTE_TYPE.INTERRUPT) {
+        return this.fallback.getInterruptResponse().response;
+      }
 
       const routeResponse = this.routerHandlers.handle(quickRoute.type, this._unclear);
       this.sm.addToMemory({ role: 'user', text: input });
@@ -180,6 +186,40 @@ export class ResponseOrchestrator {
     let ir     = this._step1_detectIntent(input);
     const ctx  = this.sm.getContext();
 
+    // ── STEP 5: DEFERRED INTENT RESOLUTION & MULTI-INTENT PROCESSING ──
+    if (ir && ir.multiIntents) {
+      if (ir.multiIntents.length > 1) {
+        console.log(`[Intent] Multiple detected`);
+        const primary = ir.multiIntents[0];
+        const secondary = ir.multiIntents[1];
+
+        console.log(`[Intent] Primary → ${primary.intent}`);
+
+        // Rule 3: Override Intent (Latest token wins / replaces all)
+        if (secondary.type === 'override') {
+          ir.intent = secondary.intent;
+          if (this.sm.hasDeferredIntent()) this.sm.popDeferredIntent();
+        } 
+        // Rule 2 & 4: Dependent/Primary (Defer logic)
+        else if (secondary.type === 'dependent' || secondary.type === 'primary') {
+          ir.intent = primary.intent; // Execute primary immediately
+          this.sm.deferIntent(secondary); 
+          console.log(`[Intent] Deferred → ${secondary.intent}`);
+        }
+      }
+    }
+
+    // Handle Empty Input / Resolution Flow 
+    const isReady = this._isAcknowledgmentReady(input, ir);
+    const isStable = this.sm.isCurrentFlowStable();
+
+    if (isReady && isStable && this.sm.hasDeferredIntent()) {
+      const deferred = this.sm.popDeferredIntent();
+      console.log(`[Intent] Resolved → ${deferred.intent}`);
+      ir.intent = deferred.intent;
+      ir.isDeferredResolution = true;
+    }
+
     // KNOWLEDGE INTEGRATION (Phase KB)
     const kbData = this.kb.analyze(ir, ctx, input, ctx.depthLevel || 1);
     
@@ -192,10 +232,46 @@ export class ResponseOrchestrator {
     this._step2_updateContext(input, ir);
     this._updateDepthLevel(ir);
 
+    // Update human behavioral state before evaluation
+    this.memory.updateUserState(ir);
+
+    // ── TONE TRIGGERS (Step 4 Layer) ──
+    let toneTrigger = null;
+    let toneReason = "none";
+    const lowerInputForTone = input.toLowerCase();
+    
+    // Evaluate urgency explicit keywords
+    const urgentMatch = lowerInputForTone.match(/(emergency|broken|urgent|leaking|crisis|asap|now)/);
+    if (urgentMatch) {
+      toneTrigger = TONE_STATES.URGENT;
+      toneReason = `keyword "${urgentMatch[0]}"`;
+    } 
+    // Evaluate empathy implicitly
+    else if (this._unclear > 0) {
+      toneTrigger = TONE_STATES.EMPATHETIC;
+      toneReason = "unclear streak";
+    } else if (this.memory.getSnapshot().user_state.frustration_strikes > 0) {
+      toneTrigger = TONE_STATES.EMPATHETIC;
+      toneReason = "frustration strikes metric";
+    } else {
+      const empMatch = lowerInputForTone.match(/(confused|stuck|help this|not sure|hesitant|hard|difficult)/);
+      if (empMatch) {
+        toneTrigger = TONE_STATES.EMPATHETIC;
+        toneReason = `keyword "${empMatch[0]}"`;
+      }
+    }
+
+    this.personality.updateTone(toneTrigger, toneReason);
+
     const ev   = this._step3_evaluateState(input, ir);
     const goal = this._step4_chooseGoal(ev);
     const act  = this._step5_selectAction(goal, ev, ir);
-    const raw  = this._step6_generateResponse(act, ir, input);
+    let raw    = this._step6_generateResponse(act, ir, input);
+
+    // Apply deferred resolution transition phrasing
+    if (ir && ir.isDeferredResolution) {
+      raw = `Also, regarding your other point... ${raw}`;
+    }
 
     // ── CONVERSION ANCHOR: Track goal progress ──────────────
     this._trackGoalProgress(goal, ev);
@@ -211,11 +287,28 @@ export class ResponseOrchestrator {
     return raw;
   }
 
+  /**
+   * Determine if the user has implicitly signaled readiness (acknowledgment != hesitation).
+   */
+  _isAcknowledgmentReady(input, ir) {
+    if (!input || !input.trim()) return true;
+    
+    // Hesitation block
+    if (/(hmm|um|uh|maybe|not sure|\bwait\b)/i.test(input)) return false;
+    
+    // Readiness confirmation
+    if (ir && ir.intent === INTENTS.POSITIVE) return true;
+    if (/(yeah|yes|okay|cool|sure|right|got it|sounds good)/i.test(input)) return true;
+    
+    return false;
+  }
+
   reset() {
     this.sm.reset();
     this.discovery.reset();
     this.leads.reset();
     this.fallback.reset();
+    this.memory.reset();
     this._capField     = null;
     this._unclear      = 0;
     this._turnsSinceGoalProgress = 0;
@@ -400,25 +493,40 @@ export class ResponseOrchestrator {
     this.sm.addToMemory({ role: 'user', text: input });
     this.discovery.addInsight(input, 'user_response');
 
-    // 2. Safely merge NLP Context (Threshold Gated)
+    // 2. Safely merge NLP Context (Threshold Gated) & MEMORY STORAGE
     const ld = this.sm.getContext().leadData;
+    const turn = this.sm.getContext().turnCount;
      
-    if (nlpData.business && (!ld.business || nlpData.confidence.business > 0.6)) {
-      this.leads.capture('business', nlpData.business.value);
-      this.sm.updateLeadData({ business: nlpData.business.value });
+    if (nlpData.business) {
+      this.memory.storeEntity('business', nlpData.business.value, nlpData.confidence.business || 0.6, turn);
+      if (!ld.business || nlpData.confidence.business > 0.6) {
+        this.leads.capture('business', nlpData.business.value);
+        this.sm.updateLeadData({ business: nlpData.business.value });
+      }
     }
-    if (nlpData.goal && (!ld.goal || nlpData.confidence.goal > 0.5)) {
-      this.leads.capture('goal', nlpData.goal.value);
-      this.sm.updateLeadData({ goal: nlpData.goal.value });
+    
+    if (nlpData.goal) {
+      this.memory.storeEntity('goal', nlpData.goal.value, nlpData.confidence.goal || 0.5, turn);
+      if (!ld.goal || nlpData.confidence.goal > 0.5) {
+        this.leads.capture('goal', nlpData.goal.value);
+        this.sm.updateLeadData({ goal: nlpData.goal.value });
+      }
     }
-    if (nlpData.problem && (!ld.problem || nlpData.confidence.problem > 0.5)) {
-      this.leads.capture('problem', nlpData.problem.value);
-      this.sm.updateLeadData({ problem: nlpData.problem.value });
+    
+    if (nlpData.problem) {
+      this.memory.storeEntity('problem', nlpData.problem.value, nlpData.confidence.problem || 0.5, turn);
+      if (!ld.problem || nlpData.confidence.problem > 0.5) {
+        this.leads.capture('problem', nlpData.problem.value);
+        this.sm.updateLeadData({ problem: nlpData.problem.value });
+      }
     }
 
-    if (nlpData.tenure && (!ld.tenure || nlpData.confidence.overall > 0.5)) {
-      this.leads.capture('tenure', nlpData.tenure.value);
-      this.sm.updateLeadData({ tenure: nlpData.tenure.value });
+    if (nlpData.tenure) {
+      this.memory.storeEntity('tenure', nlpData.tenure.value, nlpData.confidence.overall || 0.5, turn);
+      if (!ld.tenure || nlpData.confidence.overall > 0.5) {
+        this.leads.capture('tenure', nlpData.tenure.value);
+        this.sm.updateLeadData({ tenure: nlpData.tenure.value });
+      }
     }
 
     // Name Extraction — strict intro pattern only
@@ -433,20 +541,27 @@ export class ResponseOrchestrator {
         const candidate = m[1].toLowerCase();
         if (!nameBlacklist.has(candidate)) {
           const name = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+          this.memory.storeEntity('name', name, 1.0, turn);
           this.leads.capture('name', name);
           this.sm.updateLeadData({ name });
         }
       }
     }
 
-    if (!ld.timeline && nlpData.urgency && nlpData.urgency.value === 'high') {
-      this.leads.capture('timeline', 'asap');
-      this.sm.updateLeadData({ timeline: 'asap' });
+    if (nlpData.urgency && nlpData.urgency.value === 'high') {
+      this.memory.storeEntity('timeline', 'asap', 1.0, turn);
+      if (!ld.timeline) {
+        this.leads.capture('timeline', 'asap');
+        this.sm.updateLeadData({ timeline: 'asap' });
+      }
     }
 
     // MULTI-SIGNAL HANDLING
-    if (nlpData.secondaryIntent && this.SERVICE_INTENTS.has(nlpData.secondaryIntent) && !ld.problem) {
-      this.sm.updateLeadData({ problem: `Prior failure/interest in ${nlpData.secondaryIntent}` });
+    if (nlpData.secondaryIntent) {
+      this.memory.storeEntity('secondary_intent', nlpData.secondaryIntent, nlpData.confidence.intent || 0.6, turn);
+      if (this.SERVICE_INTENTS.has(nlpData.secondaryIntent) && !ld.problem) {
+        this.sm.updateLeadData({ problem: `Prior failure/interest in ${nlpData.secondaryIntent}` });
+      }
     }
 
     // 3. Update intent in state machine (only if meaningful)
@@ -874,7 +989,7 @@ export class ResponseOrchestrator {
 
         // ── NOT IN A FLOW: use Discovery Engine ──
         const flowCtx = act.flowCtx || null;
-        const disc = this.discovery.getNextQuestion(flowCtx, ctx.depthLevel);
+        const disc = this.discovery.getNextQuestion(flowCtx, ctx.depthLevel, this.memory);
 
         if (ir.insight && ir.insight !== this.kb.fallbackInsight) {
           return this.personality.compose(`${ir.insight}. ${disc.question}`, { acknowledge: true });
@@ -904,6 +1019,13 @@ export class ResponseOrchestrator {
     if ((ctx.depthLevel || 1) >= 4) qType = 'CONFIRM';
     if ((ctx.depthLevel || 1) >= 5) qType = 'CLOSE';
 
+    const activeTone = this.personality.getToneState();
+    
+    // Structure Influence based on Tone
+    if (activeTone === TONE_STATES.URGENT) {
+       qType = 'CLARIFY'; // Keep questions explicit and direct to force logic forward
+    }
+
     return this.builder.build({
       insight: ir.insight || this.kb.fallbackInsight,
       outcome: ir.kbOutcome,
@@ -912,7 +1034,7 @@ export class ResponseOrchestrator {
       questionType: qType,
       intentStrength: ir.intentStrength,
       userType: ir.userType,
-      forceShort: false
+      forceShort: this.fallback.interruptCount > 0 || activeTone === TONE_STATES.URGENT
     });
   }
 

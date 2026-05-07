@@ -77,15 +77,6 @@ export class RouterHandlers {
       config
     );
 
-    // ── Interrupt Responses (engine-level — no config needed) ─
-    this._interrupts = [
-      "No problem, take your time.",
-      "I'm listening, go ahead.",
-      "Take your time. What were you thinking?",
-      "No worries, whenever you're ready.",
-      "Take your time, I'm here."
-    ];
-
     // ── Round-Robin Counters ─────────────────────────────────
     this._counters = {};
   }
@@ -112,9 +103,6 @@ export class RouterHandlers {
 
       case 'OUT_OF_SCOPE':
         return this._pick(this._outOfScope, 'out_of_scope');
-
-      case 'INTERRUPT':
-        return this._pick(this._interrupts, 'interrupt');
 
       default:
         return this._pick(this._noise, 'noise_fallback');

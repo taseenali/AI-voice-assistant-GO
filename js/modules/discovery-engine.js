@@ -85,13 +85,30 @@ export class DiscoveryEngine {
    * Get the next discovery question based on depth and context.
    * @param {string|null} context - Optional context key ('website', 'seo', 'ai', 'app', or any custom key)
    * @param {number} externalDepth - Current depth from orchestrator (1-5)
+   * @param {MemorySynthesis|null} memory - The memory layer instance
    * @returns {{ question: string, depth: number }}
    */
-  getNextQuestion(context = null, externalDepth = null) {
+  getNextQuestion(context = null, externalDepth = null, memory = null) {
     // Use external depth if provided (preferred — synced with orchestrator)
     const targetDepth = externalDepth
       ? Math.min(3, Math.max(1, externalDepth))
       : Math.min(3, this._currentDepth + 1);
+
+    // If memory proves we already know core entities securely, skip basic depth questions
+    let skipLevel1 = false;
+    let skipLevel2 = false;
+    
+    if (memory) {
+      const probNode = memory.getEntityWithMeta('problem');
+      const bizNode = memory.getEntityWithMeta('business');
+      if (probNode && probNode.confidence >= 0.6) skipLevel1 = true;
+      if (bizNode && bizNode.confidence >= 0.6) skipLevel2 = true;
+    }
+
+    let effectiveTargetDepth = targetDepth;
+    
+    if (effectiveTargetDepth === 1 && skipLevel1) effectiveTargetDepth = 2;
+    if (effectiveTargetDepth === 2 && skipLevel2) effectiveTargetDepth = 3;
 
     // If a specific context is provided, prefer those questions first
     if (context && this._contextQuestions[context]) {
@@ -100,13 +117,17 @@ export class DiscoveryEngine {
       if (available.length > 0) {
         const question = available[0];
         this._questionsAsked.push(question);
-        this._currentDepth = targetDepth;
-        return { question, depth: targetDepth };
+        this._currentDepth = effectiveTargetDepth;
+        return { question, depth: effectiveTargetDepth };
       }
     }
 
     // Depth-based questions — try at target depth, fall back to adjacent depths
-    for (let d = targetDepth; d >= 1; d--) {
+    for (let d = effectiveTargetDepth; d >= 1; d--) {
+      // Respect memory skips
+      if (d === 1 && skipLevel1) continue;
+      if (d === 2 && skipLevel2) continue;
+
       const pool      = this._questions[d] || [];
       const available = pool.filter(q => !this._questionsAsked.includes(q));
       if (available.length > 0) {
@@ -120,7 +141,7 @@ export class DiscoveryEngine {
     // All questions exhausted — return a generic forward-mover
     return {
       question: "What else can you tell me about the situation? The more context, the better I can help.",
-      depth: targetDepth
+      depth: effectiveTargetDepth
     };
   }
 

@@ -26,10 +26,12 @@ class App {
 
   constructor() {
     // ─── State (pre-init) ──────────────────────────────────
-    this._isProcessing   = false;
     this._voiceMode      = false;
     this._interimDisplay = null;
     this._isDebug        = false;
+    
+    this.currentInputId  = 0;
+    this._currentThinkingBubble = null;
 
     // Boot the app asynchronously — config loads BEFORE engine init
     this._boot();
@@ -179,6 +181,13 @@ class App {
       }
     };
 
+    this.speechIO.onInterrupt = (partial) => {
+      console.log('[Interrupt] Detected');
+      console.log('[Interrupt] Speech cancelled');
+      console.log('[Interrupt] Partial stored:', partial);
+      this._processUserInput('__INTERRUPT__');
+    };
+
     this.speechIO.onListenStart = () => {
       this._setOrbState('listening');
       this.$micBtn.classList.add('active');
@@ -238,6 +247,17 @@ class App {
     if (greeting && typeof greeting === 'string') {
       this.speechIO.speak(greeting);
     }
+    
+    this._resetInactivityTimer();
+  }
+
+  _resetInactivityTimer() {
+    if (this._inactivityTimer) clearTimeout(this._inactivityTimer);
+    // 5 minutes of inactivity triggers a soft reset
+    this._inactivityTimer = setTimeout(() => {
+      console.log('[App] Session timed out due to inactivity. Resetting memory and state.');
+      this._resetConversation();
+    }, 5 * 60 * 1000);
   }
 
   _handleSend() {
@@ -300,39 +320,111 @@ class App {
   }
 
   async _processUserInput(input) {
-    if (this._isProcessing) return;
-    this._isProcessing = true;
+    this.currentInputId++;
+    const inputId = this.currentInputId;
+    
+    this._resetInactivityTimer();
 
-    // Add user message to chat
+    // ── INTERRUPT MERGING ──
+    if (input !== '__INTERRUPT__' && this.speechIO.interruptBuffer.timestamp > 0) {
+      const elapsed = Date.now() - this.speechIO.interruptBuffer.timestamp;
+      
+      if (elapsed > 3000) {
+        // Expired
+        console.log('[Interrupt] Buffer expired (>3000ms)');
+        this.speechIO.interruptBuffer.timestamp = 0;
+        this.speechIO.interruptBuffer.mergedOnce = false;
+      } else if (!this.speechIO.interruptBuffer.mergedOnce) {
+        const clean = (str) => String(str).replace(/[-—]+$/, '').trim();
+        input = clean(this.speechIO.interruptBuffer.partialTranscript) + " " + clean(input);
+        console.log('[Interrupt] Merged input:', input);
+        
+        this.speechIO.interruptBuffer.mergedOnce = true;
+        this.speechIO.interruptBuffer.timestamp = 0; // Fully consume the buffer
+      }
+    }
+
+    // Optimally cancel pending delay immediately
+    if (this._currentResolveDelay) {
+      this._currentResolveDelay();
+      this._currentResolveDelay = null;
+      if (this._activeDelayTimer) clearTimeout(this._activeDelayTimer);
+    }
+
+    // 1. Interruption Handling
+    if (this.speechIO.isSpeaking) {
+      this.speechIO.cancelSpeech();
+    }
+
+    // 2. Clear old state
+    this._clearThinking();
     this._addMessage('user', input);
 
-    // Show thinking state
-    this._setOrbState('thinking');
-    const thinkingBubble = this._addThinking();
+    // Debounce thinking UI to prevent flicker
+    setTimeout(() => {
+      if (inputId === this.currentInputId) {
+        this._setOrbState('thinking');
+        this._currentThinkingBubble = this._addThinking();
+      }
+    }, 120);
 
-    // Small delay to simulate processing (makes it feel more natural)
-    await this._delay(400 + Math.random() * 400);
+    // 3. Detect intent complexity
+    const wordCount = input.split(/\\s+/).length;
+    let intent_complexity = 1;
+    
+    // Prevent breaking encapsulation: use orchestrator.intent locally for heuristical weight
+    const nlpData = this.orchestrator.nlp.analyze(input, this.stateMachine.getContext());
+    if (this.orchestrator.intent.isPositive(input) || this.orchestrator.intent.isNegative(input) || wordCount <= 3) {
+      intent_complexity = 0;
+    } else if (nlpData && nlpData.intentStrength === 'strong') {
+      intent_complexity = 2; // High complexity logic trace
+    }
 
-    // Get response from orchestrator
+    // 4. Calculate bounded delay
+    let delayMs = 200 + (intent_complexity * 300) + (wordCount * 10);
+    delayMs = Math.max(120, Math.min(1200, delayMs));
+
+    console.log(`[Timing] Input received: ID ${inputId}`);
+    console.log(`[Timing] Delay started: ${delayMs} ms (wordCount: ${wordCount}, complexity: ${intent_complexity})`);
+
+    // 5. Await Delay (Cancellable)
+    await new Promise(resolve => {
+      this._currentResolveDelay = resolve;
+      this._activeDelayTimer = setTimeout(() => {
+        this._currentResolveDelay = null;
+        resolve();
+      }, delayMs);
+    });
+
+    // 6. Mandatory Stale Protection
+    if (inputId !== this.currentInputId) {
+      console.log('[Timing] Delay cancelled (new input). Response skipped (stale).');
+      return; 
+    }
+
+    // 7. Generate Response Pipeline
     const response = this.orchestrator.processInput(input);
+    console.log('[Timing] Response executed');
 
-    // Remove thinking indicator
-    this._removeThinking(thinkingBubble);
+    // Remove thinking indicator securely
+    this._clearThinking();
 
     if (response) {
       this._addMessage('assistant', response);
-
-      // ALWAYS speak response (pipeline integrity requirement)
-      if (response && typeof response === 'string') {
+      if (typeof response === 'string') {
         this.speechIO.speak(response);
       }
     }
 
     this._setOrbState('idle');
-    this._isProcessing = false;
-
-    // Focus input
     this.$textInput.focus();
+  }
+
+  _clearThinking() {
+    if (this._currentThinkingBubble) {
+      this._removeThinking(this._currentThinkingBubble);
+      this._currentThinkingBubble = null;
+    }
   }
 
   _toggleVoice() {

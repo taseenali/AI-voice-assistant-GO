@@ -80,6 +80,9 @@ export class ConversationStateMachine {
 
   constructor(config = null) {
     this._listeners = [];
+    this._deferredIntentStack = [];
+    this.maxStackSize = 1;
+
     if (config) {
       this.initFromConfig(config);
     }
@@ -140,7 +143,49 @@ export class ConversationStateMachine {
     };
   }
 
-  // ─── Accessors ─────────────────────────────────────────────
+  // ─── DEFERRED INTENT SYSTEM (Step 5 Layer) ──────────────────────────
+
+  deferIntent(intentObj) {
+    if (!intentObj || !intentObj.intent) return;
+    
+    // Prevent duplicate deferred triggers (edge case 3)
+    if (this._resolvedIntents && this._resolvedIntents.has(intentObj.intent)) {
+       console.log(`[Intent] Duplicate deferred rejected → ${intentObj.intent} (already resolved)`);
+       return;
+    }
+
+    this._deferredIntentStack.push(intentObj);
+    
+    // Max Stack Bounds Enforcement
+    if (this._deferredIntentStack.length > this.maxStackSize) {
+      // Discard lowest priority (currently just truncating the oldest shifted queue item per FIFO limit)
+      const dropped = this._deferredIntentStack.shift();
+      console.warn(`[Intent] Dropping deferred intent due to size limit: ${dropped.intent}`);
+    }
+    
+    console.log(`[Intent] Deferred → ${intentObj.intent}`);
+  }
+
+  popDeferredIntent() {
+    const popped = this._deferredIntentStack.pop();
+    if (popped) {
+      this._resolvedIntents = this._resolvedIntents || new Set();
+      this._resolvedIntents.add(popped.intent);
+    }
+    return popped;
+  }
+
+  hasDeferredIntent() {
+    return this._deferredIntentStack.length > 0;
+  }
+
+  isCurrentFlowStable() {
+    const state = this.getState();
+    // Flow is stable if not in the middle of active sequence or gating steps
+    return state !== STATES.LEAD_CAPTURE && state !== STATES.OBJECTION && state !== STATES.FLOW_GENERAL;
+  }
+
+  // ─── EVENTS ──────────────────────────────────────────────────
 
   getState() {
     return this._state;

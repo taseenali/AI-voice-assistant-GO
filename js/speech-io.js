@@ -13,9 +13,18 @@ export class SpeechIO {
     this._isSpeaking    = false;
     this._selectedVoice = null;
     this._voices        = [];
+    this._activeSpeechToken = 0;
+
+    this.interruptBuffer = {
+      isInterrupted: false,
+      partialTranscript: "",
+      timestamp: 0,
+      mergedOnce: false
+    };
 
     // Callbacks
-    this.onResult     = null;   // (transcript, isFinal) => {}
+    this.onResult      = null;   // (transcript, isFinal) => {}
+    this.onInterrupt   = null;   // (partialTranscript) => {}
     this.onListenStart = null;
     this.onListenStop  = null;
     this.onSpeakStart  = null;
@@ -63,13 +72,25 @@ export class SpeechIO {
 
       // Interruptibility check: Stop if user starts speaking over the assistant
       if (!isFinal && this._isSpeaking) {
-        const words = text.split(/\s+/).filter(w => w.length > 0);
-        if (words.length > 2) {
+        if (this._isMeaningfulInterrupt(text)) {
           console.log('[SpeechIO] Interrupted by user:', text);
-          setTimeout(() => {
-            this.stopSpeaking();
-          }, 150);
+          
+          this.interruptBuffer.isInterrupted = true;
+          this.interruptBuffer.partialTranscript = text;
+          this.interruptBuffer.timestamp = Date.now();
+          this.interruptBuffer.mergedOnce = false;
+          
+          this.cancelSpeech();
+          
+          if (this.onInterrupt) {
+            this.onInterrupt(text);
+          }
         }
+      }
+
+      // Reset buffer on final input if it matches interrupt text length bounds
+      if (isFinal) {
+        this.interruptBuffer.isInterrupted = false;
       }
 
       if (this.onResult) {
@@ -160,6 +181,9 @@ export class SpeechIO {
     this.stopSpeaking();
     this._cancelPlayback = false;
     this._isSpeaking = true;
+    this._activeSpeechToken++;
+    const currentToken = this._activeSpeechToken;
+
     if (this.onSpeakStart) this.onSpeakStart();
 
     try {
@@ -189,11 +213,11 @@ export class SpeechIO {
 
       // 3. Process Chunks with Variation
       for (const chunk of chunks) {
-        if (this._cancelPlayback) break;
+        if (this._cancelPlayback || currentToken !== this._activeSpeechToken) break;
 
-        await this._speakUtterance(chunk, chunks.indexOf(chunk), chunks.length);
+        await this._speakUtterance(chunk, chunks.indexOf(chunk), chunks.length, currentToken);
 
-        if (this._cancelPlayback) break;
+        if (this._cancelPlayback || currentToken !== this._activeSpeechToken) break;
 
         // 4. Structured Pauses
         if (chunks.indexOf(chunk) < chunks.length - 1) {
@@ -204,21 +228,22 @@ export class SpeechIO {
       }
 
       // 5. Conversational Breathing Space (200-400ms max)
-      if (!this._cancelPlayback) {
+      if (!this._cancelPlayback && currentToken === this._activeSpeechToken) {
         await this._wait(this._randWait(200, 400));
       }
     } catch (err) {
       console.error("Speech error:", err);
     } finally {
-      if (!this._cancelPlayback) {
+      if (!this._cancelPlayback && currentToken === this._activeSpeechToken) {
         this._isSpeaking = false;
         if (this.onSpeakEnd) this.onSpeakEnd();
       }
     }
   }
 
-  _speakUtterance(textChunk, idx, total) {
+  _speakUtterance(textChunk, idx, total, token) {
     return new Promise((resolve) => {
+      if (token !== this._activeSpeechToken) return resolve();
       const utterance  = new SpeechSynthesisUtterance(textChunk);
       
       if (this._selectedVoice) {
@@ -257,6 +282,7 @@ export class SpeechIO {
     if (this._synthesis) {
       this._synthesis.cancel();
       this._cancelPlayback = true;
+      this._activeSpeechToken++; // Instantly invalidate pending chunks
       if (this._isSpeaking) {
         this._isSpeaking = false;
         if (this.onSpeakEnd) this.onSpeakEnd();
@@ -264,7 +290,20 @@ export class SpeechIO {
     }
   }
 
+  cancelSpeech() {
+    this.stopSpeaking();
+  }
+
   // ─── Internal Utility ───────────────────────────────────────
+
+  _isMeaningfulInterrupt(text) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const fillers = new Set(['uh', 'um', 'uhh', 'umm', 'ahh', 'ah', 'err', 'erm', 'like', 'so', 'well', 'okay', 'ok', 'yeah']);
+    const meaningful = words.filter(w => !fillers.has(w.toLowerCase()));
+    
+    // Trigger interrupt if there are at least 2 meaningful tokens (or a very long fast string)
+    return meaningful.length >= 2 || words.length >= 4; 
+  }
 
   _chunkText(text) {
     // Split on common natural breaks
