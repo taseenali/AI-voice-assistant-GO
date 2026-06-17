@@ -1,0 +1,45 @@
+{
+  "_fixtureMeta": {
+    "capturedAt": "2026-06-16",
+    "source": "live spike call (captures/1781642976400-tool-calls.json)",
+    "note": "arguments is object at webhook; string only in artifact.messages[]. Re-capture if Vapi payloads change."
+  },
+  "message": {
+    "type": "tool-calls",
+    "toolCalls": [
+      {
+        "id": "call_capture_test_001",
+        "type": "function",
+        "function": {
+          "name": "capture_lead",
+          "arguments": {
+            "name": "Jane",
+            "reason_for_visit": "checkup"
+          }
+        }
+      }
+    ],
+    "toolCallList": [
+      {
+        "id": "call_capture_test_001",
+        "type": "function",
+        "function": {
+          "name": "capture_lead",
+          "arguments": {
+            "name": "Jane",
+            "reason_for_visit": "checkup"
+          }
+        }
+      }
+    ],
+    "call": {
+      "id": "call-test-capture-tool-001",
+      "type": "inboundPhoneCall"
+    },
+    "assistant": {
+      "metadata": {
+        "tenant_id": "medical-clinic"
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "assistant": {
+    "firstMessage": "Thanks for calling the clinic — how can I help you today?",
+    "model": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a clinic receptionist. Get the caller name and reason for visit, then call capture_lead. Keep replies to one sentence."
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "capture_lead",
+            "description": "Save the caller's name, phone, and reason for visit.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "phone": { "type": "string" },
+                "reason_for_visit": { "type": "string" }
+              },
+              "required": ["name", "reason_for_visit"]
+            }
+          },
+          "server": {
+            "url": "https://<ngrok>.ngrok-free.app/api/vapi/webhook",
+            "headers": { "x-vapi-secret": "<VAPI_WEBHOOK_SECRET>" }
+          }
+        }
+      ]
+    },
+    "serverUrl": "https://<ngrok>.ngrok-free.app/api/vapi/webhook",
+    "metadata": { "tenant_id": "medical-clinic" }
+  }
+}

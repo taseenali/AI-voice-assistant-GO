@@ -1,0 +1,218 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Component Inventory \& Progress Report}
+\author{Product Engineering}
+\date{June 2026 --- Matrix v1.2}
+
+\begin{document}
+\maketitle
+
+\section{Overall Status}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Stage & Prototype \\
+Product-ready & \textbf{No} \\
+Overall completion & $\sim$33\% toward production medical receptionist \\
+Primary blocker & Phone unverified; HIPAA not implemented; no production deploy \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Runtime Surfaces}
+
+\begin{center}
+\begin{tikzpicture}[
+  surf/.style={draw, rounded corners, minimum width=3.2cm, minimum height=1.1cm, align=center, font=\small},
+  ok/.style={surf, fill=medgreen!20},
+  warn/.style={surf, fill=medamber!20},
+  bad/.style={surf, fill=medred!20}
+]
+  \node[ok] (w) {Voice Widget\\:3000 --- \done};
+  \node[warn] (s) {Express API\\:3001 --- \partial};
+  \node[ok] (d) {React Dashboard\\:5173 --- \done};
+  \node[bad] (p) {Phone Runtime\\--- \missing};
+  \draw[-{Stealth}] (w)--(s);
+  \draw[-{Stealth}] (d)--(s);
+  \draw[-{Stealth}, dashed] (p)--(s);
+\end{tikzpicture}
+\end{center}
+
+\section{Component Registry}
+
+\subsection{A. Voice Widget Frontend (\texttt{js/}, \texttt{index.html})}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Component} & \textbf{Purpose} & \textbf{Status} & \textbf{\%} \\
+\midrule
+\texttt{app.js} & UI boot, calendar hooks, health poll & \done & 90 \\
+\texttt{response-orchestrator.js} & 6-step conversation pipeline & \done & 85 \\
+\texttt{state-machine.js} & FSM + engagement scoring & \done & 90 \\
+\texttt{speech-io.js} & Browser Web Speech API & \done & 70 \\
+\texttt{config/loader.js} & Multi-tenant \texttt{?client=} & \done & 95 \\
+\texttt{config/validator.js} & Schema validation & \verified & 100 \\
+\texttt{modules/*} (12 files) & Intent, lead, emergency, flows & \done & 80 \\
+\texttt{nlp/*} (10 files) & Temporal, confidence, semantic & \done & 75 \\
+\texttt{router/*} & Conversation routing & \done & 70 \\
+\texttt{knowledge-engine.js} & Config-driven insights & \done & 65 \\
+\texttt{llm-adapter.js} & Ollama proxy client & \done & 80 \\
+\texttt{webhook-dispatcher.js} & HMAC outbox (browser) & \done & 75 \\
+\texttt{outbox-db.js} & IndexedDB queue & \done & 80 \\
+\texttt{local-model-runner.js} & WebLLM scaffold & \partial & 10 \\
+\midrule
+\textbf{Subtotal} & & & \textbf{78} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Improvements needed:} Server-side webhook relay; retire browser STT for production phone; add business-hours gate.
+
+\subsection{B. Express Backend (\texttt{server/})}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Route / Module} & \textbf{Purpose} & \textbf{Status} & \textbf{\%} \\
+\midrule
+\texttt{index.js} & App shell, CORS, rate limit & \done & 90 \\
+\texttt{lib/database.js} & SQLite WAL, prepared stmts & \done & 85 \\
+\texttt{routes/config.js} & Tenant config + secret inject & \verified & 95 \\
+\texttt{routes/llm-proxy.js} & Ollama proxy + sanitization & \done & 85 \\
+\texttt{routes/log.js} & Turn persistence & \done & 80 \\
+\texttt{routes/sessions.js} & Session CRUD + turns & \done & 85 \\
+\texttt{routes/leads.js} & Lead capture API & \done & 85 \\
+\texttt{routes/emergency.js} & Emergency event log & \verified & 90 \\
+\texttt{routes/calendar.js} & freebusy + events.insert & \partial & 60 \\
+\texttt{routes/voice.js} & Twilio TwiML scaffold & \partial & 15 \\
+\texttt{routes/vapi.js} & Vapi webhooks & \missing & 0 \\
+\texttt{routes/billing.js} & Stripe subscriptions & \missing & 0 \\
+\texttt{routes/tenants.js} & Tenant CRUD API & \missing & 0 \\
+\texttt{middleware/auth.js} & Dashboard JWT auth & \missing & 0 \\
+\midrule
+\textbf{Subtotal} & & & \textbf{58} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Improvements needed:} Vapi routes; calendar E2E wiring; server webhook worker; auth middleware.
+
+\subsection{C. Admin Dashboard (\texttt{dashboard/src/})}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Panel} & \textbf{Purpose} & \textbf{Status} & \textbf{\%} \\
+\midrule
+Overview & KPIs, session summary & \done & 70 \\
+Leads & Lead table + detail & \done & 75 \\
+Sessions & Transcript viewer & \done & 70 \\
+Emergency & Red-flag event log & \done & 80 \\
+System Health & LLM + server status & \done & 75 \\
+Configuration & Read-only tenant config & \partial & 40 \\
+Tenant Management & Multi-clinic admin & \missing & 0 \\
+Analytics & Call volume, conversion & \missing & 0 \\
+Billing & Usage + invoices & \missing & 0 \\
+Auth / Login & RBAC & \missing & 0 \\
+Call Recordings & Audio playback & \missing & 0 \\
+\midrule
+\textbf{Subtotal} & & & \textbf{52} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{D. Data \& Config}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Asset} & \textbf{Purpose} & \textbf{Status} & \textbf{\%} \\
+\midrule
+\texttt{configs/medical-clinic.json} & Primary tenant config & \done & 90 \\
+\texttt{configs/default.json} & Fallback tenant & \done & 80 \\
+\texttt{server/data/medvoice.db} & SQLite persistence & \done & 80 \\
+Tenant DB schema & Per-clinic credentials store & \missing & 0 \\
+Patient records DB & Returning patient lookup & \missing & 0 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{E. Tests \& DevOps}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lXcc@{}}
+\toprule
+\textbf{Item} & \textbf{Coverage} & \textbf{Status} & \textbf{\%} \\
+\midrule
+Vitest unit tests (4 files) & Config, emergency, lead, temporal & \done & 40 \\
+E2E booking test & Calendar flow & \missing & 0 \\
+CI/CD (GitHub Actions) & Build + test pipeline & \missing & 0 \\
+Production deployment & Hosted URL & \missing & 0 \\
+Monitoring (Sentry/Datadog) & Error + uptime & \missing & 0 \\
+HIPAA hosting + BAA & Compliance layer & \missing & 0 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Missing Components (Must Build)}
+
+\begin{enumerate}
+  \item \textbf{Vapi integration layer} --- assistant-request, tool-calls, end-of-call-report
+  \item \textbf{Server-side webhook worker} --- replace browser-only delivery for phone
+  \item \textbf{Tenant management API + UI} --- onboard clinics without editing JSON
+  \item \textbf{Authentication / RBAC} --- protect dashboard and admin APIs
+  \item \textbf{Billing (Stripe)} --- subscription tiers, usage metering
+  \item \textbf{HIPAA stack} --- encrypted PHI store, audit logs, BAAs, HIPAA-eligible hosting
+  \item \textbf{Call transfer / escalation} --- Twilio transfer from Vapi tool
+  \item \textbf{SMS confirmations} --- Twilio SMS post-booking
+  \item \textbf{After-hours logic} --- business\_hours in config + flow branching
+  \item \textbf{Reschedule / cancel} --- calendar event update/delete tools
+\end{enumerate}
+
+\section{Capability Matrix Summary}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Category} & \textbf{Done} & \textbf{Scaffold} & \textbf{Missing} & \textbf{Total} \\
+\midrule
+Core receptionist & 7 & 2 & 8 & 17 \\
+Platform / ops & 3 & 1 & 8 & 12 \\
+\midrule
+\textbf{Total} & \textbf{10} & \textbf{3} & \textbf{16} & \textbf{29} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Per-Component Feature Roadmap}
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Component} & \textbf{Next Features} \\
+\midrule
+Orchestrator & Deprecate for phone; keep for web demo widget \\
+Calendar & Enable \texttt{calendar\_enabled}; timezone handling; buffer slots \\
+Leads & CRM sync (HubSpot/Salesforce webhook templates) \\
+Emergency & Auto-transfer to on-call number via Vapi \\
+Dashboard & Editable config, call playback, per-tenant views \\
+Multi-tenant & Phone-number $\rightarrow$ tenant mapping table \\
+Webhooks & Server queue + retry + delivery dashboard \\
+LLM & Production model (GPT-4o mini); prompt versioning per tenant \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\end{document}

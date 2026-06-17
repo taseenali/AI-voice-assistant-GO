@@ -1,0 +1,248 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Go-to-Market \& Competitive Strategy}
+\author{Market Research --- June 2026}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Strategic positioning for MedVoice AI in the medical AI receptionist market. Research sources: LetsAskClaire 2026 State of AI Receptionists, DeepCura rankings, AgentZap pricing guide, Vapi cost analysis. Goal: justify premium pricing through privileges beyond cost savings.
+\end{abstract}
+
+\section{Market Context}
+
+The medical AI receptionist market in 2026 is consolidating around three architectures:
+\begin{enumerate}[nosep]
+  \item \textbf{Reasoning AI platforms} (Hyro, Claire) --- enterprise, deep EHR
+  \item \textbf{Virtual receptionist + AI} (Smith.ai, Ruby) --- hybrid human backup
+  \item \textbf{Developer platforms} (Vapi, Retell) --- build-your-own on API
+\end{enumerate}
+
+MedVoice occupies category 1+3: \textbf{medical-specialized product built on developer-grade runtime}---faster to ship than pure platform, more control than boxed SMB tools.
+
+\section{Competitive Landscape}
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Competitor} & \textbf{Price/mo} & \textbf{Strength} & \textbf{Weakness} \\
+\midrule
+Hyro & \$10K+ & Enterprise EHR & Overkill for independents \\
+DeepCura & \$129/provider & Scribe + reception bundle & Not phone-first \\
+My AI Front Desk & \$65--99 & Healthcare focus & Limited customization \\
+Smith.ai & \$95+ & Human fallback & Per-call overages \\
+Emitrr & \$100--1K & Independent practices & Generic, not medical-deep \\
+Retell/Vapi DIY & Usage-based & Cheap at scale & No product layer \\
+\textbf{MedVoice} & \textbf{\$1.5--5K target} & \textbf{Medical FSM + your data} & \textbf{Pre-revenue} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Market Pricing Benchmarks (Medical, 2026)}
+
+Per LetsAskClaire research, US medical practices pay:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Practice Profile} & \textbf{Calls/mo} & \textbf{Market Rate/mo} \\
+\midrule
+Solo provider & 300--600 & \$1,200--2,400 \\
+2--3 provider primary care & 600--1,200 & \$2,400--4,200 \\
+4--6 provider multi-specialty & 1,200--2,400 & \$4,200--7,200 \\
+8--12 provider group & 2,400--4,000 & \$7,200--12,000 \\
+Multi-location (15+) & 4,000--8,000+ & \$12,000--25,000+ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Human receptionist benchmark:} 2 FTE at \$26/hr loaded = \textbf{\$108K/year} (\$9K/mo) vs.\ AI at \textbf{\$60K/year} (\$5K/mo average).
+
+\section{MedVoice Pricing Strategy}
+
+\subsection{Cost Floor (do not price below)}
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Item} & \textbf{1,000 min/mo clinic} \\
+\midrule
+Vapi + providers (all-in) & \$180--330 \\
+Hosting + monitoring & \$50--100 \\
+Support allocation & \$100--200 \\
+\midrule
+\textbf{Floor} & \textbf{\$330--630/mo} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Target \textbf{3--5$\times$ gross margin} on variable costs $\rightarrow$ charge \textbf{\$1,500--2,500/mo} for solo/small clinic entry.
+
+\subsection{Recommended Tier Structure}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Tier} & \textbf{Price} & \textbf{Included} & \textbf{Target} \\
+\midrule
+\textbf{Starter} & \$1,499/mo & 800 min, 1 number, calendar & Solo provider \\
+\textbf{Professional} & \$2,999/mo & 2,000 min, 2 numbers, SMS & 2--4 providers \\
+\textbf{Group} & \$5,999/mo & 5,000 min, 5 numbers, analytics & 5--10 providers \\
+\textbf{Enterprise} & Custom & Unlimited*, EHR, SLA & Multi-location \\
+\bottomrule
+\end{tabular}
+\end{center}
+Overage: \$1.50/min (high enough to encourage tier upgrades, low enough vs.\ human cost).
+
+\subsection{Strategic Price Entry}
+
+\begin{itemize}[nosep]
+  \item \textbf{Launch (months 1--3):} Pilot pricing \$999/mo for first 5 clinics --- ``Founding Practice'' badge, locked rate for 12 months
+  \item \textbf{Growth (months 4--8):} Raise to list price; grandfather pilots
+  \item \textbf{Scale (month 9+):} Add Enterprise tier; annual prepay discount (15\%)
+\end{itemize}
+
+\section{Why Clinics Buy Beyond Price}
+
+These are your \textbf{privileges}---reasons to choose MedVoice at premium vs.\ \$65/mo generic tools:
+
+\subsection{1. Medical-Specific Safety (non-negotiable)}
+\begin{itemize}[nosep]
+  \item Deterministic emergency keyword gate (bypasses LLM) --- \verified in codebase
+  \item Red-flag routing to clinical staff within seconds
+  \item HIPAA BAA chain managed for clinic (one vendor relationship)
+  \item Audit trail for every call turn (compliance-ready)
+\end{itemize}
+
+\subsection{2. Appointment Intelligence}
+\begin{itemize}[nosep]
+  \item Real-time Google Calendar freebusy (not just Calendly links)
+  \item Structured lead capture: DOB, insurance, reason for visit
+  \item Service-specific discovery flows (dental, urgent, follow-up)
+  \item Future: no-show recovery outbound campaigns
+\end{itemize}
+
+\subsection{3. After-Hours Revenue Recovery}
+\begin{itemize}[nosep]
+  \item 62\% of patient calls occur outside business hours (industry avg)
+  \item Voicemail = lost appointment; MedVoice books at 2am
+  \item Quantify ROI: ``3 after-hours bookings/mo $\times$ \$200 visit = \$600 recovered''
+\end{itemize}
+
+\subsection{4. Zero Staff Turnover Tax}
+\begin{itemize}[nosep]
+  \item Human receptionist: \$5K recruiting + 3-month ramp per hire
+  \item MedVoice: consistent greeting, zero sick days, instant scale
+\end{itemize}
+
+\subsection{5. Multilingual Without Interpreter Line}
+\begin{itemize}[nosep]
+  \item Spanish (Phase 3) included --- no \$0.50/min interpreter fees
+  \item Same medical terminology accuracy across languages
+\end{itemize}
+
+\subsection{6. Clinic-Owned Data}
+\begin{itemize}[nosep]
+  \item BYOK provider keys --- clinic keeps vendor relationships
+  \item Webhook to clinic's n8n/CRM --- data never trapped in platform
+  \item Export all transcripts, leads, recordings on demand
+\end{itemize}
+
+\subsection{7. Transparent Dashboard}
+\begin{itemize}[nosep]
+  \item Real-time lead feed, emergency alerts, call transcripts
+  \item No black-box AI --- see exactly what was said and captured
+  \item Per-service conversion metrics (Phase 4)
+\end{itemize}
+
+\section{Competitive Positioning Map}
+
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+  width=11cm, height=7cm,
+  xlabel={Price (monthly)},
+  ylabel={Medical Specialization},
+  xmin=0, xmax=12000,
+  ymin=0, ymax=10,
+  xtick={0,1000,3000,5000,10000},
+  xticklabels={\$0,\$1K,\$3K,\$5K,\$10K},
+  ytick={0,2,4,6,8,10},
+  grid=major,
+  legend pos=north west
+]
+\addplot[only marks, mark=*, mark size=3pt, red] coordinates {(99,4) (95,3) (65,5) (129,7)};
+\addplot[only marks, mark=square*, mark size=3pt, blue] coordinates {(10000,9) (5000,8)};
+\addplot[only marks, mark=triangle*, mark size=5pt, medgreen] coordinates {(2000,8)};
+\node[font=\scriptsize] at (axis cs:99,4.3) {My AI FD};
+\node[font=\scriptsize] at (axis cs:129,7.3) {DeepCura};
+\node[font=\scriptsize] at (axis cs:10000,9.3) {Hyro};
+\node[font=\scriptsize, medgreen] at (axis cs:2000,8.5) {\textbf{MedVoice}};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+
+MedVoice targets: \textbf{high medical specialization at mid-market price}---above generic SMB tools, below enterprise platforms.
+
+\section{Sales Narrative (Elevator to Close)}
+
+\begin{enumerate}
+  \item \textbf{Problem:} ``Your front desk misses 30--40\% of after-hours calls. Each missed call is a \$150--300 lost visit.''
+  \item \textbf{Solution:} ``MedVoice answers every call in 2 rings, books into your real calendar, and escalates emergencies to your on-call line.''
+  \item \textbf{Proof:} Live demo call to their Google Calendar; show dashboard transcript.
+  \item \textbf{Safety:} ``Our emergency detector doesn't use AI---it's a hard-coded medical red-flag system.''
+  \item \textbf{ROI:} ``At \$2,500/mo you need 13 extra appointments to break even. We typically see 20--40.''
+  \item \textbf{Close:} Founding Practice pilot at \$999/mo, 30-day money-back if $<$5 bookings.
+\end{enumerate}
+
+\section{Risk Mitigation for Buyers}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Buyer Fear} & \textbf{MedVoice Answer} \\
+\midrule
+``AI will say wrong things'' & Rule-based emergency gate + human transfer option \\
+``HIPAA violation'' & BAA with clinic; BAAs with all providers documented \\
+``Vendor lock-in'' & BYOK keys; webhook export; standard APIs \\
+``Hidden per-minute fees'' & Flat monthly tier; overage disclosed upfront \\
+``Can't handle our specialty'' & Configurable services, discovery flows, prompts \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{12-Month Revenue Model}
+
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+\textbf{Month} & \textbf{Clinics} & \textbf{ARPU} & \textbf{MRR} \\
+\midrule
+3 & 3 & \$1,200 & \$3,600 \\
+6 & 8 & \$2,000 & \$16,000 \\
+9 & 15 & \$2,500 & \$37,500 \\
+12 & 25 & \$3,000 & \$75,000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+At 25 clinics $\times$ \$3K ARPU = \textbf{\$900K ARR} by month 12 (aggressive but achievable in underserved independent-practice segment).
+
+\section{Key Differentiators to Emphasize in Marketing}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Medical FSM, not generic chatbot} --- purpose-built conversation states for healthcare
+  \item \textbf{Emergency-first architecture} --- safety before convenience
+  \item \textbf{Real calendar booking} --- not link-dropping
+  \item \textbf{Your data, your keys} --- anti-lock-in positioning
+  \item \textbf{Founding Practice program} --- scarcity + early adopter privilege
+\end{enumerate}
+
+\end{document}

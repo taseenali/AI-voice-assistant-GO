@@ -1,0 +1,27 @@
+{
+  "message": {
+    "timestamp": 1718534400000,
+    "type": "tool-calls",
+    "toolCallList": [
+      {
+        "id": "toolu_test_check_avail_001",
+        "name": "check_availability",
+        "arguments": {
+          "date": "2026-06-20",
+          "time": "10:00",
+          "duration_minutes": 30
+        }
+      }
+    ],
+    "call": {
+      "id": "call-test-tool-001",
+      "type": "inboundPhoneCall"
+    },
+    "assistant": {
+      "metadata": {
+        "tenant_id": "medical-clinic",
+        "session_id": "sess_vapi_test_001"
+      }
+    }
+  }
+}

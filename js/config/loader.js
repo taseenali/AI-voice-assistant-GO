@@ -84,9 +84,10 @@ export const AppContext = {
 export function getClientFromURL() {
   try {
     const params = new URLSearchParams(window.location.search);
-    return params.get('client') || 'default';
+    // Default tenant matches configs/medical-clinic.json and dashboard DEFAULT_CLIENT_ID
+    return params.get('client') || 'medical-clinic';
   } catch {
-    return 'default';
+    return 'medical-clinic';
   }
 }
 
@@ -206,9 +207,9 @@ function getEmergencyFallback() {
       confirmations: ['Great! We will be in touch shortly.'],  // SYNC-01 fix: was missing from fallback
       exit: ['Thanks for chatting! Feel free to reach out anytime.']
     },
-    emergency_keywords: [],
-    emergency_response: 'Please call 911 immediately for medical emergencies.',
     calendar_id: '',
-    calendar_enabled: false
+    calendar_enabled: false,
+    emergency_keywords: [],
+    emergency_response: 'Please call 911 immediately for medical emergencies.'
   };
 }

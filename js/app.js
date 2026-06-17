@@ -21,6 +21,7 @@ import { ConversationStateMachine, STATES } from './state-machine.js';
 import { ResponseOrchestrator }              from './response-orchestrator.js';
 import { SpeechIO }                          from './speech-io.js';
 import { AppContext, loadConfig, getClientFromURL } from './config/loader.js';
+import { conversationLogger } from './services/conversation-logger.js';
 
 class App {
 
@@ -35,6 +36,11 @@ class App {
 
     // Boot the app asynchronously — config loads BEFORE engine init
     this._boot();
+  }
+
+  /** Same session id as conversation logs / server rows (orchestrator uses conversationLogger). */
+  get sessionId() {
+    return conversationLogger.sessionId;
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -66,6 +72,7 @@ class App {
       this._setupSpeechCallbacks();
       this._setupStateListener();
       this._checkBrowserSupport();
+      this._startLLMHealthPolling();
 
       // 6. Gate first interaction behind a user gesture so Chrome TTS autoplay works.
       //    Tap-to-Start overlay calls _startConversation() on click.
@@ -96,14 +103,16 @@ class App {
     this.$stateDisplay  = document.getElementById('state-display');
     this.$engagementBar = document.getElementById('engagement-bar');
     this.$engagementVal = document.getElementById('engagement-value');
-    this.$leadPanel     = document.getElementById('lead-panel');
+        this.$leadPanel     = document.getElementById('lead-panel');
     this.$leadName      = document.getElementById('lead-name');
     this.$leadPractice  = document.getElementById('lead-practice');
-    this.$leadGoal      = document.getElementById('lead-goal');
-    this.$leadProblem   = document.getElementById('lead-problem');
-    this.$leadTimeline  = document.getElementById('lead-timeline');
-    this.$leadTenure    = document.getElementById('lead-tenure');
+    this.$leadDob       = document.getElementById('lead-dob');
+    this.$leadReason    = document.getElementById('lead-reason');
+    this.$leadInsurance = document.getElementById('lead-insurance');
+    this.$leadUrgency   = document.getElementById('lead-urgency');
     this.$leadScore     = document.getElementById('lead-score');
+    this.$llmStatus     = document.getElementById('llm-status');
+    this.$llmStatusLabel = document.getElementById('llm-status-label');
   }
 
   /**
@@ -273,6 +282,36 @@ class App {
   //  CONVERSATION
   // ═══════════════════════════════════════════════════════════
 
+  _updateLLMIndicator(available) {
+    if (!this.$llmStatus) return;
+    this.$llmStatus.classList.toggle('llm-status--available',   available === true);
+    this.$llmStatus.classList.toggle('llm-status--unavailable', available === false);
+    if (this.$llmStatusLabel) {
+      this.$llmStatusLabel.textContent = available === true  ? 'AI Enhanced'
+                                       : available === false ? 'Basic Mode'
+                                       : 'Connecting…';
+    }
+  }
+
+  async _checkLLMHealth() {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch('/api/llm/health', { signal: controller.signal });
+      clearTimeout(tid);
+      const body = res.ok ? await res.json() : { available: false };
+      this._updateLLMIndicator(body.available === true);
+    } catch {
+      this._updateLLMIndicator(false);
+    }
+  }
+
+  _startLLMHealthPolling() {
+    this._checkLLMHealth();
+    // Re-check every 30s — matches the adapter's recheck interval
+    this._llmHealthInterval = setInterval(() => this._checkLLMHealth(), 30_000);
+  }
+
   _startConversation() {
     const greeting = this.orchestrator.startConversation();
     this._addMessage('assistant', greeting);
@@ -288,10 +327,17 @@ class App {
   }
 
   _resetInactivityTimer() {
-    if (this._inactivityTimer) clearTimeout(this._inactivityTimer);
-    // 5 minutes of inactivity triggers a soft reset
+    clearTimeout(this._inactivityTimer);
+    clearTimeout(this._inactivityWarningTimer);
+
+    // At 4 minutes: show warning message
+    this._inactivityWarningTimer = setTimeout(() => {
+      this._addMessage('system', '⏱️ Still there? Your session will reset in 60 seconds due to inactivity.');
+    }, 4 * 60 * 1000);
+
+    // At 5 minutes: reset
     this._inactivityTimer = setTimeout(() => {
-      console.log('[App] Session timed out due to inactivity. Resetting memory and state.');
+      console.log('[App] Session timed out due to inactivity. Resetting.');
       this._resetConversation();
     }, 5 * 60 * 1000);
   }
@@ -361,9 +407,10 @@ class App {
   }
 
   async _processUserInput(input) {
+    this._isProcessing = true;
     this.currentInputId++;
     const inputId = this.currentInputId;
-    
+
     this._resetInactivityTimer();
 
     // ── INTERRUPT MERGING ──
@@ -440,7 +487,8 @@ class App {
     // 6. Mandatory Stale Protection
     if (inputId !== this.currentInputId) {
       console.log('[Timing] Delay cancelled (new input). Response skipped (stale).');
-      return; 
+      this._isProcessing = false;
+      return;
     }
 
     // 7. Generate Response Pipeline
@@ -474,6 +522,7 @@ class App {
 
     this._setOrbState('idle');
     this.$textInput.focus();
+    this._isProcessing = false;
   }
 
   _clearThinking() {
@@ -645,12 +694,12 @@ class App {
       this.$leadPanel.classList.add('lead-panel--active');
     }
     
-    if (this.$leadName)     this.$leadName.textContent     = leadData.name               || '—';
-    if (this.$leadPractice) this.$leadPractice.textContent = leadData.medical_practice   || '—';
-    if (this.$leadGoal)     this.$leadGoal.textContent      = leadData.dob                || '—';
-    if (this.$leadProblem)  this.$leadProblem.textContent   = leadData.reason_for_visit   || '—';
-    if (this.$leadTimeline) this.$leadTimeline.textContent  = leadData.insurance_provider || '—';
-    if (this.$leadTenure)   this.$leadTenure.textContent    = leadData.urgency            || '—';
+    if (this.$leadName) this.$leadName.textContent = leadData.name || '—';
+    if (this.$leadPractice) this.$leadPractice.textContent = leadData.patient_type || '—';
+    if (this.$leadDob) this.$leadDob.textContent = leadData.dob || '—';
+    if (this.$leadReason) this.$leadReason.textContent = leadData.reason_for_visit || '—';
+    if (this.$leadInsurance) this.$leadInsurance.textContent = leadData.insurance_provider || '—';
+    if (this.$leadUrgency) this.$leadUrgency.textContent = leadData.urgency || '—';
 
     if (this.$leadScore) {
       const completeness = this.orchestrator.getLeadCompleteness();
@@ -752,5 +801,5 @@ class App {
 
 // ─── Boot ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  window.app = new App();
+  new App();
 });

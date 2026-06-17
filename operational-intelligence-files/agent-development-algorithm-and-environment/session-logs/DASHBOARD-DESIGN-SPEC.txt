@@ -1,0 +1,946 @@
+================================================================================
+MEDVOICE AI RECEPTIONIST — DASHBOARD INTERFACE DESIGN SPECIFICATION
+Pass 8 · May 2026
+Purpose: Complete visual and interaction design for the Clinic Admin Dashboard.
+This document describes what every pixel should do and why.
+================================================================================
+
+
+OVERVIEW
+-------------------------------------------------------------------------------
+
+Product:      MedVoice Admin Dashboard
+Version:      1.0 (Clinic Admin)
+Primary user: Clinic manager / practice administrator / front desk staff
+Secondary:    Developer (for system health panel only)
+
+What this dashboard is NOT:
+  - Not a real-time call monitoring tool (no Twilio live yet)
+  - Not a patient portal
+  - Not a multi-tenant SaaS admin panel
+  - Not a coding or developer tool (except the health/config panels)
+
+What this dashboard IS:
+  - The only place a clinic can see what Aria did today
+  - The lead pipeline viewer for front desk staff
+  - The safety audit log for emergency events
+  - The system health check for whoever runs the server
+
+
+================================================================================
+
+DESIGN LANGUAGE
+-------------------------------------------------------------------------------
+
+Philosophy:
+  Medical + modern tech. Trustworthy, clean, readable. Not flashy.
+  A clinic manager should feel like they're using a professional medical tool,
+  not a startup app. Data density is medium — not a wall of numbers.
+
+
+Color Palette:
+
+  Background (page):   #F1F5F9   (very light blue-gray — clinical, not harsh white)
+  Sidebar background:  #0F172A   (deep navy — authority, stability)
+  Sidebar text:        #94A3B8   (muted slate)
+  Sidebar active:      #2563EB   (electric blue — clear selection indicator)
+  Sidebar active text: #FFFFFF
+
+  Card background:     #FFFFFF
+  Card border:         #E2E8F0
+  Card shadow:         0 1px 3px rgba(0,0,0,0.08)
+
+  Primary (blue):      #2563EB   (main actions, links, primary charts)
+  Primary light:       #EFF6FF   (blue tinted backgrounds for info blocks)
+  Success (green):     #10B981   (leads captured, system UP, positive trends)
+  Warning (amber):     #F59E0B   (partial data, queue backlog, partial completeness)
+  Danger (red):        #EF4444   (emergency events, dead-letter queue, system DOWN)
+  Neutral (gray):      #64748B   (secondary text, empty states, dashes)
+
+  Text primary:        #0F172A
+  Text secondary:      #64748B
+  Text muted:          #94A3B8
+
+  Badge: Service intent colors (consistent across all panels):
+    GENERAL_CONSULT:   #8B5CF6 purple background, white text
+    DENTAL:            #0EA5E9 sky blue background, white text
+    FOLLOW_UP:         #6366F1 indigo background, white text
+    URGENT_CARE:       #EF4444 red background, white text
+    GENERAL_INQUIRY:   #6B7280 gray background, white text
+    UNKNOWN:           #D1D5DB light gray, dark text
+
+
+Typography:
+  Font family:   Inter (Google Fonts) — readable, modern, neutral
+  Base size:     14px
+  Line height:   1.6
+
+  Scale:
+    KPI number:      32px, weight 700
+    Card title:      11px, weight 600, uppercase, letter-spacing 0.08em
+    Page title:      24px, weight 700
+    Section heading: 16px, weight 600
+    Table header:    11px, weight 600, uppercase, #64748B
+    Table cell:      14px, weight 400
+    Badge:           11px, weight 600
+    Timestamp:       12px, weight 400, #94A3B8
+
+
+Spacing system (8px base grid):
+  xs:  4px
+  sm:  8px
+  md:  16px
+  lg:  24px
+  xl:  32px
+  2xl: 48px
+
+
+Border radius:
+  Cards:   8px
+  Badges:  4px
+  Buttons: 6px
+  Inputs:  6px
+  Dots:    50%
+
+
+Interactions:
+  Hover on table row:    background shifts to #F8FAFC
+  Hover on nav item:     background shifts to rgba(255,255,255,0.08)
+  Active nav item:       left border 3px solid #2563EB, background rgba(37,99,235,0.15)
+  Button hover:          5% darker than base
+  Card hover (if clickable): slight shadow lift, 150ms ease
+
+
+================================================================================
+
+LAYOUT — STRUCTURAL GRID
+-------------------------------------------------------------------------------
+
+Full viewport layout (two columns, no scroll on shell):
+
+  +------------------+----------------------------------------------+
+  |                  |                                              |
+  |    SIDEBAR       |           MAIN CONTENT AREA                 |
+  |    220px fixed   |           flex-grow, overflow-y: auto        |
+  |    height: 100vh |           padding: 32px                      |
+  |    overflow: auto|                                              |
+  +------------------+----------------------------------------------+
+
+Sidebar is always visible and does not scroll with content.
+Main content area scrolls independently.
+No mobile breakpoints in v1 — dashboard is desktop only (1200px+ target).
+
+
+================================================================================
+
+SIDEBAR — DETAILED DESIGN
+-------------------------------------------------------------------------------
+
+Total width: 220px
+Background: #0F172A
+Height: 100vh, sticky
+
+  ┌────────────────────────────────────┐
+  │                                    │
+  │  [Icon]  MedVoice                  │   ← Brand block
+  │          Admin Dashboard           │
+  │                                    │
+  │  ─────────────────────────────     │   ← Divider
+  │                                    │
+  │  ANALYTICS          ← section label (uppercase, 10px, muted)
+  │                                    │
+  │  [▦] Overview                      │   ← Nav item
+  │  [◉] Leads                [14]     │   ← Nav item + count badge
+  │  [◎] Sessions                      │   ← Nav item
+  │                                    │
+  │  SAFETY                            │   ← Section label
+  │                                    │
+  │  [⚠] Emergency Log        [2]      │   ← Nav item + alert badge (red)
+  │                                    │
+  │  SYSTEM                            │   ← Section label
+  │                                    │
+  │  [◈] System Health                 │   ← Nav item
+  │  [⊞] Configuration                 │   ← Nav item
+  │                                    │
+  │  ─────────────────────────────     │
+  │                                    │
+  │  [●] Aria                          │   ← AI status block
+  │       AI Receptionist              │
+  │       Tier 2 · Ollama              │
+  │                                    │
+  │  [medvoice-clinic]                 │   ← Client ID badge
+  │                                    │
+  └────────────────────────────────────┘
+
+Brand block:
+  Icon: square with "M" or medical cross — 32x32px, #2563EB background, white M
+  MedVoice: 15px, weight 700, white
+  Admin Dashboard: 11px, weight 400, #64748B
+
+Section labels:
+  11px, weight 600, #475569, uppercase, letter-spacing 0.1em
+  Margin-top: 24px, margin-bottom: 4px
+
+Nav items:
+  Height: 36px, padding: 0 12px
+  Icon: 16x16, left side, color inherits text
+  Text: 14px, weight 500
+  Default state: text #94A3B8, no background
+  Hover: background rgba(255,255,255,0.06), text #CBD5E1
+  Active: background rgba(37,99,235,0.2), left border 3px solid #2563EB, text #FFFFFF
+  Count badge: right-aligned, 18px height, 6px padding, 9px font
+    Standard badge: #334155 background, #94A3B8 text
+    Alert badge (emergency): #EF4444 background, white text, pulse animation
+
+AI status block:
+  Dot indicator: 8px circle
+    Online: #10B981 with CSS pulse/glow animation
+    Offline: #EF4444, no animation
+  "Aria": 13px, weight 600, white
+  Role text: 11px, #64748B
+  Tier text: 11px, #64748B
+
+Client ID badge:
+  Background: #1E293B
+  Border: 1px solid #334155
+  Text: 11px, monospace, #64748B
+  Padding: 4px 8px, border-radius: 4px
+
+
+================================================================================
+
+PANEL 1 — OVERVIEW
+-------------------------------------------------------------------------------
+
+URL / nav state: Overview (default)
+Page context: A summary of today's activity and recent sessions
+
+HEADER
+  "Good morning, MedVoice Clinic"  ← greeting changes by time of day
+  "Thursday, May 7, 2026 · medvoice-clinic"  ← date + client
+
+KPI CARDS ROW (4 cards, equal width, side by side)
+
+  Card structure:
+    Card label:  11px, uppercase, weight 600, color #64748B   ← top
+    Card value:  32px, weight 700, color #0F172A              ← main number
+    Card delta:  12px, weight 500                             ← trend vs yesterday
+    Card icon:   right-aligned, 24x24, tinted to card theme
+
+  Card 1 — TODAY'S SESSIONS
+    Value: count of unique sessions today
+    Delta: "+5 vs yesterday" (green if positive, red if negative)
+    Icon: chat bubble
+    No special color — neutral
+
+  Card 2 — LEADS CAPTURED
+    Value: count of leads with completeness > 0 today
+    Delta: "avg completeness: 72%"
+    Icon: person with checkmark
+    Color: #10B981 accent on top border
+
+  Card 3 — AVG ENGAGEMENT SCORE
+    Value: float (e.g. "68.4")
+    Sub: "12 high · 8 medium · 3 low"
+    Icon: bar chart
+    Color: amber if < 50, green if >= 65, neutral otherwise
+
+  Card 4 — EMERGENCY ALERTS
+    Value: count of emergency events today
+    Sub: if > 0: "All received 911 redirect"
+         if 0:   "No alerts today"
+    Icon: warning triangle
+    Color: entire card gets red tint (#FEF2F2 background) if value > 0
+    Border: 1px solid #FCA5A5 if value > 0
+
+
+MIDDLE ROW (two columns)
+
+  LEFT — Recent Sessions Table (60% width)
+    Title: "Recent Sessions"
+    Subtitle: "Last 10 sessions · click any row to view transcript"
+
+    Table headers (all uppercase 11px):
+      TIME | SESSION | SERVICE | TURNS | ENGAGEMENT | LEAD | STATE
+
+    Row contents:
+      TIME:        relative ("2 min ago", "1 hr ago") — tooltip shows full timestamp
+      SESSION:     first 12 chars of sessionId, monospace font, gray
+      SERVICE:     colored pill badge with service name
+      TURNS:       integer, centered
+      ENGAGEMENT:  thin horizontal bar (0–100) + number beside it
+                   color: green >=65, amber 40–64, red <40
+      LEAD:        checkmark icon (#10B981) if lead captured, dash (#94A3B8) if not
+      STATE:       colored text badge
+                     CLOSING → green
+                     ENDED → gray
+                     FALLBACK → amber
+                     OBJECTION → orange
+                     LEAD_CAPTURE → blue
+
+    Hover: row background #F8FAFC, cursor pointer
+    Click: navigates to Sessions panel with that session pre-selected
+
+    Footer: "View all sessions →" link to Sessions panel
+
+  RIGHT — Service Distribution (40% width)
+    Title: "Service Distribution"
+    Subtitle: "Last 7 days · by intent detected"
+
+    Donut chart:
+      Segments: one per service + "Other" for unclassified
+      Colors match service badge colors defined above
+      Center: "47" (total) in large text, "sessions" small below
+      Segment hover: tooltip shows count and percentage
+
+    Legend below chart:
+      Each item: colored dot + service name + count + percentage
+      E.g.: [●] Dental · 15 · 32%
+
+
+BOTTOM ROW — 7-Day Trend (full width)
+
+  Title: "Sessions & Leads — Last 7 Days"
+
+  Line chart:
+    Two lines:
+      Line 1: Sessions — #2563EB solid, 2px
+      Line 2: Leads — #10B981 solid, 2px
+    Both lines have dots at each data point
+    Fill under each line: 15% opacity of line color
+    X-axis: day labels ("Mon", "Tue", etc.)
+    Y-axis: starts at 0, max = highest value + 20%
+    Gridlines: horizontal only, #F1F5F9, very light
+    Legend: top-right corner of chart
+
+  If no data yet: empty state (see Empty States section below)
+
+
+================================================================================
+
+PANEL 2 — LEADS
+-------------------------------------------------------------------------------
+
+HEADER
+  "Patient Leads"
+  "14 leads captured · All time"
+
+CONTROLS ROW (horizontal, full width)
+
+  Search input (flex-grow):
+    Placeholder: "Search by name or reason for visit..."
+    Icon: magnifier inside left of input
+
+  Service filter (dropdown):
+    Options: All Services | General Consult | Dental | Follow-up | Urgent Care
+
+  Patient type filter (dropdown):
+    Options: All | New Patient | Returning Patient
+
+  Completeness filter (dropdown):
+    Options: All | Complete (100%) | High (75%+) | Partial (<75%)
+
+  Sort (dropdown):
+    Options: Newest First | Oldest First | Completeness ↓ | Completeness ↑
+
+  Export button:
+    "Export CSV" — right-aligned, secondary style (outlined, not filled)
+
+LEADS TABLE
+
+  Column headers (uppercase, 11px, sortable where applicable):
+    NAME | SERVICE | TYPE | REASON FOR VISIT | DOB | INSURANCE | COMPLETENESS | CAPTURED | —
+
+  Row contents:
+    NAME:
+      Full name in weight 600
+      If null: "Unknown" in italic gray
+
+    SERVICE:
+      Pill badge (color per service color map)
+
+    TYPE:
+      "New" in green badge
+      "Returning" in blue badge
+      "—" if null
+
+    REASON FOR VISIT:
+      Text, max 60 chars, ellipsis if longer
+      Hover shows tooltip with full text
+
+    DOB:
+      Formatted: "Mar 14, 1989"
+      "—" if null
+
+    INSURANCE:
+      Provider name
+      "—" if null
+
+    COMPLETENESS:
+      Horizontal progress bar (full cell width as bar)
+      Color:
+        100%:       solid green   (#10B981)
+        75–99%:     solid blue    (#2563EB)
+        50–74%:     solid amber   (#F59E0B)
+        0–49%:      solid red     (#EF4444)
+      Percentage text beside or above bar
+      Hovering bar: tooltip lists which fields are captured vs missing
+
+    CAPTURED:
+      Relative time ("3 hrs ago")
+      Hover tooltip: full ISO timestamp
+
+    — (Actions column):
+      "View" button → opens lead detail side panel
+
+  Empty state for table:
+    Person icon centered, gray
+    "No leads found"
+    "Leads appear here when Aria captures patient information during a conversation."
+
+
+LEAD DETAIL SIDE PANEL
+
+  Triggered by: clicking "View" on any table row
+  Behavior: slides in from right, 380px wide, overlaps content with overlay
+
+  Panel structure:
+
+    Close button (X) — top right corner
+
+    Patient header:
+      Large initial avatar (circle with first letter of name, colored)
+      Name: 20px, weight 700
+      Service badge
+      Completeness ring: circular progress indicator (CSS SVG or border trick)
+        Shows percentage in center of ring
+        Ring color: same color rules as completeness bar
+
+    Divider
+
+    Fields section:
+      Each field row:
+        Label:  11px, uppercase, weight 600, #64748B
+        Value:  14px, weight 500, #0F172A
+        Status: if captured → value shown normally
+                if not captured → "Not collected" in italic #94A3B8
+
+      Fields displayed:
+        NAME
+        PATIENT TYPE
+        DATE OF BIRTH
+        REASON FOR VISIT
+        INSURANCE PROVIDER
+        INSURANCE ID
+        URGENCY LEVEL
+        CONTACT METHOD
+        CAPTURED AT (full timestamp)
+        SESSION ID (monospace, small)
+
+    Completeness breakdown:
+      Mini checklist:
+        [✓] Name collected (+30)
+        [✓] Patient type collected (+20)
+        [✗] Date of birth — not collected (missing +15)
+        [✓] Reason for visit collected (+25)
+        [✗] Insurance provider — not collected (missing +10)
+      Total: "75 / 100"
+
+    Bottom actions:
+      "Copy Lead JSON" — copies raw lead object to clipboard
+      "View Full Session" — navigates to Sessions panel, scrolls to this sessionId
+
+
+================================================================================
+
+PANEL 3 — SESSIONS
+-------------------------------------------------------------------------------
+
+HEADER
+  "Conversation Sessions"
+  "Full transcript viewer"
+
+Two-column layout:
+  Left: 35% (session list)
+  Right: 65% (transcript viewer)
+
+LEFT COLUMN — SESSION LIST
+
+  Search input:
+    "Search session ID or intent..."
+
+  Filter row:
+    Date: date picker (default: today)
+    Final state: All | Closing | Fallback | Ended | Lead Capture | Other
+
+  Session list (scrollable):
+
+    Each session card:
+      Background: white, border-radius 6px, subtle shadow
+      Active selection: left border 3px solid #2563EB, background #EFF6FF
+
+      Top row: [SESSION ID in monospace, 12px] [TIMESTAMP, right-aligned, 12px gray]
+      Middle row: [SERVICE BADGE] [ENGAGEMENT BAR — thin, 60px wide]
+      Bottom row: [FINAL STATE BADGE] [TURNS: "12 turns"] [LEAD INDICATOR]
+
+      Lead indicator:
+        Checkmark green if lead captured
+        Dash gray if no lead
+
+    Load more: "Load earlier sessions" button at bottom of list
+
+
+RIGHT COLUMN — TRANSCRIPT VIEWER
+
+  Empty state (no session selected):
+    Chat bubble icon
+    "Select a session to view the transcript"
+
+  Session selected:
+
+    TRANSCRIPT HEADER:
+      Session ID: monospace, large
+      Two-column metadata:
+        Started:     full timestamp
+        Ended:       full timestamp (or "Session active")
+        Duration:    calculated (e.g. "4 min 7 sec")
+        Total turns: integer
+        Peak intent: service badge
+        Eng. score:  number + colored dot
+        Lead:        completeness percentage or "Not captured"
+        Final state: colored badge
+
+    STATE FLOW TIMELINE (horizontal scroll):
+      Small boxes connected by arrows:
+        IDLE → GREETING → DISCOVERY → INTENT_DETECTED → FLOW_SERVICE_DENTAL → LEAD_CAPTURE → CLOSING
+      Each box shows: state name + turn number when it was entered
+      Current/final state box has filled background
+      Click a state box: scrolls transcript to that turn
+
+    TRANSCRIPT:
+      Scrollable area
+      Each turn is a message bubble:
+
+        USER bubble (right-aligned):
+          Background: #F1F5F9
+          Border-radius: 12px 12px 2px 12px
+          Text: 14px, #0F172A
+          Footer: "User · Turn 3 · DISCOVERY" (small, #94A3B8)
+
+        ARIA bubble (left-aligned):
+          Background: #EFF6FF
+          Border-radius: 12px 12px 12px 2px
+          Text: 14px, #0F172A
+          Footer: "Aria · Turn 3 · 10:23:41"
+
+        STATE TRANSITION marker (horizontal):
+          ─── State: DISCOVERY → LEAD_CAPTURE (Turn 8) ───
+          Shown in muted style between turns when a transition occurred
+
+        EMERGENCY marker (if triggered):
+          Red background strip
+          "🚨 EMERGENCY DETECTED — 911 redirect sent"
+          Full width, between the turns where it occurred
+
+      Export button: "Export Transcript" → downloads as .txt or .json
+
+
+================================================================================
+
+PANEL 4 — EMERGENCY LOG
+-------------------------------------------------------------------------------
+
+HEADER
+  "Emergency Event Log"
+  Subtitle shows count: "3 events recorded · All time"
+
+ALERT BANNER (if any events today):
+  Red banner (full width, below header):
+  "⚠ 2 emergency events detected today. Each received an immediate 911 redirect.
+   Review the inputs below to assess if any require follow-up."
+
+TABLE:
+
+  Column headers:
+    DATE & TIME | SESSION | CLIENT | PATIENT INPUT | CATEGORY | RESPONSE
+
+  Rows:
+    DATE & TIME: full timestamp (local timezone)
+    SESSION: first 12 chars of sessionId, monospace, links to Sessions panel
+    CLIENT: clientId
+    PATIENT INPUT: first 100 chars of normalized input (lowercase)
+                   displayed in italic, gray box background
+                   Hover: tooltip with full text if available
+    CATEGORY: which emergency category matched
+               Badge color matches category:
+                 Cardiac:        red
+                 Respiratory:    orange
+                 Neurological:   purple
+                 Trauma:         dark red
+                 Pediatric:      pink
+                 General:        gray
+    RESPONSE: always the same — "911 redirect sent" in green badge
+
+  Row background: very light red tint (#FFF5F5) for all rows
+                  (reinforces safety/alert context)
+
+INFORMATION BLOCK (below table):
+  Blue info box:
+  "How emergency detection works:
+   Emergency detection is deterministic — it uses 27 fixed regex patterns,
+   not AI inference. It runs before every other component, before the router,
+   before any LLM call. When triggered, the conversation is stopped and the
+   patient receives the 911 redirect immediately. This behavior cannot be
+   configured away — it is hardcoded at the architecture level."
+
+  Source note:
+  "Patterns defined in: js/modules/emergency-detector.js lines 25–64"
+
+EMPTY STATE (if no events):
+  Large green checkmark icon
+  "No emergency events recorded"
+  "Aria has safely processed all conversations without detecting emergency
+   keywords. The system is actively monitoring 27 emergency patterns."
+
+
+================================================================================
+
+PANEL 5 — SYSTEM HEALTH
+-------------------------------------------------------------------------------
+
+HEADER
+  "System Health"
+  "Last checked: 34 seconds ago · Auto-refreshes every 30s"
+  Manual refresh button: "Refresh Now"
+
+STATUS CARDS (2x2 grid, equal cards)
+
+  CARD 1 — MEDVOICE SERVER
+    Title: "MedVoice Server"
+    Source: GET /health
+
+    Status indicator:
+      Large dot (16px) + "ONLINE" text in green
+      OR large dot (16px) + "OFFLINE" in red
+
+    Details:
+      Version: "1.0.0"
+      Uptime: (if available)
+      Last response: timestamp
+
+    If OFFLINE:
+      Warning: "Server is not responding. Check that the Node.js process is
+      running on port 3001."
+
+  CARD 2 — OLLAMA LLM ENGINE
+    Title: "Ollama LLM Engine"
+    Source: GET /api/llm/health
+
+    Status indicator:
+      "AVAILABLE" green or "UNAVAILABLE" red
+
+    Details:
+      Model: from config llm_model field ("llama3.1:8b")
+      AI Tier: "Tier 2 · Proxy"
+      Endpoint: "Configured (server-side)"
+
+    If UNAVAILABLE:
+      Warning: "LLM engine is offline. Aria will fall back to rule-based
+      responses only. Tier 2 features (free-form Q&A, nuanced context)
+      are disabled until Ollama is restored."
+
+  CARD 3 — WEBHOOK QUEUE
+    Title: "Webhook Delivery Queue"
+    Source: webhookDispatcher.getStats() (browser-side IndexedDB)
+
+    Status:
+      If pending = 0 and dead-letter = 0: "CLEAR" in green
+      If pending > 0: "QUEUED" in amber
+      If dead-letter > 0: "ACTION NEEDED" in red
+
+    Details (4 rows):
+      Pending:    [number]
+      Processing: [number]
+      Dead Letter: [number] ← red text if > 0
+      Total:      [number]
+
+    Dead-letter warning (if > 0):
+      "N items have permanently failed delivery after 5 attempts.
+       Check the webhook_url config and the receiving server."
+      "Retry Dead Letter" button (triggers re-queue)
+
+  CARD 4 — CALENDAR INTEGRATION
+    Title: "Google Calendar Integration"
+    Source: config.calendar_enabled field
+
+    Status:
+      If calendar_enabled = false: "DISABLED" in gray badge
+      If calendar_enabled = true:  test the endpoint, show "ACTIVE" or "ERROR"
+
+    Details:
+      calendar_enabled: false
+      Calendar ID: "your-clinic-calendar-id...@***" (masked)
+      Calendly URL: link
+
+    If disabled:
+      Note: "calendar_enabled is set to false in medical-clinic.json.
+      The booking flow will skip calendar confirmation steps.
+      Set calendar_enabled: true and add Google service account credentials
+      to .env to activate. See BLOCKER-01."
+
+AI TIER REFERENCE (full width block below cards)
+  Title: "AI Tier Architecture"
+  Table:
+
+  TIER | MODE              | DESCRIPTION                            | CURRENT
+  ─────────────────────────────────────────────────────────────────────────────
+  1    | Rule-based only   | All responses from config templates.   |
+       |                   | No LLM inference. $29–$59/mo tier.    |
+  ─────────────────────────────────────────────────────────────────────────────
+  2    | Ollama proxy      | LLM inference via server-side proxy.   |  ← ACTIVE
+       |                   | Model runs on your hardware.           |
+       |                   | Browser never touches Ollama directly. |
+  ─────────────────────────────────────────────────────────────────────────────
+  3    | Local model       | Direct browser-side model runner.      |
+       |                   | Experimental. High RAM requirement.    |
+
+  Current row highlighted with blue background.
+
+KNOWN ISSUES REGISTER (full width block)
+  Title: "Known Issues"
+  Source: ENVIRONMENT.md known issues register
+
+  Each issue as a row:
+    [BADGE: OPEN red] SEC-11 — Audit logs go to stdout. PHI in plaintext.
+                               Not HIPAA-compliant for production.
+                               Fix: replace console.log with encrypted DB write.
+
+    [BADGE: OPEN red] BLOCKER-01 — Calendar booking untested with real
+                               Google Cloud credentials. Booking flow is
+                               unproven end-to-end.
+
+    [BADGE: OPEN amber] GAP-08 — HIPAA BAA not signed with hosting provider,
+                               Twilio, or LLM vendor. Required before any
+                               real patient data is handled.
+
+  Link: "View full environment file →" (links to ENVIRONMENT.md if served)
+
+
+================================================================================
+
+PANEL 6 — CONFIGURATION
+-------------------------------------------------------------------------------
+
+HEADER
+  "Client Configuration"
+  "medvoice-clinic · Read from configs/medical-clinic.json"
+
+CLIENT SELECTOR
+  Dropdown: "medvoice-clinic" | "default" | [+ Add Client]
+  When changed: fetches new config from GET /api/config?client={id}
+
+VIEW MODE TOGGLE
+  Two buttons: [Visual View] [JSON View]
+
+VISUAL VIEW (default):
+
+  SECTION — Company Information
+    Grid of fields:
+      Company Name:    MedVoice Clinic
+      Assistant Name:  Aria
+      Role:            AI medical receptionist
+      Tone:            warm, calm, professional
+      Primary Goal:    book_appointment [badge]
+      Secondary Goals: collect_patient_info, answer_faq [badges]
+      AI Tier:         2 [badge]
+      LLM Model:       llama3.1:8b [monospace]
+
+  SECTION — Services (card grid, 2 columns)
+    Each service card:
+      Header: display_name + intent_key badge
+      Body: numbered list of discovery_questions
+      Footer: "3 discovery questions"
+
+    Example card:
+      ┌─────────────────────────────────────────┐
+      │  Dental Care              [DENTAL]       │
+      ├─────────────────────────────────────────┤
+      │  Discovery questions:                   │
+      │  1. Are you experiencing tooth pain     │
+      │     or sensitivity?                     │
+      │  2. Is this for a routine cleaning or   │
+      │     a specific dental issue?            │
+      │  3. When was your last dental checkup?  │
+      └─────────────────────────────────────────┘
+
+  SECTION — Qualification Fields (pipeline display)
+    Shows the capture order as a visual pipeline:
+
+    [name] → [patient_type] → [dob] → [reason_for_visit] → [insurance_provider]
+
+    Each box: field name + point value from completeness scoring
+
+  SECTION — Emergency Keywords
+    Tag cloud: each keyword as a gray chip
+    Count badge: "27 keywords monitored"
+    Organized by category (if space allows):
+      Cardiac: "chest pain", "heart attack", "crushing pain", ...
+      Respiratory: "can't breathe", "difficulty breathing", ...
+      etc.
+
+  SECTION — Greetings
+    Numbered list of all greeting variants
+    Note: "Aria rotates through these randomly"
+
+  SECTION — CTA Templates
+    Numbered list
+    Note: "Used when engagement score crosses the CTA threshold"
+
+  SECTION — Calendar
+    calendar_enabled: [DISABLED] badge
+    calendar_id: masked
+    calendar_url: clickable link (open in new tab)
+
+JSON VIEW:
+
+  Full config JSON displayed in a code block
+  Monospace font, syntax highlighting (key = blue, string = green, number = orange)
+  Secrets masked: webhook_secret shows as "***"
+  "Copy JSON" button — top right of code block
+
+EDIT NOTE (bottom of panel, always visible):
+  Amber info box:
+  "Configuration editing is not available in this version.
+   To update the config: edit configs/medical-clinic.json on the server,
+   then restart the Node.js process. A write API endpoint is planned for v1.1."
+
+
+================================================================================
+
+EMPTY STATES
+-------------------------------------------------------------------------------
+
+Each panel has a styled empty state for when there is no data yet.
+Empty states should never show blank white space with nothing in it.
+
+Overview — no sessions today:
+  Icon: calendar with sparkle
+  Title: "No sessions yet today"
+  Body: "Aria hasn't had any conversations yet today. Activity will appear
+         here as patients interact with the voice widget."
+
+Leads — no leads:
+  Icon: person with plus
+  Title: "No leads captured yet"
+  Body: "Leads appear here when Aria collects patient information.
+         The system captures: name, patient type, date of birth,
+         reason for visit, and insurance provider."
+
+Sessions — no sessions:
+  Icon: chat bubble empty
+  Title: "No sessions found"
+  Body: "No conversation sessions match your current filters."
+
+Emergency — no events:
+  Icon: checkmark circle (green)
+  Title: "No emergency events"
+  Body: "All conversations have been processed safely.
+         Aria is actively monitoring 27 emergency patterns."
+
+System — server offline:
+  Icon: warning triangle (red)
+  Title: "Cannot reach MedVoice server"
+  Body: "Ensure the server is running: node server/index.js"
+  Action: "Retry connection" button
+
+
+================================================================================
+
+LOADING STATES
+-------------------------------------------------------------------------------
+
+KPI cards while loading:
+  Each card shows a shimmer animation (gray → lighter gray, cycling)
+  No numbers, no labels — just the skeleton shape
+
+Table while loading:
+  5–8 skeleton rows with shimmer on each cell
+  Widths vary per column to look realistic
+
+Chart while loading:
+  Gray rectangle with "Loading chart..." centered in muted text
+
+Never show spinners for more than 3 seconds.
+If data hasn't arrived in 3s: show error state with "Retry" button.
+
+
+================================================================================
+
+TOAST NOTIFICATIONS
+-------------------------------------------------------------------------------
+
+Appear bottom-right, stack if multiple.
+Auto-dismiss after 4 seconds.
+Manual dismiss via X button.
+
+Types:
+  Success (green):  "Copied to clipboard"
+  Info (blue):      "Config loaded for medvoice-clinic"
+  Warning (amber):  "LLM health check returned unavailable"
+  Error (red):      "Failed to load sessions — server unreachable"
+
+
+================================================================================
+
+WHAT MAKES THIS DASHBOARD MEDICALLY APPROPRIATE
+-------------------------------------------------------------------------------
+
+1. No patient PHI in the URL bar.
+   All lead/session detail opens in slide-over panels or tab navigation.
+   A URL like /leads/sarah-mitchell would expose PHI in browser history.
+
+2. Completeness tracking instead of "missing data" alerts.
+   Medical software should feel helpful, not accusatory.
+   "75% complete" is better than "MISSING: dob, insurance_provider"
+   (even though the data is the same — the framing matters).
+
+3. Emergency log uses neutral reporting language.
+   The log does not say "Patient may have been in danger."
+   It says "911 redirect sent" — factual, not alarming.
+   Clinic staff should not be re-alarmed by every row in the log.
+
+4. No patient profile pages.
+   This version does not build a persistent patient identity.
+   Each lead is a session artifact, not a patient record.
+   This is intentional — a patient record system requires a different
+   regulatory framework (EHR integration, patient consent, etc.).
+
+5. Config panel warns about editing.
+   Prevents well-meaning staff from accidentally breaking the config
+   through a UI before proper validation and write APIs are in place.
+
+
+================================================================================
+
+WHAT IS EXPLICITLY OUT OF SCOPE FOR VERSION 1
+-------------------------------------------------------------------------------
+
+These items were considered and rejected for v1. They should not creep in.
+
+  - Patient login / patient portal
+  - Real-time call audio monitoring
+  - Multi-tenant client management
+  - Role-based access control (admin vs. staff roles)
+  - EHR / EMR integration (HL7, FHIR)
+  - Billing or payment information
+  - Appointment scheduling FROM the dashboard (dashboard reads, not acts)
+  - Medication or clinical data of any kind
+  - AI model training or fine-tuning interface
+  - White-label customization UI
+
+
+================================================================================
+END OF DESIGN SPECIFICATION
+Written: May 2026, Pass 8
+Companion document: DASHBOARD-CODE-REPORT.txt
+================================================================================

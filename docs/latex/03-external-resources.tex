@@ -1,0 +1,216 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\External Resources \& Provider Stack}
+\author{Infrastructure Planning}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\section{Stack Architecture}
+
+\begin{center}
+\begin{tikzpicture}[
+  layer/.style={draw, rounded corners, minimum width=4.5cm, minimum height=0.75cm, align=center, font=\small},
+  L1/.style={layer, fill=medblue!15},
+  L2/.style={layer, fill=medgreen!15},
+  L3/.style={layer, fill=medamber!15},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[L1] (l1) {Layer 1: Telephony --- Twilio};
+  \node[L2, below=0.35cm of l1] (l2) {Layer 2: Runtime --- Vapi (or LiveKit/Pipecat)};
+  \node[L3, below=0.35cm of l2] (l3) {Layer 3: AI Providers --- STT + LLM + TTS};
+  \node[layer, below=0.35cm of l3, fill=medlight] (l4) {Layer 4: MedVoice --- Node + SQLite + Dashboard};
+  \node[layer, below=0.35cm of l4, fill=medlight] (l5) {Layer 5: Integrations --- Google Calendar, n8n, Stripe};
+  \draw[arr] (l1)--(l2)--(l3)--(l4)--(l5);
+\end{tikzpicture}
+\end{center}
+
+\section{Required External Services}
+
+\subsection{1. Voice Runtime (choose one)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Provider} & \textbf{Role} & \textbf{Cost} & \textbf{HIPAA} \\
+\midrule
+\textbf{Vapi} (recommended MVP) & Call orchestration & \$0.05/min & BAA available \\
+LiveKit Agents & Orchestration + infra & \$0.01/min cloud; self-host free & Scale tier \$500/mo \\
+Pipecat Cloud & Pipeline framework & $\sim$\$0.01/min; OSS self-host & Self-host control \\
+Retell AI & Alternative runtime & \$0.07--0.12/min & Enterprise \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{2. Speech-to-Text (STT)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Provider} & \textbf{Model} & \textbf{Cost/min} & \textbf{Notes} \\
+\midrule
+\textbf{Deepgram} (recommended) & Nova-2 Medical & $\sim$\$0.004--0.02 & Best latency; medical vocab \\
+AssemblyAI & Universal-2 & $\sim$\$0.015 & Strong accuracy \\
+OpenAI Whisper API & whisper-1 & $\sim$\$0.006 & Simple; higher latency \\
+Google Cloud STT & Medical dictation & Custom & HIPAA on GCP \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{3. Large Language Model (LLM)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Provider} & \textbf{Model} & \textbf{Cost} & \textbf{Use Case} \\
+\midrule
+OpenAI & GPT-4o mini & $\sim$\$0.003--0.01/min & Production phone (fast, cheap) \\
+OpenAI & GPT-4o & Higher & Complex triage \\
+Groq & Llama 3.1 70B & Very low & High-volume cost savings \\
+Anthropic & Claude 3.5 Sonnet & Mid & Long context, safety \\
+Ollama (current dev) & llama3.1:8b & Free local & Dev/demo only --- not production \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{4. Text-to-Speech (TTS)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Provider} & \textbf{Voice Tier} & \textbf{Cost} & \textbf{Notes} \\
+\midrule
+\textbf{ElevenLabs} (recommended) & Flash v2.5 & $\sim$\$0.01--0.07/min & Natural; clinic-branded voice \\
+OpenAI TTS & tts-1 & $\sim$\$0.015/min & Good quality; simple \\
+Cartesia & Sonic & Low latency & Real-time optimized \\
+PlayHT & Standard & $\sim$\$0.07/min & Premium voices \\
+Azure Neural TTS & Standard & $\sim$\$0.02/min & Enterprise HIPAA path \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{5. Telephony}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Provider} & \textbf{Cost} & \textbf{Notes} \\
+\midrule
+\textbf{Twilio} (recommended) & $\sim$\$1.15/mo per number + \$0.008--0.02/min & BYO into Vapi; SMS for confirmations \\
+Vonage & Comparable & Alternative carrier \\
+Telnyx & Lower per-min & Cost-sensitive scale \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{6. Calendar \& Scheduling}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Service} & \textbf{Status in MedVoice} & \textbf{Notes} \\
+\midrule
+Google Calendar API & Implemented (\texttt{calendar.js}) & Service account JWT; enable per tenant \\
+Calendly & Config URL only & Fallback link in widget \\
+athenahealth / Epic & Not started & Enterprise EHR --- Phase 4+ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{7. Automation \& CRM}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Service} & \textbf{Role} & \textbf{Status} \\
+\midrule
+n8n & Webhook consumer for leads & Configured in \texttt{.env.example} \\
+HubSpot / Salesforce & CRM sync & Not implemented \\
+Zapier & No-code alternative & Not implemented \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{8. Payments \& Billing}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Service} & \textbf{Role} & \textbf{Status} \\
+\midrule
+Stripe & Subscriptions + usage billing & Not implemented \\
+Stripe Tax & Sales tax automation & Not implemented \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{9. Hosting \& Compliance}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Service} & \textbf{Role} & \textbf{HIPAA} \\
+\midrule
+Railway / Render & Node backend hosting & Add BAA \\
+AWS (HIPAA) & Production PHI workload & HIPAA-eligible services \\
+Vercel / Netlify & Dashboard static hosting & No PHI on edge \\
+Sentry & Error monitoring & Configure PHI scrubbing \\
+Datadog & APM + logs & Enterprise BAA \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Account Checklist}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{\#} & \textbf{Account} & \textbf{Priority} \\
+\midrule
+1 & Vapi (dashboard.vapi.ai) & P0 --- phone MVP \\
+2 & Twilio & P0 --- numbers + SMS \\
+3 & Deepgram & P0 --- STT \\
+4 & OpenAI & P0 --- LLM \\
+5 & ElevenLabs & P0 --- TTS \\
+6 & Google Cloud (Calendar SA) & P0 --- booking \\
+7 & Stripe & P1 --- billing \\
+8 & Railway/AWS HIPAA & P1 --- production \\
+9 & Sentry & P2 --- monitoring \\
+10 & n8n (or self-host) & P2 --- automation \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Recommended Production Stack}
+
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, fill=white, minimum width=2cm, minimum height=0.6cm, align=center, font=\scriptsize}
+]
+  \matrix[matrix of nodes, row sep=0.4cm, column sep=0.3cm] {
+    \node[box] {Twilio}; & \node[box] {Vapi}; & \node[box] {Deepgram}; \\
+    \node[box] {GPT-4o mini}; & \node[box] {ElevenLabs}; & \node[box] {MedVoice Node}; \\
+    \node[box] {Google Cal}; & \node[box] {SQLite$\rightarrow$PG}; & \node[box] {Stripe}; \\
+  };
+\end{tikzpicture}
+\end{center}
+
+\textbf{All-in cost estimate:} \$0.20--0.28/min (mid-tier stack) $\times$ monthly minutes + \$50--500 platform overhead.
+
+\section{BYOK Advantage}
+
+Bring-your-own-keys means: you hold vendor relationships, negotiate volume discounts, and sign BAAs directly---critical for medical sales. MedVoice margin sits in the subscription layer above raw provider cost.
+
+\end{document}

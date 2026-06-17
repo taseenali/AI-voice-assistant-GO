@@ -1,0 +1,25 @@
+{
+  "_fixtureMeta": {
+    "capturedAt": "2026-06-16",
+    "source": "live spike call (captures/1781643089920-end-of-call-report.json)",
+    "note": "Transcript may be artifact.messages[] not a flat string. Re-capture if Vapi payloads change."
+  },
+  "message": {
+    "type": "end-of-call-report",
+    "call": {
+      "id": "call-test-eoc-001",
+      "type": "inboundPhoneCall",
+      "duration": 142,
+      "phoneNumber": {
+        "number": "+18564402211"
+      }
+    },
+    "artifact": {
+      "transcript": "User: I'd like to book an appointment.\nAssistant: I can help with that.",
+      "recordingUrl": "https://storage.vapi.ai/recordings/test-recording.mp3"
+    },
+    "analysis": {
+      "summary": "Patient requested appointment booking."
+    }
+  }
+}

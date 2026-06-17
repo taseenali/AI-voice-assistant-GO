@@ -1,0 +1,841 @@
+================================================================================
+MEDVOICE AI RECEPTIONIST — DASHBOARD CODE-LEVEL REPORT
+Pass 8 · May 2026
+Purpose: Judge what type of dashboard to build and what data layer it needs.
+Every claim in this report is sourced directly from a file read.
+================================================================================
+
+
+SECTION 1 — WHAT THE CODEBASE PRODUCES TODAY (DATA INVENTORY)
+-------------------------------------------------------------------------------
+
+This section lists every data event the system currently emits, where it goes,
+and the exact schema shape. This is the raw material for a dashboard.
+
+
+1.1  CONVERSATION LOG EVENTS
+     Source file:  server/routes/log.js
+     Endpoint:     POST /api/log/conversation
+     Current sink: console.log (stdout only)
+     Persistence:  NONE — data is lost when server restarts
+     SEC status:   SEC-11 OPEN — PHI text field, stdout is not HIPAA-compliant
+
+     Schema (as written to stdout):
+     {
+       "ts":        ISO 8601 timestamp,
+       "sessionId": string (max 64 chars),
+       "clientId":  string (max 32 chars),
+       "turn":      integer (which turn in the conversation),
+       "role":      "user" | "assistant",
+       "state":     one of: IDLE / GREETING / DISCOVERY / INTENT_DETECTED /
+                    FLOW_GENERAL / FLOW_SERVICE_{INTENT_KEY} / LEAD_CAPTURE /
+                    BOOKING_CONFIRMATION / CLOSING / OBJECTION / FALLBACK / ENDED,
+       "intent":    e.g. "GENERAL_CONSULT" / "DENTAL" / "FOLLOW_UP" / "URGENT_CARE",
+       "text":      string (max 500 chars, may contain patient PHI)
+     }
+
+     Note: The endpoint validates sessionId, role, and text are present.
+     The 'state' and 'intent' fields are optional but sent by app.js.
+
+
+1.2  LEAD CAPTURE RECORDS
+     Source file:  js/modules/lead-capture.js — LeadCapture.save()
+     Current sinks:
+       (a) localStorage — key format: "av_leads_v1:{normalized_company_name}"
+                          Example key: "av_leads_v1:medvoice_clinic"
+                          This is browser-local. Not accessible server-side.
+       (b) Webhook dispatch — event type "LEAD_CAPTURE" sent to webhook_url
+           (via WebhookDispatcher, stored in IndexedDB outbox first)
+
+     Schema (as stored in localStorage and sent via webhook):
+     {
+       "name":               string | null,
+       "patient_type":       "new" | "returning" | null,
+       "dob":                string | null,
+       "reason_for_visit":   string | null,
+       "insurance_provider": string | null,
+       "insurance_id":       string | null,
+       "urgency":            string | null,
+       "contactMethod":      "phone" | "email" | null,
+       "client_id":          string (company_name from config),
+       "capturedAt":         ISO 8601 timestamp,
+       "completeness":       integer 0–100
+     }
+
+     Completeness scoring (from lead-capture.js lines 138–147):
+       name:               +30 points
+       patient_type:       +20 points
+       reason_for_visit:   +25 points
+       dob:                +15 points
+       insurance_provider: +10 points
+       Maximum total:       100 points
+
+     Capture order (from _captureOrder, line 91):
+       name → patient_type → dob → reason_for_visit → insurance_provider
+
+
+1.3  WEBHOOK OUTBOX EVENTS
+     Source file:  js/services/webhook-dispatcher.js
+     Storage:      IndexedDB (outbox-db.js)
+     Delivery:     HTTP POST to config.webhook_url with HMAC-SHA256 signature
+
+     Outbox item schema:
+     {
+       "id":              auto-increment integer (IndexedDB key),
+       "client_id":       string,
+       "webhook_url":     string (captured at dispatch time),
+       "event_type":      "LEAD_CAPTURE" (others possible in future),
+       "data":            object (the lead data payload),
+       "timestamp":       ISO 8601,
+       "idempotency_key": UUID v4,
+       "status":          "PENDING" | "PROCESSING" | "DEAD_LETTER",
+       "attempts":        integer (0 to 5),
+       "lastAttempt":     epoch milliseconds
+     }
+
+     Stats available via webhookDispatcher.getStats() (lines 279–288):
+     {
+       "total":       integer,
+       "pending":     integer,
+       "processing":  integer,
+       "deadLetter":  integer,
+       "initialized": boolean
+     }
+
+     Retry logic: Exponential backoff with full jitter.
+     Base: 1s. Max: 1 hour. Dead-letter after 5 failures.
+     No server-side API endpoint exists for these stats yet.
+
+
+1.4  STATE MACHINE CONTEXT (PER SESSION, IN-MEMORY ONLY)
+     Source file:  js/state-machine.js — ConversationStateMachine
+     Current sink: In-memory only. Not persisted anywhere.
+
+     Context shape (from reset() method, lines 126–187):
+     {
+       "state":            current STATES value,
+       "intent":           string | null,
+       "intentStrength":   0.0–1.0 float,
+       "urgency_level":    "low" | "medium" | "high",
+       "engagementScore":  0–100 integer (starts at 50),
+       "conversationGoal": "identify_problem" | "explore_context" |
+                           "position_solution" | "capture_lead" | "close",
+       "contextMemory":    array of memory objects,
+       "leadData":         { name, patient_type, dob, reason_for_visit,
+                             insurance_provider, insurance_id, urgency,
+                             contactMethod },
+       "history":          array of { from, to, turn, timestamp, data },
+       "flowStep":         integer,
+       "discoveryDepth":   0–3 integer,
+       "fallbackCount":    integer,
+       "turnCount":        integer,
+       "previousState":    string | null,
+       "activeFlow":       string | null
+     }
+
+     Engagement scoring (from adjustEngagement / getEngagementLevel):
+       score >= 75 → "high"
+       score 40–74 → "medium"
+       score < 40  → "low"
+
+     Lead completeness (from getLeadCompleteness, lines 388–398):
+       name:               +25
+       patient_type:       +15
+       reason_for_visit:   +25
+       dob:                +15
+       insurance_provider: +10
+       urgency:            +10
+       Maximum total:       100 (note: different weights than LeadCapture module)
+
+     All state transitions are recorded in context.history with timestamps.
+     This means a full replay of any conversation is theoretically possible
+     — but only while the page session is alive.
+
+
+1.5  EMERGENCY DETECTOR EVENTS
+     Source file:  js/modules/emergency-detector.js
+     Current sink: console.warn only (line 102)
+     Persistence:  NONE
+
+     Scan result shape (from scan() return, lines 103–109):
+     {
+       "detected":      boolean,
+       "response":      string | null (display response),
+       "voiceResponse": string | null (TTS response),
+       "pattern":       string | null (regex pattern that matched)
+     }
+
+     Additional state: this._triggerCount (integer, per-session count)
+
+     Categories monitored: Cardiac, Respiratory, Neurological/Stroke,
+     Trauma/Severe Injury, Pediatric, Direct emergency declarations (911, etc.)
+     Total patterns: 27 regex patterns (lines 25–64)
+
+
+1.6  CALENDAR BOOKING EVENTS
+     Source file:  server/routes/calendar.js
+     Endpoints:    POST /api/calendar/check  (availability query)
+                   POST /api/calendar/book   (create event)
+     Current sink: Google Calendar (event created if credentials valid)
+     Status:       BLOCKER-01 OPEN — never tested with real credentials
+
+     Booking payload (from /api/calendar/book, lines 57–67):
+     {
+       "calendar_id":  string (Google Calendar ID),
+       "startTime":    ISO datetime,
+       "endTime":      ISO datetime,
+       "patientName":  string,
+       "reason":       string,
+       "leadId":       string
+     }
+
+     Success response: { success: true, eventId: string }
+     The event is titled "MedVoice: {patientName}" in Google Calendar.
+
+
+1.7  LLM HEALTH STATUS
+     Source file:  server/routes/llm-proxy.js — GET /api/llm/health
+     Response:     { "available": boolean, "endpoint": "configured" }
+     Timeout:      3 seconds (AbortController)
+     Checks:       Pings OLLAMA_ENDPOINT/api/tags
+
+
+1.8  SERVER HEALTH
+     Source file:  server/routes/health.js — GET /health
+     Response:     { "status": "UP", "timestamp": ISO, "version": "1.0.0" }
+
+
+1.9  CLIENT CONFIGURATION
+     Source file:  server/routes/config.js — GET /api/config?client={id}
+     Returns:      Full config JSON with secrets injected from env vars
+     Secrets stripped: ollama_endpoint (never sent to browser)
+     Secrets injected: webhook_url, webhook_secret (from env vars)
+
+     Config for medical-clinic client includes:
+       company_name, assistant_name, role, tone, primary_goal,
+       secondary_goals[], services[] (with intent_key, display_name,
+       discovery_questions[], cta_templates, flow_steps),
+       greetings[], cta_templates[], service_domain_tokens[],
+       llm_model, ai_tier, calendar_url, emergency_keywords[],
+       emergency_response, qualification_fields[], calendar_id,
+       calendar_enabled, closing_responses{}
+
+
+================================================================================
+
+SECTION 2 — THE DATA GAP: WHAT IS MISSING FOR A DASHBOARD TO WORK
+-------------------------------------------------------------------------------
+
+This is the critical section. The codebase produces rich data, but almost none
+of it is persisted in a way a dashboard can query. Here is the gap table:
+
+
+  DATA TYPE               | PRODUCED BY           | CURRENT SINK     | GAP
+  ─────────────────────────────────────────────────────────────────────────────
+  Conversation turns      | app.js → /api/log     | stdout           | No DB
+  Lead records            | lead-capture.js       | localStorage     | Browser-only
+  Session metadata        | state-machine.js      | In-memory        | Lost on close
+  Emergency events        | emergency-detector.js | console.warn     | No storage
+  Webhook queue stats     | webhook-dispatcher.js | IndexedDB        | No API endpoint
+  Calendar bookings       | calendar.js           | Google Calendar  | No local record
+  Engagement scores       | state-machine.js      | In-memory        | Lost on close
+  State transition history| state-machine.js      | In-memory        | Lost on close
+  LLM health              | llm-proxy.js          | Ephemeral HTTP   | Needs polling
+  Server health           | health.js             | Ephemeral HTTP   | Needs polling
+
+
+What this means in plain terms:
+
+  Right now, if 50 patients call in a day, the clinic sees NOTHING after the
+  calls end. No record of who called. No record of what they wanted.
+  No record of whether leads were captured. It all goes to stdout.
+
+  A dashboard built against the CURRENT data layer would only be able to show:
+    - LLM health (live ping)
+    - Server health (live ping)
+    - Configuration (read from config files)
+    - Whatever is still in the current browser session's localStorage
+
+  That is not useful. The data layer must be fixed first.
+
+
+================================================================================
+
+SECTION 3 — MINIMUM REQUIRED SERVER CHANGES BEFORE DASHBOARD IS USEFUL
+-------------------------------------------------------------------------------
+
+These are ordered by impact on dashboard value. None of these are architectural
+changes — they are infrastructure additions.
+
+
+3.1  FIX SEC-11 — Persist conversation logs to a database
+     File to change: server/routes/log.js (line 41 — the console.log call)
+     What to add:    SQLite or PostgreSQL write instead of console.log
+     Table schema:
+       conversations(
+         id INTEGER PRIMARY KEY,
+         ts TEXT,
+         session_id TEXT,
+         client_id TEXT,
+         turn INTEGER,
+         role TEXT,
+         state TEXT,
+         intent TEXT,
+         text TEXT
+       )
+     Dashboard unlocked:  Conversation transcripts, session history,
+                          intent distribution, state flow analytics
+
+3.2  ADD — Session metadata table
+     What to add:    New table in same DB as 3.1
+     Write on:       First turn (session start) and last turn (session end)
+     Table schema:
+       sessions(
+         id INTEGER PRIMARY KEY,
+         session_id TEXT UNIQUE,
+         client_id TEXT,
+         started_at TEXT,
+         ended_at TEXT,
+         final_state TEXT,
+         total_turns INTEGER,
+         peak_intent TEXT,
+         engagement_score INTEGER,
+         lead_captured BOOLEAN,
+         emergency_triggered BOOLEAN
+       )
+     Dashboard unlocked:  Session list, KPI cards, trends over time
+
+3.3  ADD — Server-side lead persistence
+     What to add:    Leads table in same DB; write when webhook fires
+     OR:             A new POST /api/leads endpoint that lead-capture.js calls
+     Table schema:
+       leads(
+         id INTEGER PRIMARY KEY,
+         session_id TEXT,
+         client_id TEXT,
+         name TEXT,
+         patient_type TEXT,
+         dob TEXT,
+         reason_for_visit TEXT,
+         insurance_provider TEXT,
+         urgency TEXT,
+         completeness INTEGER,
+         captured_at TEXT
+       )
+     Dashboard unlocked:  Lead list, completeness tracking, patient pipeline
+
+3.4  ADD — Emergency event log endpoint
+     What to add:    New route POST /api/log/emergency
+                     Called from app.js when emergencyDetector.scan() detects
+     Table schema:
+       emergency_events(
+         id INTEGER PRIMARY KEY,
+         ts TEXT,
+         session_id TEXT,
+         client_id TEXT,
+         matched_pattern TEXT,
+         input_fragment TEXT  -- first 100 chars of normalized input
+       )
+     Dashboard unlocked:  Emergency log, safety audit trail
+
+3.5  ADD — Webhook stats API endpoint
+     What to add:    GET /api/webhook/stats
+                     Calls webhookDispatcher.getStats() and returns JSON
+     NOTE:           webhookDispatcher runs browser-side. Server can only expose
+                     stats from its own outbox if outbox is moved server-side.
+                     Short-term: have browser POST stats on each page load.
+     Dashboard unlocked:  Queue health, dead-letter monitoring
+
+
+================================================================================
+
+SECTION 4 — USE CASE MATRIX
+-------------------------------------------------------------------------------
+
+This maps potential dashboard use cases to: who needs it, data availability,
+and how much work before it's live.
+
+  USE CASE                  | USER            | DATA READY?  | WORK NEEDED
+  ────────────────────────────────────────────────────────────────────────────
+  Today's session count     | Clinic manager  | No           | Needs 3.2
+  Lead pipeline list        | Clinic manager  | No           | Needs 3.3
+  Conversation transcript   | Clinic manager  | No           | Needs 3.1
+  Service intent breakdown  | Clinic manager  | No           | Needs 3.1 + 3.2
+  Emergency event log       | Safety officer  | No           | Needs 3.4
+  Patient lead detail view  | Front desk      | No           | Needs 3.3
+  LLM health status         | Dev / IT        | YES (live)   | Just build UI
+  Server health status      | Dev / IT        | YES (live)   | Just build UI
+  Webhook queue status       | Dev / IT        | Partial      | Needs 3.5
+  Config viewer             | Dev / Admin     | YES (live)   | Just build UI
+  Config editor             | Dev / Admin     | No           | Needs write API
+  Calendar bookings         | Front desk      | No           | Needs local copy
+  Engagement score trends   | Product owner   | No           | Needs 3.2
+  Multi-client comparison   | SaaS operator   | No           | Premature, 1 client
+
+  Summary: 2 out of 14 use cases work today without any server changes.
+           10 out of 14 require the 5 server changes listed in Section 3.
+
+
+================================================================================
+
+SECTION 5 — DASHBOARD TYPE RECOMMENDATION
+-------------------------------------------------------------------------------
+
+RECOMMENDED TYPE:
+  Clinic Admin Dashboard — Single Page Application
+  Primary user: Clinic manager / practice administrator / front desk staff
+  Secondary user: Developer (system health panel)
+
+WHY THIS TYPE AND NOT OTHERS:
+
+  Option A — Real-time monitoring dashboard (call center style)
+    Rejected because: Voice channel is web widget, not Twilio phone calls yet.
+    BLOCKER-01 means phone calls haven't been tested. There is nothing real-time
+    to monitor at this stage. Build this in Phase 2 when Twilio is live.
+
+  Option B — SaaS multi-tenant admin panel
+    Rejected because: Only one client config exists (medical-clinic.json).
+    Multi-tenancy UI is overhead with zero near-term benefit. Revisit when
+    the product has 3+ paying clients.
+
+  Option C — Patient-facing portal
+    Rejected because: Patients interact through the voice widget, not a portal.
+    No patient authentication system exists. Out of scope.
+
+  Option D — Clinic Admin Dashboard (RECOMMENDED)
+    Accepted because:
+      - Matches the actual users (clinic staff checking leads, call logs)
+      - Maps directly to the data the system already produces
+      - Scoped to what is buildable in the next sprint
+      - Enables the most important business question: "Who called and what did
+        they want?" which is currently completely invisible to the clinic
+
+PRIMARY CONSUMER:
+  Clinic manager who needs to answer:
+    1. How many people reached out to Aria today?
+    2. What service did they want?
+    3. Did we capture their name and reason for visit?
+    4. Were there any emergency situations?
+    5. Is the AI system working right now?
+
+
+================================================================================
+
+SECTION 6 — INTERFACE DESIGN SPECIFICATION
+-------------------------------------------------------------------------------
+
+This section defines every panel, every data field, and every control
+in the recommended dashboard. This is the design brief.
+
+
+LAYOUT STRUCTURE
+  Two-column layout: fixed left sidebar (220px wide) + main content area.
+  Sidebar contains: logo/brand, navigation links, AI status indicator.
+  Main area shows one panel at a time — tab-style navigation.
+
+
+SIDEBAR CONTENTS
+
+  Brand block:
+    - Logo mark / icon for MedVoice
+    - "MedVoice" as product name
+    - "Admin Dashboard" as subtitle
+
+  Navigation links:
+    ANALYTICS section:
+      - Overview (home icon)
+      - Leads (person icon) — shows count badge of unchecked leads
+      - Sessions (chat icon)
+
+    SAFETY section:
+      - Emergency Log (warning icon) — shows red badge if count > 0
+
+    SYSTEM section:
+      - System Health (pulse icon)
+      - Configuration (settings icon)
+
+  Footer block:
+    - AI name: "Aria"
+    - AI status: green dot + "ONLINE" or red dot + "OFFLINE"
+    - AI tier: "Tier 2 · Ollama"
+    - Client ID: "medvoice-clinic"
+
+
+PANEL 1 — OVERVIEW (Default landing page)
+
+  Page title: "Good morning, MedVoice Clinic" (time-based greeting)
+  Subtitle: today's date
+
+  Row 1 — KPI Cards (4 cards side by side):
+
+    Card 1: Today's Sessions
+      Value: integer (count of unique sessionIds for today's date)
+      Sub-label: "vs yesterday: +3"
+      Color indicator: neutral blue
+
+    Card 2: Leads Captured
+      Value: integer (leads with completeness > 0, today)
+      Sub-label: "avg completeness: 72%"
+      Color indicator: green
+
+    Card 3: Avg Engagement Score
+      Value: float (average engagementScore across today's sessions)
+      Sub-label: "high / medium / low breakdown"
+      Color indicator: based on score (green/orange/red)
+
+    Card 4: Emergency Alerts
+      Value: integer (emergency events today)
+      Sub-label: "All responded with 911 redirect"
+      Color indicator: red if > 0, gray if 0
+
+  Row 2 — Two columns:
+
+    Left column (60%): Recent Sessions Table
+      Columns: Time | Session ID | Service | Turns | Engagement | Lead | State
+      Rows: last 10 sessions, most recent first
+      Each row clickable → opens Sessions panel for that session
+      Session ID: truncated, monospace font
+      Service: pill badge (e.g. "Dental", "General Consult")
+      Engagement: colored bar or number
+      Lead: checkmark or dash
+      State: colored badge (Closing = green, Fallback = orange, etc.)
+
+    Right column (40%): Service Distribution Chart
+      Type: Donut chart
+      Segments: one per service intent_key + "Other"
+      Data: count of sessions per service for last 7 days
+      Center label: total sessions
+      Legend below chart
+
+  Row 3 — Full width: 7-day Trend Line Chart
+    Y-axis: count
+    Two lines: Sessions (blue) and Leads Captured (green)
+    X-axis: last 7 days (Mon–Sun or date labels)
+    Title: "Sessions & Leads — Last 7 Days"
+
+
+PANEL 2 — LEADS
+
+  Page title: "Patient Leads"
+  Subtitle: "All captured patient inquiries"
+
+  Controls row:
+    - Search input: "Search by name or reason..."
+    - Filter dropdown: "All Services" / "General Consult" / "Dental" / "Follow-up" / "Urgent Care"
+    - Filter dropdown: "All Patients" / "New" / "Returning"
+    - Filter dropdown: "All Completeness" / "Complete (100)" / "High (75+)" / "Partial (<75)"
+    - Sort: "Newest First" / "Oldest First" / "Completeness ↓" / "Completeness ↑"
+    - Export button: "Export CSV" (downloads leads as CSV)
+
+  Leads table:
+    Columns:
+      Name           — patient name or "Unknown" if null
+      Service        — pill badge for intent
+      Patient Type   — "New" / "Returning" / "—"
+      Reason         — reason_for_visit text (truncated to 60 chars)
+      DOB            — formatted date or "—"
+      Insurance      — provider name or "—"
+      Completeness   — horizontal progress bar (0–100%) + percentage text
+      Captured       — relative time (e.g. "2 hours ago")
+      Actions        — "View" button → opens lead detail side panel
+
+  Lead detail side panel (slides in from right when "View" clicked):
+    Header: Patient name + service badge + completeness ring
+    Fields listed:
+      - Name
+      - Patient Type
+      - Date of Birth
+      - Reason for Visit
+      - Insurance Provider
+      - Insurance ID
+      - Urgency Level
+      - Contact Method
+      - Captured At (full timestamp)
+      - Session ID (link to Sessions panel)
+      - Completeness breakdown (which fields captured, which missing)
+    Actions at bottom:
+      - "Copy Lead Data" button
+      - "View Full Session" link
+
+
+PANEL 3 — SESSIONS
+
+  Page title: "Conversation Sessions"
+  Subtitle: "Full session history with transcript"
+
+  Filter bar:
+    - Date range picker
+    - Service filter
+    - Final state filter (Closing / Fallback / Ended / etc.)
+
+  Sessions list (left column, 35% width):
+    Each item shows:
+      - Session ID (truncated, monospace)
+      - Timestamp (relative)
+      - Service / intent badge
+      - Final state badge
+      - Turn count
+      - Engagement score bar
+      - Lead captured indicator (checkmark or dash)
+    Selected session highlighted
+
+  Conversation transcript (right column, 65% width):
+    Header:
+      - Session ID
+      - Duration (start to end timestamp delta)
+      - Total turns
+      - Final state
+      - Engagement score
+      - Intent detected
+      - Lead completeness
+
+    Transcript display:
+      Each turn is a chat bubble:
+        USER turns: right-aligned, light gray background
+        ASSISTANT turns: left-aligned, light blue background
+      Each bubble shows:
+        - Role label (User / Aria)
+        - Message text
+        - State label at that point in the conversation (small, gray)
+        - Timestamp (small)
+      State transitions shown as horizontal dividers between turns:
+        Example: "— State changed: DISCOVERY → LEAD_CAPTURE —"
+
+    State flow timeline below transcript:
+      Visual sequence of states the session passed through
+      With timestamps and turn numbers at each transition
+
+
+PANEL 4 — EMERGENCY LOG
+
+  Page title: "Emergency Event Log"
+  Subtitle: "All sessions where emergency keywords were detected"
+
+  Alert banner at top (if any events today):
+    Red banner: "2 emergency events detected today. All received 911 redirect."
+
+  Table:
+    Columns:
+      Timestamp     — full datetime
+      Session ID    — link to Sessions panel
+      Client        — client_id
+      Input Snippet — first 100 chars of what the user said (truncated)
+      Pattern       — which regex category matched (Cardiac / Respiratory / etc.)
+      Response Sent — "911 redirect delivered" (always same response)
+
+  Note below table:
+    "Emergency responses are deterministic — the system always directs to 911
+     regardless of conversation state. These events bypass all LLM inference."
+
+  Empty state (if no events):
+    Green checkmark icon
+    "No emergency events recorded."
+    "The system has processed N conversations safely."
+
+
+PANEL 5 — SYSTEM HEALTH
+
+  Page title: "System Health"
+  Subtitle: "Live status of all infrastructure components"
+
+  Status cards (2x2 grid):
+
+    Card 1: MedVoice Server
+      Live ping: GET /health
+      Shows: status badge (UP/DOWN) + version + last checked timestamp
+      Indicator dot: green (UP) or red (DOWN)
+      Auto-refreshes every 30 seconds
+
+    Card 2: Ollama LLM
+      Live ping: GET /api/llm/health
+      Shows: status badge (AVAILABLE/UNAVAILABLE) + model name + endpoint: "configured"
+      Indicator dot: green (available) or red (unavailable)
+      Note if unavailable: "Tier 2 LLM offline. System falls back to rule-based responses."
+      Auto-refreshes every 30 seconds
+
+    Card 3: Webhook Queue
+      Source: webhookDispatcher.getStats()
+      Shows:
+        Pending:    integer
+        Processing: integer
+        Dead Letter: integer (red if > 0)
+        Total queued: integer
+      Note if dead-letter > 0: "Dead-letter items need manual review."
+      Refresh button: manually trigger recheck
+
+    Card 4: Calendar Integration
+      Source: config.calendar_enabled + test call to /api/calendar
+      Shows: "Enabled" / "Disabled" badge
+      If disabled: "calendar_enabled is false in config. Booking flow is inactive."
+      If enabled: test availability check result
+
+  AI Tier Information block (full width):
+    Table showing ai_tier config value and what it means:
+      Tier 1: Rule-based only. No LLM inference. All responses from config templates.
+      Tier 2: Ollama proxy. LLM inference on your server. (Current config)
+      Tier 3: Local model runner. Direct browser-side model.
+    Current: highlighted row
+
+  Known Issues block (full width):
+    Pulled from ENVIRONMENT.md known issues register:
+      SEC-11 OPEN  — Audit logs to stdout. Replace with HIPAA-compliant sink.
+      BLOCKER-01 OPEN — Calendar booking untested with real credentials.
+      GAP-08 OPEN  — HIPAA BAA not signed with hosting, Twilio, LLM provider.
+
+
+PANEL 6 — CONFIGURATION
+
+  Page title: "Client Configuration"
+  Subtitle: "medvoice-clinic.json — Read from server via GET /api/config"
+
+  Client selector (dropdown):
+    Lists all available config files from configs/ directory
+    Default: current ?client= param or "default"
+
+  Configuration display in two modes:
+
+  MODE A — Visual (default view):
+
+    Company block:
+      Company name, assistant name, role, tone
+      Primary goal badge, secondary goals list
+
+    Services block (card grid, one card per service):
+      Each card:
+        - Service name (display_name)
+        - Intent key (monospace)
+        - Discovery questions list (numbered)
+        - CTA templates list
+
+    Emergency keywords block:
+      Tag cloud or comma-separated list of all emergency_keywords
+      Total count: "27 keywords monitored"
+
+    Qualification fields block:
+      Shows the qualification_fields array as a pipeline:
+        name → patient_type → dob → reason_for_visit → insurance_provider
+
+    Calendar block:
+      calendar_enabled: true/false badge
+      calendar_id (masked: first 8 chars + ***)
+      calendar_url: clickable link
+
+  MODE B — JSON view (toggle button):
+    Raw JSON of the config (syntax-highlighted if possible)
+    Secrets are masked: webhook_secret shown as "***"
+    "Copy JSON" button
+
+  Edit Config button:
+    Shows warning dialog: "Config editing requires a write API endpoint
+    (not yet implemented). Export the JSON, edit it, and redeploy configs/
+    to the server manually for now."
+
+
+================================================================================
+
+SECTION 7 — IMPLEMENTATION ROADMAP
+-------------------------------------------------------------------------------
+
+This is the sequence of work to go from current state to a functional dashboard.
+
+PHASE 1 — Data Layer (must come before UI is useful)
+
+  Week 1:
+    1. Add SQLite to server (npm install better-sqlite3)
+    2. Create schema: conversations, sessions, leads, emergency_events tables
+    3. Replace console.log in server/routes/log.js with DB write
+    4. Add new POST /api/log/session endpoint (called on session end from app.js)
+    5. Add new POST /api/log/emergency endpoint (called from app.js on detection)
+
+  Week 2:
+    6. Add GET /api/sessions endpoint (query sessions table)
+    7. Add GET /api/sessions/:id/transcript endpoint (query conversations table)
+    8. Add GET /api/leads endpoint (query leads table)
+    9. Move lead persistence from localStorage to POST /api/leads server call
+   10. Add GET /api/emergency endpoint (query emergency_events table)
+
+PHASE 2 — Dashboard UI
+
+  Week 3:
+    11. Build static HTML/CSS dashboard shell (sidebar + panels)
+    12. Wire Overview panel to /api/sessions aggregation queries
+    13. Wire Leads panel to /api/leads
+    14. Wire Sessions panel to /api/sessions + /api/sessions/:id/transcript
+
+  Week 4:
+    15. Wire Emergency Log to /api/emergency
+    16. Wire System Health to /health + /api/llm/health (live polling)
+    17. Wire Configuration panel to /api/config
+    18. Add CSV export for leads
+
+PHASE 3 — Polish and HIPAA (required for first medical client)
+
+  Week 5:
+    19. Encrypt PHI fields at rest in SQLite (or migrate to PostgreSQL with
+        encryption plugin) — resolves SEC-11
+    20. Add authentication to dashboard routes (basic session token at minimum)
+    21. Add audit log for dashboard access (who viewed which lead, when)
+    22. Sign BAAs with hosting provider — resolves GAP-08
+
+
+================================================================================
+
+SECTION 8 — SCHEMA REFERENCE SUMMARY
+-------------------------------------------------------------------------------
+
+What the dashboard will read from the API after Phase 1 is complete:
+
+  GET /api/sessions?date=2026-05-07&client=medvoice-clinic
+    Returns: array of session objects with metadata
+
+  GET /api/sessions/:sessionId/transcript
+    Returns: ordered array of conversation turns for that session
+
+  GET /api/leads?client=medvoice-clinic&service=DENTAL&completeness_min=50
+    Returns: filtered array of lead records
+
+  GET /api/emergency?client=medvoice-clinic&date=2026-05-07
+    Returns: array of emergency event records
+
+  GET /api/config?client=medvoice-clinic
+    Returns: full config JSON (already exists)
+
+  GET /api/llm/health
+    Returns: { available, endpoint } (already exists)
+
+  GET /health
+    Returns: { status, timestamp, version } (already exists)
+
+
+================================================================================
+
+SECTION 9 — HONEST ASSESSMENT
+-------------------------------------------------------------------------------
+
+What is buildable RIGHT NOW (today, with zero server changes):
+  - A static page showing LLM health + server health
+  - A config viewer for the clinic's settings
+  - A skeleton UI that works but shows "No data — server logging not configured"
+
+What requires 2 weeks of backend work:
+  - Everything that matters: lead list, sessions, transcripts, emergency log
+
+What requires HIPAA compliance work before showing to a real clinic:
+  - The full dashboard with PHI (patient names, reasons for visit)
+  - Needs encrypted storage and access controls first
+
+The dashboard design specified in Section 6 is the correct design.
+Build the data layer in Section 7 first, then wire the UI to it.
+Do not build a sophisticated frontend against mock data —
+build the backend, then the frontend talks to real data from day one.
+
+
+================================================================================
+END OF REPORT
+Source files read: server/routes/log.js, server/routes/config.js,
+server/routes/calendar.js, server/routes/voice.js, server/routes/health.js,
+server/routes/llm-proxy.js, js/modules/lead-capture.js,
+js/modules/emergency-detector.js, js/services/webhook-dispatcher.js,
+js/state-machine.js, configs/medical-clinic.json, server/index.js
+Written: May 2026, Pass 8
+================================================================================

@@ -13,6 +13,7 @@
 
 import { AppContext } from '../config/loader.js';
 import { webhookDispatcher } from '../services/webhook-dispatcher.js';
+import { conversationLogger } from '../services/conversation-logger.js';
 
 /**
  * SEC-07: Generate a hardened, namespaced localStorage key.
@@ -36,6 +37,7 @@ export class LeadCapture {
   constructor() {
     this._leadData = {
       name:               null,
+      phone:              null,
       patient_type:       null,
       dob:                null,
       reason_for_visit:   null,
@@ -55,22 +57,19 @@ export class LeadCapture {
         "Before we go further — what's your name?",
         "I'd love to know who I'm helping. What should I call you?"
       ],
-      patient_type: [
-        "Are you a new or returning patient?",
-        "Have you visited our clinic before?"
-      ],
       reason_for_visit: [
         "What's the main thing you're looking to address today?",
         "Could you describe the reason for your visit?",
         "What symptoms or concerns should the doctor know about?"
       ],
-      urgency: [
-        "How quickly do you need to be seen?",
-        "Is this an urgent matter or a routine checkup?"
+      patient_type: [
+        "Are you a new or returning patient?",
+        "Have you visited our clinic before?"
       ],
-      contactMethod: [
-        "What's the best way for our clinic to follow up with you?",
-        "How would you prefer we reach out — phone or email?"
+      phone: [
+        "What's the best phone number for us to reach you on?",
+        "Could I get a callback number for you, just in case?",
+        "What number should we call to confirm your appointment?"
       ],
       dob: [
         "Could I get your date of birth, just for our medical records?",
@@ -83,12 +82,20 @@ export class LeadCapture {
       insurance_id: [
         "Do you have your insurance member ID number handy?",
         "Could you read me your insurance member ID?"
-      ]
+      ],
+      urgency: [
+        "How quickly do you need to be seen?",
+        "Is this an urgent matter or a routine checkup?"
+      ],
+      contactMethod: [
+        "What's the best way for our clinic to follow up with you?",
+        "How would you prefer we reach out — phone or email?"
+      ],
     };
 
     // ─── Capture Order ────────────────────────────────────
-    // G-029: Medical pivot capture order
-    this._captureOrder = ['name', 'patient_type', 'dob', 'reason_for_visit', 'insurance_provider'];
+    // Mirrors natural receptionist flow: who → why → new/returning → contact → admin
+    this._captureOrder = ['name', 'reason_for_visit', 'patient_type', 'phone', 'dob', 'insurance_provider'];
   }
 
   // ─── Public API ───────────────────────────────────────────
@@ -114,15 +121,40 @@ export class LeadCapture {
   }
 
   /**
-   * Store a captured field value
+   * Normalize and validate a phone number.
+   * Strips formatting, accepts 10–15 digits (covers NA + international).
+   * @param {string} raw
+   * @returns {string|null} Normalized digits-only string, or null if invalid
+   */
+  _validatePhone(raw) {
+    if (!raw) return null;
+    // Strip all non-digit characters (spaces, dashes, parens, dots, leading +)
+    const digits = String(raw).replace(/\D/g, '');
+    if (digits.length < 10 || digits.length > 15) return null;
+    // Format for storage: keep raw digits (avoids locale assumptions)
+    return digits;
+  }
+
+  /**
+   * Store a captured field value.
+   * Phone values are validated before storing; invalid numbers are silently
+   * rejected so the capture loop will re-ask on the next turn.
    * @param {string} field - Field name
    * @param {string} value - Field value
    */
   capture(field, value) {
-    if (value && value.trim()) {
-      this._leadData[field] = value.trim();
-      this._capturedFields.add(field);
+    if (!value || !String(value).trim()) return;
+
+    if (field === 'phone') {
+      const normalized = this._validatePhone(value);
+      if (!normalized) return; // invalid format — do not mark as captured
+      this._leadData.phone = normalized;
+      this._capturedFields.add('phone');
+      return;
     }
+
+    this._leadData[field] = String(value).trim();
+    this._capturedFields.add(field);
   }
 
   /**
@@ -133,16 +165,17 @@ export class LeadCapture {
   }
 
   /**
-   * Get completeness as a percentage (0-100)
+   * Get completeness as a percentage (0-100).
+   * Weights reflect capture priority: contact info > clinical info > admin.
    */
   getCompleteness() {
     let score = 0;
-    // G-029: Medical scoring update
-    if (this._leadData.name)                score += 30;
-    if (this._leadData.patient_type)        score += 20;
-    if (this._leadData.reason_for_visit)    score += 25;
-    if (this._leadData.dob)                 score += 15;
-    if (this._leadData.insurance_provider)  score += 10;
+    if (this._leadData.name)               score += 25;
+    if (this._leadData.reason_for_visit)   score += 25;
+    if (this._leadData.patient_type)       score += 15;
+    if (this._leadData.phone)              score += 15;
+    if (this._leadData.dob)                score += 10;
+    if (this._leadData.insurance_provider) score += 10;
     return score;
   }
 
@@ -194,6 +227,42 @@ export class LeadCapture {
     }).catch(err => {
       console.warn('[LeadCapture] Webhook dispatch failed (it will retry automatically):', err.message);
     });
+
+    // ── ALSO save to backend API ────────────────────────
+    this._saveToServer();
+  }
+
+  /**
+   * POST lead data to the backend API for persistence.
+   * Fire-and-forget — never blocks the conversation pipeline.
+   */
+  async _saveToServer() {
+    try {
+      const config = AppContext.getConfig();
+      const leadData = this.getData();
+
+      await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: conversationLogger.sessionId || ('session_' + Date.now()),
+          client_id: config.client_id || 'medical-clinic',
+          ...leadData,
+          completeness_score: this.getCompleteness() / 100,
+          service: leadData.reason_for_visit || null
+        })
+      });
+
+      console.log('[LeadCapture] Saved to server');
+    } catch (error) {
+      console.error('[LeadCapture] Failed to save to server:', error);
+      // Continue anyway — localStorage is still the backup
+    }
+  }
+
+  /** POST snapshot without appending another localStorage row (used for partial qualification). */
+  persistToServer() {
+    return this._saveToServer();
   }
 
   /**
@@ -212,6 +281,7 @@ export class LeadCapture {
   reset() {
     this._leadData = {
       name:               null,
+      phone:              null,
       patient_type:       null,
       dob:                null,
       reason_for_visit:   null,
@@ -221,5 +291,6 @@ export class LeadCapture {
       contactMethod:      null
     };
     this._capturedFields.clear();
+    this._promptCounters = {};
   }
 }

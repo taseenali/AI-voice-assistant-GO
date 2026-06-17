@@ -5,8 +5,9 @@ export default mergeConfig(viteConfig, defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Browser/WebDriver runner requires matching Chrome/Chromedriver; unit tests run in jsdom.
     browser: {
-      enabled: true,
+      enabled: false,
       provider: 'webdriverio',
       name: 'chrome',
       headless: true

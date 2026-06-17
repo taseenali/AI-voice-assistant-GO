@@ -1,0 +1,245 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Vapi Integration Guide}
+\author{Technical Architecture}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document defines \textbf{exactly} what to build, keep, and remove when replacing MedVoice's hand-built real-time orchestration with Vapi as the live-call runtime. Vapi replaces only the middle box---not your product layer.
+\end{abstract}
+
+\section{What Changes vs.\ What Stays}
+
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small},
+  drop/.style={box, fill=medred!15, draw=medred},
+  keep/.style={box, fill=medgreen!15, draw=medgreen},
+  new/.style={box, fill=medblue!15, draw=medblue},
+  arrow/.style={-{Stealth[length=2mm]}, thick}
+]
+  \node[keep] (twilio) {Twilio\\Phone};
+  \node[new, right=0.8cm of twilio] (vapi) {Vapi\\Runtime};
+  \node[keep, right=0.8cm of vapi] (node) {Node/Express\\Control Plane};
+  \node[keep, below=1.2cm of node] (db) {SQLite +\\Dashboard};
+  \node[drop, below=1.2cm of vapi] (old) {Browser STT/TTS\\Orchestrator};
+
+  \draw[arrow] (twilio) -- (vapi);
+  \draw[arrow] (vapi) -- node[above, font=\scriptsize]{tool calls} (node);
+  \draw[arrow] (node) -- (db);
+  \draw[arrow, dashed, medred] (old) -- node[right, font=\scriptsize]{DELETE} (vapi);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Drop (no longer own)}
+\begin{itemize}
+  \item \texttt{js/speech-io.js} --- browser STT/TTS loop for phone calls
+  \item \texttt{server/routes/voice.js} --- TwiML ConversationRelay + WebSocket scaffold
+  \item Real-time barge-in, endpointing, turn-taking, media streaming for \emph{phone}
+  \item Browser-only webhook delivery dependency for phone calls
+\end{itemize}
+
+\subsection{Keep and extend}
+\begin{itemize}
+  \item \texttt{configs/*.json} --- per-tenant prompts, services, emergency keywords
+  \item \texttt{server/routes/calendar.js} --- becomes Vapi tool endpoints
+  \item \texttt{server/routes/leads.js}, \texttt{sessions.js}, \texttt{emergency.js}
+  \item \texttt{js/services/webhook-dispatcher.js} pattern --- inbound from Vapi instead
+  \item React dashboard, SQLite schema, multi-tenant \texttt{client\_id} routing
+\end{itemize}
+
+\section{The Two Integration Wires}
+
+Only two HTTPS connections link your product to Vapi:
+
+\begin{enumerate}
+  \item \textbf{Configuration (you $\rightarrow$ Vapi)} --- at call start, return tenant-specific assistant config.
+  \item \textbf{Callbacks (Vapi $\rightarrow$ you)} --- tool calls during the call; end-of-call transcript/recording webhook.
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[
+  actor/.style={draw, rounded corners, fill=medlight, minimum width=2.2cm, minimum height=0.7cm, align=center, font=\small},
+  wire/.style={-{Stealth}, thick, medblue}
+]
+  \node[actor] (caller) {Patient};
+  \node[actor, right=1.5cm of caller] (tw) {Twilio};
+  \node[actor, right=1.5cm of tw] (va) {Vapi};
+  \node[actor, right=1.5cm of va] (be) {MedVoice\\Backend};
+  \node[actor, below=1cm of be] (cal) {Google\\Calendar};
+
+  \draw[wire] (caller) -- (tw) -- (va);
+  \draw[wire] (va) -- node[above, font=\scriptsize]{① assistant-request} (be);
+  \draw[wire] (be) -- node[above, font=\scriptsize]{assistant config} (va);
+  \draw[wire] (va) -- node[above, font=\scriptsize]{② tool-calls} (be);
+  \draw[wire] (be) -- (cal);
+  \draw[wire, dashed] (va) -- node[below, font=\scriptsize]{end-of-call-report} (be);
+\end{tikzpicture}
+\end{center}
+
+\section{Step-by-Step Implementation}
+
+\subsection{Phase A: Accounts and keys (Day 1)}
+\begin{enumerate}
+  \item Create Vapi org at \url{https://dashboard.vapi.ai}; obtain \texttt{VAPI\_API\_KEY}.
+  \item Add to \texttt{.env}: \texttt{VAPI\_API\_KEY}, \texttt{VAPI\_WEBHOOK\_SECRET}.
+  \item Provision Twilio number; in Vapi, import number (BYO Twilio) or buy via Vapi.
+  \item Add provider keys in Vapi dashboard (BYOK): Deepgram STT, OpenAI/Groq LLM, ElevenLabs TTS.
+  \item Sign BAAs: Vapi + Twilio + Deepgram + OpenAI + ElevenLabs (HIPAA path).
+\end{enumerate}
+
+\subsection{Phase B: New backend routes (Days 2--4)}
+
+Create \texttt{server/routes/vapi.js} with three handlers:
+
+\subsubsection{POST /api/vapi/assistant-request}
+Triggered on inbound call. Map \texttt{call.phoneNumberId} or dialed \texttt{to} number $\rightarrow$ tenant.
+
+\textbf{Input} (from Vapi):
+\begin{verbatim}
+{ "message": { "type": "assistant-request",
+  "call": { "id": "...", "phoneNumber": { "number": "+1..." }}}}
+\end{verbatim}
+
+\textbf{Your logic:}
+\begin{enumerate}
+  \item Lookup tenant by dialed number in DB or \texttt{configs/}.
+  \item Load \texttt{configs/\{client\}.json}; build system prompt from services, greetings, emergency rules.
+  \item Respond within \textbf{7.5s} (telephony hard limit).
+\end{enumerate}
+
+\textbf{Output:}
+\begin{verbatim}
+{ "assistant": {
+    "name": "Aria",
+    "firstMessage": "Hi, I'm Aria at MedVoice Clinic...",
+    "model": { "provider": "openai", "model": "gpt-4o-mini",
+      "messages": [{ "role": "system", "content": "<tenant prompt>" }],
+      "toolIds": ["tool_check_avail", "tool_book", "tool_capture_lead"] },
+    "voice": { "provider": "11labs", "voiceId": "<tenant voice>" },
+    "serverUrl": "https://your-domain.com/api/vapi/webhook"
+}}
+\end{verbatim}
+
+\subsubsection{POST /api/vapi/webhook (tool-calls)}
+\textbf{Input:}
+\begin{verbatim}
+{ "message": { "type": "tool-calls",
+  "toolCallList": [{ "id": "toolu_xxx", "name": "check_availability",
+    "arguments": { "date": "2026-06-17", "time": "10:00" }}],
+  "call": { "id": "call-uuid" }}}
+\end{verbatim}
+
+\textbf{Output} (required format):
+\begin{verbatim}
+{ "results": [{ "toolCallId": "toolu_xxx",
+    "result": "Tuesday 10:00 AM is available." }] }
+\end{verbatim}
+
+Wire tools to existing routes:
+\begin{itemize}
+  \item \texttt{check\_availability} $\rightarrow$ \texttt{POST /api/calendar/check}
+  \item \texttt{book\_appointment} $\rightarrow$ \texttt{POST /api/calendar/book}
+  \item \texttt{capture\_lead} $\rightarrow$ \texttt{POST /api/leads}
+  \item \texttt{log\_emergency} $\rightarrow$ \texttt{POST /api/emergency}
+\end{itemize}
+
+Pass \texttt{client\_id} via Vapi \textbf{static parameters} (server-trusted, invisible to LLM).
+
+\subsubsection{POST /api/vapi/webhook (end-of-call-report)}
+On \texttt{message.type === "end-of-call-report"}:
+\begin{itemize}
+  \item Persist transcript to \texttt{sessions} + \texttt{turns} tables
+  \item Store recording URL, duration, structured lead data
+  \item Fire outbound webhook via server-side dispatcher (not browser)
+\end{itemize}
+
+\subsection{Phase C: Vapi tool definitions (Day 3)}
+Register in Vapi dashboard or via \texttt{POST /tool}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Tool} & \textbf{Parameters} & \textbf{Server URL} \\
+\midrule
+\texttt{check\_availability} & date, time, duration & /api/vapi/tools/calendar-check \\
+\texttt{book\_appointment} & date, time, patientName, reason & /api/vapi/tools/calendar-book \\
+\texttt{capture\_lead} & name, phone, dob, insurance & /api/vapi/tools/lead \\
+\texttt{transfer\_urgent} & reason & /api/vapi/tools/transfer \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Phase D: Phone routing (Day 4)}
+\begin{enumerate}
+  \item \texttt{PATCH /phone-number/\{id\}}: set \texttt{assistantId: null}, \texttt{server.url} = your assistant-request endpoint.
+  \item Each clinic gets a dedicated Twilio number $\rightarrow$ same Vapi org, different tenant config at runtime.
+  \item Test locally: \texttt{ngrok http 3001} + \texttt{vapi listen --forward-to localhost:3001/api/vapi/webhook}.
+\end{enumerate}
+
+\subsection{Phase E: Decommission custom phone orchestration (Day 5)}
+\begin{enumerate}
+  \item Remove ConversationRelay WebSocket scaffold from \texttt{voice.js} (keep Twilio signature middleware if needed).
+  \item Keep web widget (\texttt{js/}) for demo/dashboard embed; phone traffic goes through Vapi only.
+  \item Move webhook dispatch from browser IndexedDB to server-side queue for phone sessions.
+\end{enumerate}
+
+\section{Multi-Tenancy Pattern}
+
+One Vapi account. Tenant isolation in \textbf{your} database:
+
+\begin{center}
+\begin{tikzpicture}[
+  step/.style={draw, rounded corners, fill=white, minimum width=3.5cm, minimum height=0.65cm, align=center, font=\small},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[step] (a) {Inbound call\\+1-555-CLINIC-A};
+  \node[step, right=0.6cm of a] (b) {assistant-request};
+  \node[step, right=0.6cm of b] (c) {tenant = clinic-a};
+  \node[step, right=0.6cm of c] (d) {clinic-a prompt\\+ calendar creds};
+  \draw[arr] (a)--(b)--(c)--(d);
+\end{tikzpicture}
+\end{center}
+
+Tool calls include \texttt{client\_id} as static parameter---your webhook never guesses which calendar to touch.
+
+\section{Cost Stack (per minute, 2026)}
+
+\begin{center}
+\begin{tabular}{@{}lrl@{}}
+\toprule
+\textbf{Layer} & \textbf{Rate} & \textbf{Notes} \\
+\midrule
+Vapi platform & \$0.05/min & Fixed orchestration fee \\
+Deepgram STT & $\sim$\$0.004--0.02/min & Nova-2 streaming \\
+LLM (GPT-4o mini) & $\sim$\$0.003--0.01/min & Token-based \\
+ElevenLabs TTS & $\sim$\$0.01--0.07/min & Voice tier dependent \\
+Twilio telephony & $\sim$\$0.008--0.02/min & US inbound \\
+\midrule
+\textbf{All-in realistic} & \textbf{\$0.18--0.33/min} & Premium stack higher \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+At 1{,}000 min/month per clinic: raw cost \$180--330. Price subscriptions above this with margin.
+
+\section{Migration Safety}
+
+Because integration = config + webhooks only, switching Vapi $\rightarrow$ LiveKit later rewrites the runtime layer only. Tool endpoints, dashboard, and tenant DB remain unchanged.
+
+\section{Acceptance Criteria}
+
+\begin{itemize}
+  \item Inbound call to clinic number $\rightarrow$ correct tenant greeting
+  \item ``Book Tuesday 10am'' $\rightarrow$ real Google Calendar freebusy + book
+  \item Emergency keyword $\rightarrow$ \texttt{/api/emergency} logged + transfer offered
+  \item Call end $\rightarrow$ transcript in dashboard within 30s
+  \item No browser tab required for phone call processing
+\end{itemize}
+
+\end{document}

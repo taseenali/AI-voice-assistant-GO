@@ -1,0 +1,34 @@
+% MedVoice AI — Shared LaTeX Preamble
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,matrix}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\definecolor{medblue}{HTML}{1E40AF}
+\definecolor{medgreen}{HTML}{059669}
+\definecolor{medamber}{HTML}{D97706}
+\definecolor{medred}{HTML}{DC2626}
+\definecolor{medgray}{HTML}{6B7280}
+\definecolor{medlight}{HTML}{F3F4F6}
+
+\hypersetup{colorlinks=true,linkcolor=medblue,urlcolor=medblue,citecolor=medblue}
+
+\newcommand{\status}[1]{\textbf{#1}}
+\newcommand{\done}{\textcolor{medgreen}{\textbf{FUNCTIONAL}}}
+\newcommand{\partial}{\textcolor{medamber}{\textbf{SCAFFOLDED}}}
+\newcommand{\missing}{\textcolor{medred}{\textbf{NOT STARTED}}}
+\newcommand{\verified}{\textcolor{medgreen}{\textbf{VERIFIED}}}
+
+\setlist{nosep,leftmargin=*}
+\setlength{\parskip}{0.4em}

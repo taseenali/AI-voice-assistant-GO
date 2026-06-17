@@ -5,7 +5,7 @@ import path from 'path';
 const router = express.Router();
 
 router.get('/config', (req, res) => {
-  const clientId = req.query.client || 'default';
+  const clientId = req.query.client || 'medical-clinic';
   
   // Validate clientId — prevent path traversal
   if (!/^[a-z0-9-]+$/.test(clientId)) {
@@ -22,6 +22,8 @@ router.get('/config', (req, res) => {
     
     const secureConfig = {
       ...publicConfig,
+      // Canonical tenant id for DB rows, webhooks, and dashboard filters (matches ?client= slug)
+      client_id: clientId,
       webhook_url:    process.env[`${clientUpper}_WEBHOOK_URL`]    || publicConfig.webhook_url    || '',
       webhook_secret: process.env[`${clientUpper}_WEBHOOK_SECRET`] || publicConfig.webhook_secret || '',
       // ollama_endpoint intentionally omitted — LLM calls are proxied server-side via /api/llm/chat

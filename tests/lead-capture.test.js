@@ -25,11 +25,15 @@ describe('LeadCapture', () => {
   });
 
   it('should calculate completeness correctly', () => {
-    lc.capture('name', 'John Doe'); // 30
-    expect(lc.getCompleteness()).toBe(30);
-    
-    lc.capture('reason_for_visit', 'Flu symptoms'); // +25 = 55
-    expect(lc.getCompleteness()).toBe(55);
+    // Weights: name 25, reason 25, patient_type 15, phone 15, dob 10, insurance 10
+    lc.capture('name', 'John Doe');
+    expect(lc.getCompleteness()).toBe(25);
+
+    lc.capture('reason_for_visit', 'Flu symptoms');
+    expect(lc.getCompleteness()).toBe(50);
+
+    lc.capture('phone', '6125551234');
+    expect(lc.getCompleteness()).toBe(65);
   });
 
   it('should reset behavior', () => {

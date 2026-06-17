@@ -124,6 +124,8 @@ export class ConversationStateMachine {
   /** Reset to initial state */
   reset() {
     this._state = STATES.IDLE;
+    this._deferredIntentStack = [];
+    this._resolvedIntents = new Set();
     this._context = {
       state:            STATES.IDLE,
       intent:           null,

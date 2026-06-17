@@ -1,0 +1,13 @@
+\contentsline {chapter}{Executive Summary}{2}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Vapi Integration Guide}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}What Changes vs.\ What Stays}{3}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Drop}{3}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Keep}{3}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Build New}{3}{subsection.1.1.3}%
+\contentsline {subsection}{\numberline {1.1.4}Implementation Checklist}{3}{subsection.1.1.4}%
+\contentsline {chapter}{\numberline {2}Component Inventory}{4}{chapter.2}%
+\contentsline {chapter}{\numberline {3}External Resources}{5}{chapter.3}%
+\contentsline {chapter}{\numberline {4}Project Roadmap}{6}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Go-to-Market Strategy}{7}{chapter.5}%
+\contentsline {chapter}{\numberline {A}Compilation Notes}{8}{appendix.A}%
+\contentsline {chapter}{\numberline {B}Sources}{9}{appendix.B}%

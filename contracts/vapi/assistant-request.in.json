@@ -1,0 +1,25 @@
+{
+  "_fixtureMeta": {
+    "capturedAt": "2026-06-16",
+    "source": "live spike call (captures/1781642960169-assistant-request.json)",
+    "note": "Dialed number at message.phoneNumber.number; call.phoneNumber is null on SIP. Re-capture if Vapi payloads change."
+  },
+  "message": {
+    "type": "assistant-request",
+    "call": {
+      "id": "call-test-assistant-request-001",
+      "type": "inboundPhoneCall",
+      "phoneNumber": null,
+      "customer": {
+        "number": "+15551112222"
+      }
+    },
+    "phoneNumber": {
+      "id": "edfe4967-08d3-4791-b080-dd1ec5671322",
+      "number": "+18564402211"
+    },
+    "customer": {
+      "number": "+15551112222"
+    }
+  }
+}

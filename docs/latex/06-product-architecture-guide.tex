@@ -1,0 +1,344 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Product Architecture \& Pre-Code Plan}
+\author{Complete Product Guide}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+What MedVoice is, how it works today, clinic vs.\ super-admin dashboards, database design, and the full step-by-step checklist before writing more code.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ─────────────────────────────────────────────
+\section{What This Product Is}
+
+\subsection{One-Sentence Pitch}
+\textbf{MedVoice AI is a 24/7 AI medical receptionist sold to clinics as a subscription.} It answers phone calls and website chats, collects patient information, books appointments into Google Calendar, escalates emergencies, and surfaces everything in a clinic dashboard.
+
+\subsection{The Analogy}
+You sell two things:
+\begin{enumerate}[nosep]
+  \item \textbf{The product} --- prompts, medical safety, booking logic, dashboard, billing. \emph{This is MedVoice.}
+  \item \textbf{The voice engine} --- real-time phone audio via Vapi + Twilio. \emph{Rented infrastructure.}
+\end{enumerate}
+Clinics care that calls get answered and appointments land on their calendar --- not which runtime you use.
+
+\subsection{Who Buys It}
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Buyer} & \textbf{Pain} \\
+\midrule
+Solo doctor / small clinic & Missed after-hours calls; no budget for 2 FTE staff \\
+Dental / urgent care & High volume; repetitive booking questions \\
+Multi-provider group & Inconsistent front desk; staff turnover \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Problems Solved}
+\begin{itemize}[nosep]
+  \item Missed calls $\rightarrow$ lost appointments (\$150--300 each)
+  \item After-hours voicemail $\rightarrow$ patients call the next clinic
+  \item Staff cost: $\sim$\$9K/mo (2 receptionists) vs.\ \$1.5--3K/mo (MedVoice)
+  \item Emergency risk: hard-coded detector bypasses LLM for red-flag keywords
+\end{itemize}
+
+% ─────────────────────────────────────────────
+\section{How It Works Today}
+
+\subsection{Three Apps in the Repo}
+
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.4cm, minimum height=0.7cm, align=center, font=\scriptsize},
+  ok/.style={box, fill=medgreen!20},
+  bad/.style={box, fill=medred!20},
+  mid/.style={box, fill=medamber!20},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[ok] (web) {Web Widget\\:3000};
+  \node[bad, right=1cm of web] (phone) {Phone\\not live};
+  \node[mid, below=1cm of web] (api) {Express API\\:3001};
+  \node[ok, right=1cm of api] (dash) {Dashboard\\:5173};
+  \node[mid, below=0.8cm of api] (db) {SQLite};
+  \draw[arr] (web)--(api);
+  \draw[arr, dashed] (phone)--(api);
+  \draw[arr] (dash)--(api);
+  \draw[arr] (api)--(db);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Web Chat Flow (Functional)}
+\begin{enumerate}[nosep]
+  \item Patient opens widget (\texttt{?client=medical-clinic})
+  \item Widget loads config from \texttt{GET /api/config}
+  \item \textbf{ResponseOrchestrator} runs 6-step pipeline per message
+  \item Emergency detector runs first (keyword match, bypasses LLM)
+  \item Lead capture collects name, DOB, insurance, reason
+  \item Turns logged to SQLite; webhooks fire to clinic n8n URL
+  \item Clinic staff views data in dashboard
+\end{enumerate}
+
+\subsection{What Is Not Working}
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Gap} & \textbf{Impact} \\
+\midrule
+No Vapi integration & Phone calls don't work \\
+No dashboard auth & Anyone with URL sees data \\
+Single hardcoded tenant & Not multi-clinic SaaS \\
+Calendar disabled & Booking not E2E verified \\
+Browser-only webhooks & Phone can't use open-tab delivery \\
+No Stripe billing & Can't charge customers \\
+No HIPAA production stack & Can't handle real PHI at scale \\
+\midrule
+\textbf{Overall} & \textbf{$\sim$33\% toward sellable product} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{Dashboards: Two Products, Not One}
+
+\subsection{Critical Distinction}
+
+\begin{center}
+\begin{tikzpicture}[
+  panel/.style={draw, rounded corners, fill=white, minimum width=4.8cm, minimum height=2.8cm, align=left, font=\scriptsize, inner sep=5pt}
+]
+  \node[panel, fill=medblue!10] (sa) {\textbf{Super-Admin (yours)}\\[2pt]
+    All clinics, MRR, churn\\
+    Usage minutes, margins\\
+    Onboard tenants\\
+    System health (all)\\
+    Support / failed webhooks\\
+    \textit{Not built yet}};
+  \node[panel, fill=medgreen!10, right=1cm of sa] (cl) {\textbf{Clinic Dashboard (client)}\\[2pt]
+    Their leads \& sessions\\
+    Their emergencies\\
+    Their config (edit)\\
+    Their billing / usage\\
+    Call recordings\\
+    \textit{Prototype exists}};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Clinic Dashboard --- What to Display}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Screen} & \textbf{Shows} & \textbf{Status} \\
+\midrule
+Overview & Calls today, leads, avg duration, emergencies & Built \\
+Leads & Name, phone, DOB, insurance, reason & Built \\
+Sessions & Full transcripts & Built \\
+Emergency Log & Red-flag events & Built \\
+Appointments & Booked slots, confirmations & Missing \\
+Call Recordings & Audio playback & Missing \\
+Configuration & Greeting, services, hours & Read-only \\
+Usage \& Billing & Minutes vs.\ plan, invoices & Missing \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Clinic must NOT see:} other clinics' data, your Vapi costs, margins, raw API keys.
+
+\subsection{Super-Admin Dashboard --- What You Need}
+
+\begin{center}
+\small
+\begin{tabular}{@{}l@{}}
+\toprule
+\textbf{Screen} \\
+\midrule
+Tenants --- all clinics, plan tier, onboarding stage \\
+Revenue --- MRR, ARR, churn, pilot pricing \\
+Usage --- minutes/tenant, overage, cost vs.\ revenue \\
+System Health --- Vapi/Twilio uptime, errors per tenant \\
+Onboarding --- wizard progress per clinic \\
+Support --- failed webhooks, stuck calls \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{Database: Current vs.\ Target}
+
+\subsection{Existing Tables (SQLite)}
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Table} & \textbf{Purpose} \\
+\midrule
+\texttt{sessions} & One conversation; \texttt{client\_id}, duration, flags \\
+\texttt{conversation\_turns} & Each message; role, intent, state \\
+\texttt{leads} & Patient info: name, DOB, insurance, reason \\
+\texttt{emergency\_events} & Red-flag keyword detections \\
+\texttt{audit\_logs} & HIPAA trail (exists; barely used) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Config lives in \texttt{configs/*.json}, not the database. No \texttt{users}, \texttt{tenants}, or \texttt{appointments} tables yet.
+
+\subsection{Target Schema (Production SaaS)}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{New Table} & \textbf{Purpose} \\
+\midrule
+\texttt{tenants} & Company, plan, Stripe ID, status \\
+\texttt{users} & Email, role (super\_admin / clinic\_admin / staff) \\
+\texttt{tenant\_config} & Prompt, voice, hours, services (replaces JSON) \\
+\texttt{phone\_numbers} & E.164 $\rightarrow$ tenant mapping \\
+\texttt{appointments} & Booked slots, Google event ID \\
+\texttt{usage\_records} & Minutes per tenant per month (billing) \\
+\texttt{webhook\_deliveries} & Outbound event status, retries \\
+\texttt{patients} & Returning patient lookup (Phase 2) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Database Rules}
+\begin{itemize}[nosep]
+  \item Every query filtered by \texttt{tenant\_id}
+  \item PHI encrypted at rest in production
+  \item Audit log on every PHI read/write
+  \item Sessions immutable after close
+  \item PostgreSQL migration before 10+ clinics
+\end{itemize}
+
+% ─────────────────────────────────────────────
+\section{What You Are Selling}
+
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, fill=medlight, minimum width=2.2cm, minimum height=0.65cm, align=center, font=\scriptsize},
+  core/.style={box, fill=medblue!15, minimum width=5cm, minimum height=1.2cm},
+  arr/.style={-{Stealth}, thick}
+]
+  \node[font=\small\bfseries] at (0,2) {What the clinic buys};
+  \node[box, fill=medgreen!20] (p) at (-2.5,0.8) {Phone};
+  \node[box, fill=medgreen!20] (w) at (0,0.8) {Web widget};
+  \node[box, fill=medgreen!20] (d) at (2.5,0.8) {Dashboard};
+  \node[core] (ip) at (0,-0.8) {Your backend IP:\\config, FSM, emergency, calendar, billing};
+  \node[box] (cal) at (-2,-2.2) {Google Cal};
+  \node[box] (crm) at (0,-2.2) {n8n/CRM};
+  \node[box] (pay) at (2,-2.2) {Stripe};
+  \draw[arr] (p)--(ip); \draw[arr] (w)--(ip); \draw[arr] (d)--(ip);
+  \draw[arr] (ip)--(cal); \draw[arr] (ip)--(crm); \draw[arr] (ip)--(pay);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Your moat:} medical conversation design, emergency handling, tenant config, dashboard, compliance --- not Vapi.
+
+% ─────────────────────────────────────────────
+\section{Pre-Code Checklist}
+
+\subsection{Phase 0 --- Align (Now)}
+\begin{itemize}[nosep]
+  \item[$\square$] Product definition agreed
+  \item[$\square$] Pick first pilot clinic (number, calendar, services)
+  \item[$\square$] Open accounts: Vapi, Twilio, Deepgram, OpenAI, ElevenLabs, GCP
+\end{itemize}
+
+\subsection{Phase 1 --- Phone MVP ($\sim$2 weeks)}
+\begin{enumerate}[nosep]
+  \item \texttt{server/routes/vapi.js} --- assistant-request, tool-calls, end-of-call
+  \item Phone number $\rightarrow$ \texttt{client\_id} mapping
+  \item Wire Vapi tools $\rightarrow$ calendar, leads, emergency routes
+  \item Server-side webhook worker (replace browser outbox for phone)
+  \item Enable calendar; E2E booking test
+  \item Store \texttt{recording\_url}, \texttt{channel: phone} on sessions
+\end{enumerate}
+\textbf{Exit:} Call $\rightarrow$ book $\rightarrow$ transcript in dashboard in 30s.
+
+\subsection{Phase 2 --- Clinic Dashboard v1}
+\begin{enumerate}[nosep,start=7]
+  \item \texttt{users} + \texttt{tenants} tables; JWT auth
+  \item API routes require auth + tenant from token
+  \item Appointments panel; call recording playback
+  \item Editable config (greeting, hours, services)
+  \item Emergency email/push notification
+  \item Move system health internals to super-admin only
+\end{enumerate}
+
+\subsection{Phase 3 --- First Paying Client ($\sim$weeks 3--6)}
+\begin{enumerate}[nosep,start=13]
+  \item HIPAA hosting + BAAs (all providers)
+  \item Wire \texttt{audit\_logs}; encrypt PHI at rest
+  \item Stripe tiers + \texttt{usage\_records}
+  \item Production deploy; after-hours flow; call transfer; SMS confirm
+\end{enumerate}
+\textbf{Exit:} One clinic pays \$999--1,499/mo; signed BAA; 2 weeks stable.
+
+\subsection{Phase 4 --- Multi-Tenant SaaS (months 2--4)}
+\begin{enumerate}[nosep,start=19]
+  \item Super-admin dashboard (\texttt{/admin/*})
+  \item Tenant onboarding wizard
+  \item Config JSON $\rightarrow$ database
+  \item PostgreSQL; reschedule/cancel tools; CI/CD; monitoring
+\end{enumerate}
+\textbf{Exit:} New clinic live in $<$2 hrs; 10 paying tenants.
+
+\subsection{Phase 5 --- Scale (months 4--18)}
+Analytics, outbound campaigns, CRM connectors, EHR (Epic/athena), patient DB, white-label, LiveKit cost migration, SOC 2.
+
+% ─────────────────────────────────────────────
+\section{Decisions to Make Before Coding}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Decision} & \textbf{Recommendation} \\
+\midrule
+Dashboard apps & One React app: \texttt{/admin/*} vs \texttt{/clinic/*} \\
+Config storage & JSON for pilot; DB at L3 \\
+Production LLM & GPT-4o mini (phone); Ollama dev only \\
+Twilio numbers & You own; include in subscription \\
+Pricing & Flat tier + overage minutes \\
+PHI transcripts & Store encrypted with BAA \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{60-Second Pitch}
+
+\emph{``MedVoice is an AI receptionist built for medical clinics. When a patient calls or chats, our assistant Aria answers immediately --- even at 2am --- collects their information, checks the clinic's Google Calendar, and books the appointment. If someone says `chest pain,' we use a hard-coded emergency system that logs the event and offers transfer to staff. Everything appears in a dashboard the office manager uses each morning: new leads, transcripts, and emergency alerts. Clinics pay \$1,500--3,000/month --- less than half one receptionist --- and never miss an after-hours call.''}
+
+% ─────────────────────────────────────────────
+\section{Recommended Build Order}
+
+\begin{center}
+\begin{tikzpicture}[
+  step/.style={draw, rounded corners, fill=medlight, minimum width=3.2cm, minimum height=0.6cm, align=center, font=\scriptsize},
+  arr/.style={-{Stealth}, thick, medblue}
+]
+  \node[step, fill=medamber!30] (a) {1. Pilot clinic};
+  \node[step, right=0.4cm of a] (b) {2. Vapi phone};
+  \node[step, right=0.4cm of b] (c) {3. Auth};
+  \node[step, right=0.4cm of c] (d) {4. Clinic dash};
+  \node[step, right=0.4cm of d] (e) {5. Super-admin};
+  \node[step, right=0.4cm of e] (f) {6. Stripe + HIPAA};
+  \draw[arr] (a)--(b)--(c)--(d)--(e)--(f);
+\end{tikzpicture}
+\end{center}
+
+\end{document}

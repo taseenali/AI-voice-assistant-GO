@@ -22,14 +22,19 @@ import { LocalModelProvider } from './local-model-runner.js';
 // ─── Backend Proxy Provider ─────────────────────────────────────
 // All LLM calls go through /api/llm/chat — browser never touches Ollama directly.
 
+const AVAILABILITY_RECHECK_MS = 30_000;
+
 class ProxyProvider {
   constructor(config) {
     this.model      = config.llm_model || 'llama3.2';
     this._available = null;
+    this._lastCheck = 0;
   }
 
   async checkAvailability() {
-    if (this._available !== null) return this._available;
+    if (this._available !== null && Date.now() - this._lastCheck < AVAILABILITY_RECHECK_MS) {
+      return this._available;
+    }
     try {
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 3000);
@@ -44,13 +49,14 @@ class ProxyProvider {
     } catch {
       this._available = false;
     }
+    this._lastCheck = Date.now();
     if (!this._available) {
       console.warn('[LLMAdapter] Proxy/Ollama unavailable — falling back to rule-based engine.');
     }
     return this._available;
   }
 
-  async generate(userMessage, history = [], onToken = null) {
+  async generate(userMessage, history = [], onToken = null, actionContext = null) {
     const available = await this.checkAvailability();
     if (!available) return null;
 
@@ -59,14 +65,17 @@ class ProxyProvider {
     const timeoutId  = setTimeout(() => controller.abort(), 32000);
 
     try {
+      const cfg = AppContext.getConfig();
       const res = await fetch('/api/llm/chat', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          userInput: userMessage,
-          memory:    history,
-          model:     this.model,
-          stream:    wantStream
+          userInput:      userMessage,
+          memory:         history,
+          model:          this.model,
+          stream:         wantStream,
+          client_id:      cfg.client_id || 'medical-clinic',
+          action_context: actionContext || undefined,
         }),
         signal: controller.signal
       });
@@ -167,11 +176,11 @@ export class LLMAdapter {
    * @param {Function} onToken    - Optional TTS streaming callback
    * @returns {Promise<string|null>}
    */
-  async generate(userInput, memory = [], onToken = null) {
+  async generate(userInput, memory = [], onToken = null, actionContext = null) {
     if (!this.isEnabled) return null;
 
     try {
-      const response = await this._provider.generate(userInput, memory, onToken);
+      const response = await this._provider.generate(userInput, memory, onToken, actionContext);
       if (response) {
         console.log('[LLMAdapter] Response generated successfully.');
       }

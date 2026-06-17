@@ -1,0 +1,153 @@
+\documentclass[11pt,a4paper]{report}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Complete Product Documentation}
+\author{Architecture, Roadmap \& Go-to-Market}
+\date{June 2026}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Huge\bfseries MedVoice AI\par}
+\vspace{0.8cm}
+{\Large Complete Product Documentation\par}
+\vspace{0.5cm}
+{\large Vapi Migration $\cdot$ Component Inventory $\cdot$ Roadmap $\cdot$ GTM Strategy\par}
+\vfill
+{\textbf{Version:} 1.0.0 --- June 2026\par}
+{\textbf{Stage:} Prototype ($\sim$33\% production-ready)\par}
+\vspace{1cm}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\chapter*{Executive Summary}
+\addcontentsline{toc}{chapter}{Executive Summary}
+
+MedVoice AI is a multi-tenant medical receptionist platform. The \textbf{product layer} (tenant config, calendar logic, lead capture, dashboards, billing) is yours. The \textbf{runtime layer} (real-time audio, STT, TTS, turn-taking) should be delegated to \textbf{Vapi} for fastest path to revenue.
+
+\begin{center}
+\begin{tikzpicture}[
+  comp/.style={draw, rounded corners, fill=medlight, minimum width=2.5cm, minimum height=0.8cm, align=center, font=\small}
+]
+  \node[comp, fill=medgreen!20] (prod) {YOUR PRODUCT\\Config, Tools, DB, UI};
+  \node[comp, fill=medblue!20, right=1.2cm of prod] (rt) {VAPI RUNTIME\\Phone, STT, LLM, TTS};
+  \node[comp, fill=medamber!20, left=1.2cm of prod] (tel) {TWILIO\\Numbers};
+  \draw[-{Stealth}, thick] (tel)--(rt);
+  \draw[-{Stealth}, thick] (rt)--node[above, font=\scriptsize]{webhooks} (prod);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Two integration wires:} (1) assistant-request config at call start; (2) tool-calls + end-of-call-report during/after calls.
+
+\textbf{Current state:} Web widget functional; phone scaffolded; Vapi not integrated; HIPAA not implemented.
+
+\textbf{Recommended path:} L1 Phone MVP in 2 weeks $\rightarrow$ L2 first paying client in 6 weeks at \$1,500--2,500/mo.
+
+\textbf{Document index:}
+\begin{enumerate}
+  \item Vapi Integration Guide --- exact implementation steps
+  \item Component Inventory --- all modules with progress \%
+  \item External Resources --- provider stack and costs
+  \item Project Roadmap --- L0 to L5 milestones
+  \item GTM Strategy --- pricing, competitors, privileges
+\end{enumerate}
+
+\chapter{Vapi Integration Guide}
+
+\section{What Changes vs.\ What Stays}
+Full detail in standalone \texttt{01-vapi-integration.pdf}.
+
+\subsection{Drop}
+Browser phone orchestration, \texttt{voice.js} WebSocket scaffold, real-time media ownership.
+
+\subsection{Keep}
+\texttt{configs/}, calendar routes, leads, emergency, dashboard, SQLite, webhook pattern.
+
+\subsection{Build New}
+\texttt{server/routes/vapi.js} with \texttt{assistant-request}, \texttt{tool-calls}, \texttt{end-of-call-report} handlers.
+
+\subsection{Implementation Checklist}
+\begin{enumerate}
+  \item Vapi account + BYOK keys (Deepgram, OpenAI, ElevenLabs)
+  \item Twilio number imported to Vapi
+  \item Three webhook endpoints on MedVoice backend
+  \item Four Vapi tools mapped to existing calendar/lead APIs
+  \item Phone number $\rightarrow$ tenant mapping for multi-tenancy
+  \item Server-side webhook worker (replace browser outbox for phone)
+  \item E2E test: call $\rightarrow$ book $\rightarrow$ transcript in dashboard
+\end{enumerate}
+
+\chapter{Component Inventory}
+See \texttt{02-component-inventory.tex}. Summary:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Surface} & \textbf{Completion} & \textbf{Status} \\
+\midrule
+Voice Widget (\texttt{js/}) & 78\% & Functional (web) \\
+Express Backend (\texttt{server/}) & 58\% & Partial \\
+React Dashboard & 52\% & Functional, no auth \\
+Tests \& DevOps & 15\% & Minimal \\
+\midrule
+\textbf{Overall} & \textbf{33\%} & \textbf{Not production-ready} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{16 capabilities not started} including Vapi, auth, billing, HIPAA, tenant admin, reschedule/cancel, SMS, after-hours.
+
+\chapter{External Resources}
+See \texttt{03-external-resources.tex}. Recommended stack:
+
+\textbf{Twilio + Vapi + Deepgram + GPT-4o mini + ElevenLabs + Google Calendar + Stripe + AWS HIPAA}
+
+All-in cost: \$0.18--0.33/min. Price clinics at \$1,500--5,000/mo with 3--5$\times$ margin.
+
+\chapter{Project Roadmap}
+See \texttt{04-project-roadmap.tex}.
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Level} & \textbf{Target} & \textbf{Key Deliverable} \\
+\midrule
+L0 & Now & Web widget prototype \\
+L1 & Week 2 & Vapi phone MVP, 1 clinic \\
+L2 & Week 6 & First paying client, HIPAA basics \\
+L3 & Month 4 & 10 clinics, self-serve onboarding \\
+L4 & Month 8 & Analytics, EHR connectors \\
+L5 & Month 18 & Enterprise, Epic integration \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\chapter{Go-to-Market Strategy}
+See \texttt{05-gtm-strategy.tex}.
+
+\textbf{Market rate:} Medical practices pay \$1,200--25,000/mo depending on size.
+
+\textbf{MedVoice entry:} \$1,499/mo Starter; \$999/mo Founding Practice pilot.
+
+\textbf{Seven privileges beyond price:} Medical safety, appointment intelligence, after-hours revenue, zero turnover, multilingual, data ownership, transparent dashboard.
+
+\textbf{12-month target:} 25 clinics, \$75K MRR, \$900K ARR.
+
+\appendix
+\chapter{Compilation Notes}
+Individual PDFs compile from \texttt{docs/latex/0X-*.tex}. Run \texttt{./compile.ps1} on Windows or \texttt{pdflatex} per file. Requires TeX Live or MiKTeX with \texttt{tikz}, \texttt{pgfplots}, \texttt{booktabs}.
+
+\chapter{Sources}
+\begin{itemize}[nosep]
+  \item Vapi docs: \url{https://docs.vapi.ai} (pricing, tools, server URLs)
+  \item LetsAskClaire: 2026 State of AI Receptionists in Medical Practice
+  \item DeepCura: Best AI Medical Receptionist 2026 rankings
+  \item MedVoice codebase: PRODUCT-CAPABILITY-MATRIX v1.1 (May 2026)
+\end{itemize}
+
+\end{document}

@@ -11,17 +11,30 @@ export class ConversationLogger {
   constructor() {
     this._sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this._enabled   = true;
+    /** Monotonic row index per session (DB requires user|assistant roles). */
+    this._seq = 0;
+  }
+
+  /**
+   * Call when starting a new chat (same browser tab / reset) so server rows line up.
+   */
+  resetSession() {
+    this._sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    this._seq = 0;
   }
 
   log({ turn, role, text, state, intent }) {
     if (!this._enabled) return;
 
+    const safeRole = role === 'user' || role === 'assistant' ? role : 'user';
+    this._seq += 1;
+
     const config = AppContext.getConfig();
     const payload = {
       sessionId: this._sessionId,
       clientId:  config.client_id || 'unknown',
-      turn:      turn  || 0,
-      role:      role  || 'unknown',
+      turn:      typeof turn === 'number' && turn > 0 ? turn : this._seq,
+      role:      safeRole,
       text:      text  || '',
       state:     state || '',
       intent:    intent || '',
@@ -40,6 +53,11 @@ export class ConversationLogger {
   enable()  { this._enabled = true;  }
 
   getSessionId() { return this._sessionId; }
+
+  /**
+   * Exposed property getter — allows app.js to bind session IDs to lead saves.
+   */
+  get sessionId() { return this._sessionId; }
 }
 
 export const conversationLogger = new ConversationLogger();

@@ -1,0 +1,218 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\Complete Project Roadmap}
+\author{Product Roadmap --- Level 0 to Production}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\section{Roadmap Overview}
+
+Five levels from current prototype to scalable SaaS. Each level has hard exit criteria before advancing.
+
+\begin{center}
+\begin{tikzpicture}[
+  level/.style={draw, rounded corners, minimum width=11cm, minimum height=1cm, align=left, font=\small, inner sep=6pt},
+  L0/.style={level, fill=medred!10},
+  L1/.style={level, fill=medamber!15},
+  L2/.style={level, fill=medamber!25},
+  L3/.style={level, fill=medgreen!15},
+  L4/.style={level, fill=medgreen!25},
+  L5/.style={level, fill=medblue!15},
+  arr/.style={-{Stealth[length=2.5mm]}, very thick, medblue}
+]
+  \node[L0] (l0) {\textbf{L0 --- Current} \hfill Prototype, web widget only, $\sim$33\%};
+  \node[L1, below=0.3cm of l0] (l1) {\textbf{L1 --- Phone MVP} \hfill Vapi + 1 clinic, real booking E2E};
+  \node[L2, below=0.3cm of l1] (l2) {\textbf{L2 --- First Paying Client} \hfill HIPAA basics, auth, production deploy};
+  \node[L3, below=0.3cm of l2] (l3) {\textbf{L3 --- Multi-Tenant SaaS} \hfill Self-serve onboarding, billing, 10 clinics};
+  \node[L4, below=0.3cm of l3] (l4) {\textbf{L4 --- Scale} \hfill Analytics, EHR connectors, outbound campaigns};
+  \node[L5, below=0.3cm of l4] (l5) {\textbf{L5 --- Enterprise} \hfill Epic/athena, white-label, SOC2/HIPAA audit};
+  \draw[arr] (l0)--(l1)--(l2)--(l3)--(l4)--(l5);
+\end{tikzpicture}
+\end{center}
+
+\section{Level 0 --- Current State (Complete)}
+
+\textbf{Duration:} Done (Passes 1--8)
+
+\textbf{Delivered:}
+\begin{itemize}[nosep]
+  \item Web voice/chat widget with full conversation engine
+  \item Multi-tenant config via \texttt{?client=}
+  \item Ollama LLM proxy, emergency detection (verified)
+  \item Lead capture + HMAC webhooks (browser outbox)
+  \item SQLite persistence + React dashboard (wired)
+  \item Calendar API code (disabled in config)
+\end{itemize}
+
+\textbf{Blockers to L1:} No live phone; no Vapi; calendar not E2E verified.
+
+---
+
+\section{Level 1 --- Phone MVP (Weeks 1--2)}
+
+\textbf{Goal:} One real clinic answers phone calls via Vapi end-to-end.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Task} & \textbf{Owner} & \textbf{Est.} \\
+\midrule
+Vapi account + provider keys & Dev & 0.5d \\
+\texttt{/api/vapi/*} routes (3 handlers) & Dev & 2d \\
+Tool definitions (calendar, lead, emergency) & Dev & 1d \\
+Enable Google Calendar + E2E test & Dev & 1d \\
+Twilio number $\rightarrow$ Vapi routing & Dev & 0.5d \\
+Server-side webhook worker & Dev & 1d \\
+Pilot clinic config + prompt tuning & Dev + Clinic & 2d \\
+\midrule
+\textbf{Total} & & \textbf{$\sim$8 days} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Exit criteria:}
+\begin{enumerate}[nosep]
+  \item Inbound call books real appointment on Google Calendar
+  \item Transcript appears in dashboard within 30s of hang-up
+  \item Emergency keyword triggers log + transfer offer
+  \item Zero browser-tab dependency for phone calls
+\end{enumerate}
+
+---
+
+\section{Level 2 --- First Paying Client (Weeks 3--6)}
+
+\textbf{Goal:} HIPAA-minimum viable product; one clinic pays monthly.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Task} & \textbf{Priority} & \textbf{Est.} \\
+\midrule
+HIPAA-eligible hosting (AWS/Railway BAA) & P0 & 3d \\
+Sign BAAs (Vapi, Twilio, Deepgram, OpenAI, ElevenLabs) & P0 & 5d \\
+Encrypted PHI audit log (replace stdout) & P0 & 2d \\
+Dashboard auth (JWT + clinic roles) & P0 & 3d \\
+Production deploy + HTTPS + domain & P0 & 2d \\
+Stripe subscription (1 tier) & P1 & 3d \\
+SMS appointment confirmation (Twilio) & P1 & 1d \\
+After-hours flow (business\_hours config) & P1 & 2d \\
+Call transfer to on-call staff & P1 & 1d \\
+CI/CD pipeline (GitHub Actions) & P2 & 2d \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Exit criteria:}
+\begin{enumerate}[nosep]
+  \item Signed BAA with clinic; BAAs with all providers
+  \item First invoice paid via Stripe
+  \item 99\% uptime over 2-week observation
+  \item PHI never logged to stdout; audit trail queryable
+\end{enumerate}
+
+---
+
+\section{Level 3 --- Multi-Tenant SaaS (Months 2--4)}
+
+\textbf{Goal:} 10 clinics onboarded with minimal manual work.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Task} & \textbf{Est.} \\
+\midrule
+Tenant CRUD API + phone-number mapping & 5d \\
+Self-serve onboarding wizard (dashboard) & 7d \\
+Per-tenant billing + usage metering (minutes) & 5d \\
+Editable config UI (prompt, voice, hours) & 5d \\
+Call recordings + playback in dashboard & 3d \\
+Reschedule + cancel calendar tools & 4d \\
+PostgreSQL migration (from SQLite) & 3d \\
+Monitoring (Sentry + uptime) & 2d \\
+Multi-language (Spanish) pilot & 5d \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Exit criteria:} New clinic live in $<$2 hours without developer; 10 paying tenants.
+
+---
+
+\section{Level 4 --- Scale (Months 4--8)}
+
+\textbf{Goal:} Differentiated product; reduce churn; expand ARPU.
+
+\begin{itemize}[nosep]
+  \item Analytics dashboard (call volume, booking conversion, after-hours capture)
+  \item Outbound campaigns (recall, no-show recovery) via Vapi outbound API
+  \item CRM connectors (HubSpot, Salesforce native)
+  \item athenahealth / eClinicalWorks calendar integration
+  \item White-label option (clinic branding on widget + voice)
+  \item SLA tier (99.9\% uptime guarantee)
+  \item Evaluate LiveKit migration for high-volume cost savings
+\end{itemize}
+
+\textbf{Exit criteria:} 50+ clinics; \$25K+ MRR; $<$\$0.20/min blended cost at scale.
+
+---
+
+\section{Level 5 --- Enterprise (Months 8--18)}
+
+\textbf{Goal:} Multi-location groups; EHR-native; compliance audit-ready.
+
+\begin{itemize}[nosep]
+  \item Epic FHIR integration (appointments, patient lookup)
+  \item SOC 2 Type II + HIPAA audit
+  \item Dedicated CSM + custom contracts
+  \item Multi-EHR per tenant (group practices)
+  \item Insurance verification API integration
+  \item Custom voice cloning per clinic (ElevenLabs Pro)
+\end{itemize}
+
+\textbf{Exit criteria:} 1 enterprise contract (\$10K+/mo); audit passed.
+
+\section{Dependency Graph}
+
+\begin{center}
+\begin{tikzpicture}[
+  node/.style={draw, rounded corners, fill=white, font=\scriptsize, minimum width=1.8cm, align=center},
+  dep/.style={-{Stealth}, thick}
+]
+  \node[node] (vapi) {Vapi};
+  \node[node, right=1cm of vapi] (cal) {Calendar E2E};
+  \node[node, right=1cm of cal] (pay) {First Client};
+  \node[node, below=0.8cm of pay] (auth) {Auth};
+  \node[node, below=0.8cm of vapi] (hipaa) {HIPAA Host};
+  \node[node, right=1cm of hipaa] (stripe) {Stripe};
+  \node[node, right=1cm of stripe] (saas) {Multi-Tenant};
+  \draw[dep] (vapi)--(cal)--(pay);
+  \draw[dep] (hipaa)--(pay);
+  \draw[dep] (auth)--(pay);
+  \draw[dep] (pay)--(stripe)--(saas);
+\end{tikzpicture}
+\end{center}
+
+\section{Milestone Timeline}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Milestone} & \textbf{Target} & \textbf{Revenue} \\
+\midrule
+L1 Phone MVP & Week 2 & \$0 (pilot) \\
+L2 First paying client & Week 6 & \$1.5--2.5K/mo \\
+L3 Ten clinics & Month 4 & \$15--25K MRR \\
+L4 Scale & Month 8 & \$50K+ MRR \\
+L5 Enterprise & Month 18 & \$100K+ MRR \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

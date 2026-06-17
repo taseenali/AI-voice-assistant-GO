@@ -1,0 +1,239 @@
+\documentclass[11pt,a4paper]{article}
+\input{shared/preamble.tex}
+
+\title{MedVoice AI\\What to Buy --- Now vs.\ Later}
+\author{Purchasing Guide with Dependencies}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+You are at \textbf{Phase 1.5} (live contract spike). Most of the platform is built --- you only pay for what unblocks the next gate. This document lists every purchase in sequence with costs and dependencies.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ─────────────────────────────────────────────
+\section{Buy NOW --- Phase 1.5 Spike (\$\sim\$10--15 total)}
+
+These are the \textbf{only} purchases needed to place one real call and verify Vapi contracts.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllll@{}}
+\toprule
+\textbf{\#} & \textbf{What} & \textbf{Cost} & \textbf{Why now} & \textbf{Depends on} \\
+\midrule
+1 & Vapi account & \$10 free credit & Phone + default STT/LLM/voice & --- \\
+2 & Vapi phone number & $\sim$\$1--2/mo & Something to dial & Vapi account \\
+3 & ngrok (or CF Tunnel) & Free tier & Public HTTPS $\rightarrow$ :3001 & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Do NOT buy yet for the spike}
+
+\begin{itemize}[nosep]
+  \item Twilio --- use Vapi-provided number
+  \item Deepgram, ElevenLabs, OpenAI keys --- Vapi defaults handle spike
+  \item Google Calendar --- spike uses \texttt{capture\_lead} only
+  \item Hosting, domain, Stripe, HIPAA hosting
+\end{itemize}
+
+\subsection{Configure free (no purchase)}
+
+\begin{verbatim}
+VAPI_WEBHOOK_SECRET=<random-string>
+VAPI_SPIKE_MODE=true
+PUBLIC_URL=https://xxxx.ngrok-free.app
+\end{verbatim}
+
+\textbf{Spike spend estimate:} $\sim$\$2--5 in Vapi minutes. Rest covered by \$10 credit.
+
+% ─────────────────────────────────────────────
+\section{Buy NEXT --- After Spike Passes (Phase 2 prep)}
+
+Still no clinic revenue; still dev/pilot.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllll@{}}
+\toprule
+\textbf{\#} & \textbf{What} & \textbf{Cost} & \textbf{When} & \textbf{Depends on} \\
+\midrule
+4 & ngrok paid (optional) & $\sim$\$8--20/mo & Free tier limits & Spike done \\
+5 & Domain name & $\sim$\$12--15/yr & Stable URL vs ngrok & Contracts verified \\
+6 & Google Cloud project & \textbf{Free} & Calendar call \#2 & Spike + clinic calendar \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Google Calendar uses a \textbf{service account} (no charge). Clinic shares calendar with service account email.
+
+% ─────────────────────────────────────────────
+\section{Buy for PILOT --- Phase 3 (\$\sim\$50--150/mo variable)}
+
+After fixtures match reality and you have a pilot clinic.
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}cllll@{}}
+\toprule
+\textbf{\#} & \textbf{What} & \textbf{Cost} & \textbf{When} & \textbf{Depends on} \\
+\midrule
+7 & Twilio account & $\sim$\$1.15/mo/number + $\sim$\$0.01/min & Clinic number in Vapi & Spike + pilot \\
+8 & OpenAI API (BYOK) & $\sim$\$0.003--0.01/min & Better LLM & Vapi account \\
+9 & Deepgram (BYOK) & $\sim$\$0.004--0.02/min & Production STT & Vapi account \\
+10 & ElevenLabs (BYOK) & $\sim$\$0.01--0.07/min & Natural voice & Vapi account \\
+11 & Vapi platform fee & \textbf{\$0.05/min} & Every phone minute & Ongoing \\
+12 & Hosting (Railway/Render) & $\sim$\$5--25/mo & Replace ngrok & Domain optional \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Pilot all-in:} $\sim$\$0.18--0.28/min \quad|\quad \textbf{500 min/mo:} $\sim$\$90--140 + hosting
+
+Set \texttt{VAPI\_SPIKE\_MODE=false} for full assistant with calendar tools.
+
+% ─────────────────────────────────────────────
+\section{Buy for FIRST PAYING CLIENT --- Phase 4}
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllll@{}}
+\toprule
+\textbf{\#} & \textbf{What} & \textbf{Cost} & \textbf{When} & \textbf{Depends on} \\
+\midrule
+13 & HIPAA hosting (AWS/Railway BAA) & $\sim$\$50--200/mo & Before real PHI & Pilot proven \\
+14 & BAAs (all providers) & \$0--paid tier & Before PHI on phone & Accounts above \\
+15 & Stripe & 2.9\% + \$0.30/charge & First invoice & Product ready \\
+16 & Sentry & Free $\rightarrow$ $\sim$\$26/mo & Production deploy & Hosting \\
+17 & Google Workspace & $\sim$\$6/user/mo & Professional ops & Optional \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Non-negotiable:} BAAs before clinic sends real patient names/DOB on phone.
+
+% ─────────────────────────────────────────────
+\section{Buy for SCALE --- Phase 5+ (10+ clinics)}
+
+\begin{center}
+\scriptsize
+\begin{tabular}{@{}cllll@{}}
+\toprule
+\textbf{\#} & \textbf{What} & \textbf{Cost} & \textbf{When} & \textbf{Depends on} \\
+\midrule
+18 & PostgreSQL (managed) & $\sim$\$15--50/mo & $>$10 tenants & Multi-tenant SaaS \\
+19 & Vapi extra concurrency & \$10/line/mo & Many simultaneous calls & Volume \\
+20 & Datadog / uptime & $\sim$\$15--100/mo & SLA promises & Production \\
+21 & n8n Cloud & $\sim$\$20/mo or self-host & CRM automations & Webhooks \\
+22 & LiveKit (optional) & $\sim$\$50--500/mo & High volume margin & Cost vs Vapi \\
+23 & SOC 2 / HIPAA audit & \$10K--50K once & Enterprise sales & Revenue \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{What Stays FREE}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Item} & \textbf{Notes} \\
+\midrule
+Node / Express / SQLite & Local dev \\
+React dashboard & Local dev \\
+Ollama & Web widget demo only --- not production phone \\
+Vapi API docs + fixtures & Contract-first dev \\
+Your platform code & Auth, tenants, tools, webhooks \\
+ngrok free tier & Spike only \\
+Google Calendar API & Free quota \\
+GitHub & Repo + CI later \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{Dependency Map}
+
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, fill=medlight, minimum width=3.8cm, minimum height=0.65cm, align=center, font=\scriptsize},
+  gate/.style={box, fill=medamber!30, minimum width=5cm},
+  arr/.style={-{Stealth}, thick, medblue}
+]
+  \node[box, fill=medgreen!25] (now) {\textbf{NOW:} Vapi + ngrok};
+  \node[gate, below=0.5cm of now] (spike) {SPIKE GATE: live call $\rightarrow$ diff fixtures};
+  \node[box, below=0.5cm of spike] (p2) {Phase 2: Dashboard (code, \$0)};
+  \node[box, below=0.4cm of p2] (p3) {Phase 3: Twilio + BYOK + Hosting};
+  \node[box, below=0.4cm of p3] (p4) {Phase 4: HIPAA + Stripe + BAAs};
+  \node[box, below=0.4cm of p4] (p5) {Phase 5: PostgreSQL + Scale};
+  \draw[arr] (now)--(spike)--(p2)--(p3)--(p4)--(p5);
+\end{tikzpicture}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{Shopping List --- Today}
+
+\begin{enumerate}
+  \item Sign up at \url{https://dashboard.vapi.ai} --- \$10 credit
+  \item Create API key $\rightarrow$ \texttt{VAPI\_API\_KEY} in \texttt{.env}
+  \item Provision one Vapi phone number in dashboard
+  \item Install ngrok $\rightarrow$ free account
+  \item Generate \texttt{VAPI\_WEBHOOK\_SECRET} (long random string)
+\end{enumerate}
+
+\textbf{Total cash out today:} \$0 if credit covers number + minutes.
+
+% ─────────────────────────────────────────────
+\section{What NOT to Buy Until Each Gate}
+
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Don't buy yet} & \textbf{Wait until} \\
+\midrule
+Twilio & Spike pass (Vapi number first) \\
+Deepgram / ElevenLabs / OpenAI & Spike pass (defaults for call \#1) \\
+Google Calendar setup & Spike call \#1 pass (call \#2) \\
+Domain + production hosting & Spike pass + pilot ready \\
+Stripe & First client ready to pay \\
+HIPAA hosting + BAAs & Pilot works + real PHI \\
+LiveKit & High volume makes Vapi fee painful \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────
+\section{Monthly Cost Model (Pricing Reference)}
+
+Selling at \textbf{\$1,500--2,500/mo} per clinic with $\sim$1,000 min/mo:
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Layer} & \textbf{Cost/clinic/mo} \\
+\midrule
+Vapi platform & $\sim$\$50 \\
+STT + LLM + TTS + Twilio & $\sim$\$130--280 \\
+Hosting (amortized) & $\sim$\$10--30 \\
+\midrule
+\textbf{Your cost floor} & \textbf{$\sim$\$190--360} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Price above \textbf{\$500--800/mo} minimum for margin. Medical market supports \textbf{\$1,500+}.
+
+\vfill
+\begin{center}
+\small
+\textit{Companion: docs/PHASE-3-SPIKE.md $\cdot$ docs/CONTRACT-FIRST-PLAN.md}
+\end{center}
+
+\end{document}

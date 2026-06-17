@@ -104,24 +104,30 @@ class WebhookDispatcher {
 
   _triggerLocalProcessing() {
     if (this._isProcessing) return;
-    
-    // Use Web Locks API to ensure only one tab processes the outbox at a time.
-    // If unavailable, we block processing to maintain fail-safe integrity.
-    if (!navigator.locks) {
-      console.error('WebhookDispatcher: Web Locks API unavailable. Processing blocked for data integrity.');
-      return;
-    }
 
-    navigator.locks.request('webhook_outbox_mutex', { ifAvailable: true }, async (lock) => {
-      if (!lock) return; // Another tab is already leader
-      
+    if (navigator.locks) {
+      // Preferred path: Web Locks guarantees only one tab processes at a time,
+      // eliminating any risk of duplicate delivery.
+      navigator.locks.request('webhook_outbox_mutex', { ifAvailable: true }, async (lock) => {
+        if (!lock) return; // Another tab holds the lock — it will process the queue
+        this._isProcessing = true;
+        try {
+          await this._processQueue();
+        } finally {
+          this._isProcessing = false;
+        }
+      });
+    } else {
+      // Fallback path: simple in-process boolean guard (Firefox ESR, older browsers).
+      // Risk: in a multi-tab scenario a second tab may also enter here and deliver
+      // the same item — idempotency keys on the receiving server mitigate duplicates.
+      console.warn('WebhookDispatcher: Web Locks API unavailable — using single-process fallback. ' +
+                   'Duplicate delivery possible in multi-tab sessions.');
       this._isProcessing = true;
-      try {
-        await this._processQueue();
-      } finally {
+      this._processQueue().finally(() => {
         this._isProcessing = false;
-      }
-    });
+      });
+    }
   }
 
   /**

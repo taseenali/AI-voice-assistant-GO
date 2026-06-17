@@ -90,6 +90,12 @@ export function extractDateTime(input) {
     result.naturalLanguage = result.naturalLanguage ? `${result.naturalLanguage} ${period}` : period;
   }
 
+  // Day resolved but no explicit time (e.g. "come in today") — still a valid booking hint
+  if (foundDay && !result.found) {
+    result.found = true;
+    targetDate.setHours(9, 0, 0, 0);
+  }
+
   // 4. ISO Generation (PKT +05:00)
   if (result.found && foundDay) {
     // Format: YYYY-MM-DDTHH:mm:ss+05:00

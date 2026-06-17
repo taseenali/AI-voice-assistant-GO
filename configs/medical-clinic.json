@@ -9,6 +9,8 @@
     {
       "intent_key": "GENERAL_CONSULT",
       "display_name": "General Consultation",
+      "keywords": ["general", "checkup", "consultation", "doctor", "appointment", "see a doctor", "visit", "clinic", "routine"],
+      "phrases": ["general checkup", "routine visit", "see the doctor", "book appointment", "need appointment", "make appointment"],
       "discovery_questions": [
         "What's the main reason for your visit today?",
         "How long have you been experiencing these symptoms?",
@@ -18,6 +20,8 @@
     {
       "intent_key": "DENTAL",
       "display_name": "Dental Care",
+      "keywords": ["dental", "dentist", "teeth", "tooth", "cavity", "cleaning", "toothache", "mouth", "gum", "wisdom tooth", "braces", "filling"],
+      "phrases": ["dental appointment", "teeth cleaning", "tooth pain", "see the dentist", "dental checkup", "tooth hurts"],
       "discovery_questions": [
         "Are you experiencing any tooth pain or sensitivity?",
         "Is this for a routine cleaning or a specific dental issue?",
@@ -27,6 +31,8 @@
     {
       "intent_key": "FOLLOW_UP",
       "display_name": "Follow-up Appointment",
+      "keywords": ["follow-up", "followup", "follow up", "return", "check-in", "recheck", "again", "back", "another", "next"],
+      "phrases": ["follow up visit", "return appointment", "check back", "come back", "see the doctor again", "next appointment"],
       "discovery_questions": [
         "What was your previous visit for?",
         "How are you feeling since your last appointment?",
@@ -36,6 +42,8 @@
     {
       "intent_key": "URGENT_CARE",
       "display_name": "Urgent Care",
+      "keywords": ["urgent", "asap", "today", "now", "immediately", "pain", "severe", "acute", "right away", "soon", "quick"],
+      "phrases": ["urgent care", "need to see someone today", "as soon as possible", "severe pain", "right away", "can't wait"],
       "discovery_questions": [
         "Could you describe the urgency of your situation?",
         "Are you currently in significant pain?",

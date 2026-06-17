@@ -62,6 +62,25 @@ const ACT = {
   CTA:        'cta_injection',
 };
 
+// ─── LLM-Eligible Actions ──────────────────────────────────────
+// Only conversational/discovery turns go to Ollama.
+// Structured actions (CAPTURE, CLOSE, OBJECTION, EXIT, etc.) always use
+// the rule engine so the state machine retains full control of those paths.
+const LLM_ELIGIBLE_ACTIONS = new Set([
+  ACT.ASK,
+  ACT.POSITION,
+  ACT.REROUTE,
+  ACT.RESUME,
+]);
+
+// Phase hints injected into the LLM system prompt per action type
+const LLM_PHASE_HINTS = {
+  [ACT.ASK]:      'CURRENT PHASE: Discovery — ask one natural follow-up question to understand the patient\'s situation better. Do not collect specific data fields yet.',
+  [ACT.POSITION]: 'CURRENT PHASE: Positioning — briefly explain how the clinic can help with the patient\'s specific concern, then invite them to continue.',
+  [ACT.REROUTE]:  'CURRENT PHASE: Topic change — the patient has changed topics. Acknowledge the shift naturally and address their new concern.',
+  [ACT.RESUME]:   'CURRENT PHASE: Resuming — the patient answered a side question. Return to where the conversation left off and continue naturally.',
+};
+
 // ─── Flow Context Map ──────────────────────────────────────────
 const FLOW_CTX = {
   // Medical flow contexts are dynamic from config.intent_key
@@ -130,6 +149,45 @@ export class ResponseOrchestrator {
     return g;
   }
 
+  /**
+   * Persist emergency detection to SQLite (dashboard). Fire-and-forget.
+   */
+  _persistEmergencyEvent(emergencyResult, input) {
+    const cfg = AppContext.getConfig();
+    fetch('/api/emergency', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        session_id:      conversationLogger.sessionId,
+        client_id:       cfg.client_id || 'unknown',
+        pattern_matched: String(emergencyResult.pattern || 'emergency').slice(0, 200),
+        user_message:    String(input || '').slice(0, 500),
+        response_sent:   String(emergencyResult.response || '').slice(0, 500)
+      })
+    }).catch(() => { /* silent */ });
+  }
+
+  /**
+   * Dual-write user + assistant lines to POST /api/log (SQLite + dashboard turns count).
+   */
+  _logConversation(input, assistantText, assistantIntent = '') {
+    const logCtx = this.sm.getContext();
+    conversationLogger.log({
+      turn: logCtx.turnCount,
+      role: 'user',
+      text: input,
+      state: logCtx.state,
+      intent: logCtx.intent || ''
+    });
+    conversationLogger.log({
+      turn: logCtx.turnCount,
+      role: 'assistant',
+      text: assistantText,
+      state: logCtx.state,
+      intent: assistantIntent || ''
+    });
+  }
+
   async processInput(userInput, onToken = null) {
     if (!userInput || !userInput.trim()) return null;
     const input = userInput.trim();
@@ -143,12 +201,15 @@ export class ResponseOrchestrator {
       this.sm.addToMemory({ role: 'user',      text: input });
       this.sm.addToMemory({ role: 'assistant', text: emergencyResult.response });
       if (onToken) onToken(emergencyResult.voiceResponse || emergencyResult.response);
+      this._persistEmergencyEvent(emergencyResult, input);
+      this._logConversation(input, emergencyResult.response, 'emergency');
       return emergencyResult.response;
     }
 
     if (this.sm.getState() === STATES.ENDED) {
       const resp = "Thanks for chatting! Click 'New Chat' to start a new conversation.";
       if (onToken) onToken(resp);
+      this._logConversation(input, resp, 'ended');
       return resp;
     }
 
@@ -168,6 +229,7 @@ export class ResponseOrchestrator {
       if (quickRoute.type === ROUTE_TYPE.INTERRUPT) {
         const resp = this.fallback.getInterruptResponse().response;
         if (onToken) onToken(resp);
+        this._logConversation(input, resp, 'interrupt');
         return resp;
       }
 
@@ -175,6 +237,7 @@ export class ResponseOrchestrator {
       this.sm.addToMemory({ role: 'user', text: input });
       this.sm.addToMemory({ role: 'assistant', text: routeResponse });
       if (onToken) onToken(routeResponse);
+      this._logConversation(input, routeResponse, quickRoute.type || '');
       return routeResponse;
     }
 
@@ -320,14 +383,13 @@ export class ResponseOrchestrator {
         conversation_stage: 'partial',
         conversation_meta: { intent: ctx.intent || 'none', turn_count: ctx.turnCount || 0 }
       }).catch(err => console.warn('[Orchestrator] Partial webhook dispatch failed:', err.message));
+      this.leads.persistToServer();
     }
 
     this.sm.addToMemory({ role: 'assistant', text: finalResponse });
 
     // P0-6: Fire-and-forget audit log (failures are silent — must not block pipeline)
-    const logCtx = this.sm.getContext();
-    conversationLogger.log({ turn: logCtx.turnCount, role: 'user',      text: input,         state: logCtx.state, intent: logCtx.intent || '' });
-    conversationLogger.log({ turn: logCtx.turnCount, role: 'assistant', text: finalResponse,  state: logCtx.state, intent: act.type      || '' });
+    this._logConversation(input, finalResponse, act.type || '');
 
     console.log(`[Orchestrator] Action triggered: ${act.type} logic.`);
     return finalResponse;
@@ -364,6 +426,7 @@ export class ResponseOrchestrator {
     this._webhookSentFinal   = false;
     // Router handlers have round-robin state — reset for fresh conversation
     this.routerHandlers = new RouterHandlers();
+    conversationLogger.resetSession();
   }
 
   getLeadData()         { return this.leads.getData(); }
@@ -452,6 +515,11 @@ export class ResponseOrchestrator {
       conversation_stage: stage,
       conversation_meta: { intent: ctx.intent || 'none', turn_count: ctx.turnCount || 0 }
     }).catch(err => console.warn('[Orchestrator] Final webhook dispatch failed:', err.message));
+    try {
+      this.leads.save();
+    } catch (err) {
+      console.warn('[Orchestrator] Lead local/server save failed:', err.message);
+    }
   }
 
 
@@ -754,6 +822,9 @@ export class ResponseOrchestrator {
 
     switch (ev.state) {
 
+      case STATES.BOOKING_CONFIRMATION:
+        return 'booking_confirmation';
+
       case STATES.GREETING:
         if (ev.hasService)  return 'position_solution';
         if (ev.isGeneral)   return 'position_solution';
@@ -902,15 +973,21 @@ export class ResponseOrchestrator {
     const ld  = this.leads.getData();
 
     // ── G-027: LLM ADAPTER HOOK ────────────────────────────────────
-    // If the LLM is enabled, attempt to generate the response via Ollama.
-    if (this.llm.isEnabled) {
-      // Only use LLM for active conversational turns, not for hard exits
-      if (act.type !== ACT.EXIT && act.type !== ACT.ENDED && act.type !== ACT.CLOSE) {
-        const history = this.sm.getMemory();
-        const llmResponse = await this.llm.generate(input, history, onToken);
-        if (llmResponse) {
-          return llmResponse;
-        }
+    // Only discovery/conversation turns go to Ollama.
+    // Structured actions (CAPTURE, CLOSE, OBJECTION, BOOKING_CONFIRM, EXIT,
+    // ENDED, CTA, FALLBACK) always fall through to the rule engine so the
+    // state machine retains full control of those critical paths.
+    if (this.llm.isEnabled && LLM_ELIGIBLE_ACTIONS.has(act.type)) {
+      const history = this.sm.getMemory().slice(-24);
+      const actionContext = {
+        actType: act.type,
+        phaseHint: LLM_PHASE_HINTS[act.type],
+        state: ctx.state,
+        intent: ctx.intent || null,
+      };
+      const llmResponse = await this.llm.generate(input, history, onToken, actionContext);
+      if (llmResponse) {
+        return llmResponse;
       }
     }
 

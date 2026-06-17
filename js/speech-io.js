@@ -4,6 +4,35 @@
  * Phase 1: Stub with full interface. Phase 4: Full implementation.
  */
 
+/**
+ * Strip markdown and normalize text for speech synthesis.
+ * Applied before every TTS call — both streaming chunks and full responses.
+ */
+export function normalizeForTTS(text) {
+  if (!text || typeof text !== 'string') return '';
+
+  return text
+    // Paragraph breaks → period + space (natural pause between thoughts)
+    .replace(/\n{2,}/g, '. ')
+    // Numbered list markers: "1. ", "12. "
+    .replace(/^\s*\d+\.\s+/gm, '')
+    // Heading markers: "#", "##", "###", etc.
+    .replace(/^#{1,6}\s*/gm, '')
+    // Bold: **text** or __text__
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    // Italic: *text* or _text_
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    // Inline code: `text`
+    .replace(/`([^`]*)`/g, '$1')
+    // Remaining newlines → space
+    .replace(/\n/g, ' ')
+    // Collapse runs of whitespace
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export class SpeechIO {
 
   constructor() {
@@ -208,6 +237,8 @@ export class SpeechIO {
 
   async speak(text) {
     if (!this._synthesis) return;
+    text = normalizeForTTS(text);
+    if (!text) return;
 
     this.stopSpeaking();
     this._cancelPlayback = false;
@@ -300,8 +331,10 @@ export class SpeechIO {
    * chunks play in order without gaps.
    */
   speakChunk(text) {
-    if (!this._synthesis || !text || !text.trim()) return;
-    const utterance = new SpeechSynthesisUtterance(text.trim());
+    if (!this._synthesis) return;
+    const clean = normalizeForTTS(text);
+    if (!clean) return;
+    const utterance = new SpeechSynthesisUtterance(clean);
     if (!this._selectedVoice) this._loadVoices();
     if (this._selectedVoice) utterance.voice = this._selectedVoice;
     utterance.rate   = 0.95;
