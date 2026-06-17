@@ -50,10 +50,10 @@ export function buildSpikeAssistantResponse(tenantBundle) {
                 type: 'object',
                 properties: {
                   name: { type: 'string' },
-                  phone: { type: 'string' },
+                  phone: { type: 'string', description: "Patient's callback phone number" },
                   reason_for_visit: { type: 'string' },
                 },
-                required: ['name', 'reason_for_visit'],
+                required: ['name', 'phone', 'reason_for_visit'],
               },
             },
             server,
@@ -138,15 +138,15 @@ export function buildAssistantResponse(tenantBundle) {
             type: 'function',
             function: {
               name: 'capture_lead',
-              description: 'Save patient contact information and reason for visit.',
+              description: 'Save patient contact information and reason for visit. Always collect phone before calling this.',
               parameters: {
                 type: 'object',
                 properties: {
-                  name: { type: 'string' },
-                  phone: { type: 'string' },
-                  reason_for_visit: { type: 'string' },
+                  name: { type: 'string', description: "Patient's full name" },
+                  phone: { type: 'string', description: "Patient's callback phone number in E.164 format" },
+                  reason_for_visit: { type: 'string', description: 'Brief reason for the appointment' },
                 },
-                required: ['name'],
+                required: ['name', 'phone', 'reason_for_visit'],
               },
             },
             server,
@@ -169,10 +169,9 @@ export function buildAssistantResponse(tenantBundle) {
           },
         ],
       },
-      voice: {
-        provider: config.voice_provider || '11labs',
-        voiceId: config.voice_id || 'EXAVITQu4vr4xnSDxMaL',
-      },
+      voice: process.env.ELEVENLABS_API_KEY
+        ? { provider: '11labs', voiceId: config.voice_id || 'EXAVITQu4vr4xnSDxMaL' }
+        : { provider: 'vapi', voiceId: 'Elliot' },
       serverUrl: webhookUrl(),
       metadata: { tenant_id },
     },

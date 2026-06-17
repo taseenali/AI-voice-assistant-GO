@@ -1,9 +1,8 @@
 const TOKEN_KEY = 'medvoice_token';
 
-// In dev, use same-origin URLs so Vite's proxy forwards /api and /health to the backend.
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? '' : 'http://localhost:3001');
+// Dev: empty string → Vite proxy forwards /api to backend (vite.config.ts).
+// Production: set VITE_API_BASE_URL=https://your-server.up.railway.app in Vercel/Netlify env.
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
 
 let authToken: string | null =
   typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;

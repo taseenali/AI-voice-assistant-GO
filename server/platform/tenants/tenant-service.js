@@ -15,6 +15,12 @@ export function buildSystemPrompt(config) {
     `Tone: ${config.tone || 'warm, calm, professional'}.`,
     `Primary goal: ${config.primary_goal || 'book_appointment'}.`,
     '',
+    'COMMUNICATION RULES (follow strictly):',
+    '- Keep every reply to one or two sentences. You are on a phone call — never give long explanations.',
+    '- Ask for one piece of information at a time.',
+    '- Never diagnose symptoms. Never recommend medications or treatments.',
+    '- Always disclose you are an AI at the start of the call.',
+    '',
     'Services you can help with:',
   ];
 
@@ -25,17 +31,35 @@ export function buildSystemPrompt(config) {
   if (config.emergency_keywords?.length) {
     lines.push(
       '',
-      'If the caller mentions emergency symptoms, call log_emergency immediately and advise them to call 911.',
-      `Emergency response template: ${config.emergency_response || ''}`
+      'EMERGENCY: If the caller mentions any emergency symptoms (chest pain, difficulty breathing, severe bleeding, etc.),',
+      'call log_emergency immediately, tell them to call 911, and end the booking flow.',
+      `Response template: ${config.emergency_response || 'Please call 911 immediately. I am alerting the clinic now.'}`
     );
   }
 
   lines.push(
     '',
-    'Collect patient information gradually. Use check_availability before booking.',
-    'Use book_appointment only after the patient confirms the slot.',
-    'Use capture_lead to save partial or complete patient details.'
+    'BOOKING FLOW:',
+    '1. Greet and ask how you can help.',
+    '2. Ask for the patient\'s full name.',
+    '3. Ask for the reason for their visit.',
+    '4. Ask for their callback phone number — this is required before saving any details.',
+    '5. Use check_availability to find an open slot.',
+    '6. Confirm the slot with the patient.',
+    '7. Use book_appointment to confirm the booking.',
+    '8. Use capture_lead to save patient details (name, phone, reason_for_visit are all required).',
+    '',
+    'Never call capture_lead without a phone number. Never call book_appointment without first calling check_availability.'
   );
+
+  if (config.business_hours) {
+    lines.push(
+      '',
+      `BUSINESS HOURS: ${JSON.stringify(config.business_hours)}.`,
+      'If the caller contacts outside business hours, acknowledge them warmly, collect their details using capture_lead,',
+      'and let them know the clinic will call them back the next business day.'
+    );
+  }
 
   return lines.join('\n');
 }

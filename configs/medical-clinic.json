@@ -83,7 +83,7 @@
   "emergency_response": "🚨 This sounds like a medical emergency. Please call 911 (or your local emergency number) immediately. Do not wait — emergency services can help you right now. If you are unable to call, ask someone nearby for help or text 911 if available in your area.",
   "qualification_fields": ["name", "patient_type", "dob", "reason_for_visit", "insurance_provider"],
   "calendar_id": "your-clinic-calendar-id@group.calendar.google.com",
-  "calendar_enabled": false,
+  "calendar_enabled": true,
   "closing_responses": {
     "soft": ["Would you like to schedule an appointment to discuss this with our medical team?"],
     "direct": ["Great, I've noted your details. I'll pass this to our scheduling team and they'll call you to confirm."],
