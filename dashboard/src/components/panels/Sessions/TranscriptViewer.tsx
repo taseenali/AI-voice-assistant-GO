@@ -15,7 +15,7 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">Transcript</h2>
+            <h2 className="text-lg font-display font-medium tracking-tight text-text-primary">Transcript</h2>
             <p className="text-xs text-text-muted font-mono truncate max-w-[320px]">
               {session.sessionId}
             </p>
@@ -57,7 +57,7 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
                 className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   turn.role === 'assistant'
                     ? 'bg-primary text-white'
-                    : 'bg-gray-200 text-text-secondary'
+                    : 'bg-accent/20 text-primary'
                 }`}
               >
                 {turn.role === 'assistant' ? (
@@ -70,8 +70,8 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
                 <div
                   className={`rounded-card p-3 text-sm ${
                     turn.role === 'assistant'
-                      ? 'bg-gray-100 text-text-primary'
-                      : 'bg-primary-light text-text-primary'
+                      ? 'bg-primary-light text-text-primary'
+                      : 'bg-page border border-card-border text-text-primary'
                   }`}
                 >
                   <p>{turn.text}</p>
@@ -81,7 +81,7 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
                     {new Date(turn.timestamp).toLocaleTimeString()}
                   </span>
                   {turn.state && (
-                    <span className="badge text-xs bg-gray-100 text-text-muted">
+                    <span className="badge text-xs bg-page border border-card-border text-text-muted">
                       {turn.state}
                     </span>
                   )}

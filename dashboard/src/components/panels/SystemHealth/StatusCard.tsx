@@ -26,9 +26,9 @@ export function StatusCard({ title, status, loading, details }: StatusCardProps)
     return (
       <div className="card p-6">
         <div className="animate-pulse space-y-3">
-          <div className="h-4 w-32 bg-gray-200 rounded shimmer" />
-          <div className="h-3 w-24 bg-gray-200 rounded shimmer" />
-          <div className="h-3 w-48 bg-gray-200 rounded shimmer" />
+          <div className="h-4 w-32 bg-skeleton rounded shimmer" />
+          <div className="h-3 w-24 bg-skeleton rounded shimmer" />
+          <div className="h-3 w-48 bg-skeleton rounded shimmer" />
         </div>
       </div>
     );

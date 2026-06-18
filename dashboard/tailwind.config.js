@@ -16,11 +16,17 @@ export default {
           bg: '#FFFFFF', // neutral surface, not a brand identity color
           border: 'var(--mvair-border)',
         },
+        skeleton: 'var(--mvair-skeleton-base)', // loading placeholder blocks
         
-        // Sidebar
+        // Sidebar / text on the dark band (role-named on-dark tokens)
         'sidebar-text': 'var(--mvair-on-dark)',
         'sidebar-active': 'rgb(var(--mvair-primary-rgb) / <alpha-value>)',
         'sidebar-active-text': '#FFFFFF', // neutral
+        'on-dark': 'var(--mvair-on-dark)',
+        'on-dark-muted': 'var(--mvair-on-dark-muted)',
+        'on-dark-dim': 'var(--mvair-on-dark-dim)',
+        'accent-hover': 'var(--mvair-accent-hover)',
+        signal: 'var(--mvair-signal)', // live pulse dot ONLY — never decorative
         
         // Semantic
         primary: {

@@ -10,7 +10,7 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-8">
       <div>
-        <h1 className="text-page-title font-semibold text-text-primary">
+        <h1 className="text-page-title font-display font-medium tracking-tight text-text-primary">
           {title}
         </h1>
         {subtitle && (

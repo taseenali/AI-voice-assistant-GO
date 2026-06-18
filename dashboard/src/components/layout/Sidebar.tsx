@@ -69,14 +69,14 @@ export function Sidebar() {
 
   return (
     <aside className="w-[220px] h-screen bg-sidebar text-sidebar-text flex flex-col fixed">
-      <div className="p-6 border-b border-gray-800">
+      <div className="p-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white font-bold">
+          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-display text-lg ring-1 ring-accent/30">
             M
           </div>
           <div>
-            <div className="text-white text-[15px] font-bold">MedVoice</div>
-            <div className="text-[11px] text-gray-500">Clinic Dashboard</div>
+            <div className="text-white text-[16px] font-display leading-tight">MedVoice</div>
+            <div className="text-[11px] text-on-dark-dim tracking-wide">Clinic Dashboard</div>
           </div>
         </div>
       </div>
@@ -85,7 +85,7 @@ export function Sidebar() {
         <TenantSwitcher />
         {navSections.map((section) => (
           <div key={section.section} className="mb-6">
-            <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-on-dark-dim">
               {section.section}
             </div>
             {section.items.map((item) => (
@@ -97,7 +97,7 @@ export function Sidebar() {
                   `flex items-center gap-3 px-6 py-2 transition-colors ${
                     isActive
                       ? 'bg-sidebar-active/20 text-sidebar-active-text border-l-[3px] border-sidebar-active'
-                      : 'hover:bg-white/5 text-sidebar-text'
+                      : 'hover:bg-white/5 text-on-dark-muted hover:text-white border-l-[3px] border-transparent'
                   }`
                 }
               >
@@ -109,16 +109,16 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-6 border-t border-gray-800">
-        <div className="bg-gray-900 border border-gray-800 rounded px-3 py-2 mb-3">
-          <div className="text-[11px] text-gray-500 font-mono truncate">{tenantId}</div>
-          <div className="text-[11px] text-gray-400 truncate mt-1">{user?.email}</div>
-          <div className="text-[10px] text-gray-600 uppercase mt-1">{user?.role}</div>
+      <div className="p-6 border-t border-white/10">
+        <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 mb-3">
+          <div className="text-[11px] text-on-dark-muted font-mono truncate">{tenantId}</div>
+          <div className="text-[11px] text-on-dark truncate mt-1">{user?.email}</div>
+          <div className="text-[10px] text-on-dark-dim uppercase tracking-wide mt-1">{user?.role}</div>
         </div>
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-on-dark-muted hover:text-white hover:bg-white/5 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Sign out

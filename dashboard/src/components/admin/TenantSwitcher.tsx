@@ -9,7 +9,7 @@ export function TenantSwitcher() {
 
   return (
     <div className="px-6 mb-4">
-      <label htmlFor="tenant-switcher" className="text-[10px] font-semibold uppercase tracking-wider text-gray-600 block mb-1">
+      <label htmlFor="tenant-switcher" className="text-[10px] font-semibold uppercase tracking-wider text-on-dark-dim block mb-1">
         Viewing tenant
       </label>
       <select
@@ -17,7 +17,7 @@ export function TenantSwitcher() {
         value={viewingTenantId}
         onChange={(e) => setViewingTenantId(e.target.value)}
         disabled={loading || tenants.length === 0}
-        className="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-[11px] text-gray-200 font-mono focus:outline-none focus:border-primary"
+        className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-[11px] text-on-dark font-mono focus:outline-none focus:border-accent"
       >
         {tenants.length === 0 ? (
           <option value={viewingTenantId}>{viewingTenantId}</option>

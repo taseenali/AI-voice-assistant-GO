@@ -47,7 +47,7 @@ export function Configuration() {
           className={`px-4 py-2 rounded-button transition-colors ${
             viewMode === 'visual'
               ? 'bg-primary text-white'
-              : 'bg-gray-200 text-text-secondary hover:bg-gray-300'
+              : 'bg-page text-text-secondary border border-card-border hover:bg-primary-light hover:text-primary'
           }`}
         >
           Visual View
@@ -57,7 +57,7 @@ export function Configuration() {
           className={`px-4 py-2 rounded-button transition-colors ${
             viewMode === 'json'
               ? 'bg-primary text-white'
-              : 'bg-gray-200 text-text-secondary hover:bg-gray-300'
+              : 'bg-page text-text-secondary border border-card-border hover:bg-primary-light hover:text-primary'
           }`}
         >
           JSON View

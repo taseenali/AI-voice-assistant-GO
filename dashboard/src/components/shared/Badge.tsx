@@ -19,7 +19,7 @@ const variantColorMap: Record<string, string> = {
   success: 'bg-success/15 text-success',
   warning: 'bg-warning/15 text-warning',
   danger: 'bg-danger/15 text-danger',
-  neutral: 'bg-gray-100 text-neutral',
+  neutral: 'bg-card-border text-text-secondary',
 };
 
 export function Badge({ label, variant = 'default', intent, className = '' }: BadgeProps) {

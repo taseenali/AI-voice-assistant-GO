@@ -35,11 +35,11 @@ export function LoginPage() {
     <div className="min-h-screen bg-sidebar flex items-center justify-center p-6">
       <div className="w-full max-w-md card p-8">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-primary rounded flex items-center justify-center text-white font-bold text-lg">
+          <div className="w-11 h-11 bg-primary rounded-lg flex items-center justify-center text-white font-display text-xl ring-1 ring-accent/30">
             M
           </div>
           <div>
-            <h1 className="text-xl font-bold text-text-primary">MedVoice</h1>
+            <h1 className="text-2xl font-display text-text-primary leading-tight">MedVoice</h1>
             <p className="text-sm text-text-secondary">Clinic Dashboard</p>
           </div>
         </div>

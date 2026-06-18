@@ -55,7 +55,7 @@ export function Table<T>({
                 key={keyExtractor(item)}
                 onClick={() => onRowClick?.(item)}
                 className={`border-b border-card-border last:border-b-0 transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''
+                  onRowClick ? 'cursor-pointer hover:bg-page' : ''
                 }`}
               >
                 {columns.map((col) => (

@@ -15,7 +15,7 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
       <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-text-primary">Lead Details</h2>
+          <h2 className="text-lg font-display font-medium tracking-tight text-text-primary">Lead Details</h2>
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text-primary transition-colors"
@@ -32,7 +32,7 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
               {lead.completeness}%
             </span>
           </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 bg-card-border rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
                 lead.completeness >= 75
