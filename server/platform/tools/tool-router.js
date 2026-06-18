@@ -1,7 +1,9 @@
+import { randomUUID } from 'crypto';
 import { requireTenant } from '../vapi/context.js';
 import * as calendarTool from './calendar-tool.js';
 import * as leadTool from './lead-tool.js';
 import * as emergencyTool from './emergency-tool.js';
+import { platformQueries } from '../../lib/platform-migrations.js';
 
 const TOOL_HANDLERS = {
   check_availability: async (tenantId, args) => {
@@ -17,6 +19,7 @@ const TOOL_HANDLERS = {
       date: args.date,
       time: args.time,
       durationMinutes: args.duration_minutes || 30,
+      timezone: cfg.timezone || 'UTC',
     });
     return result.message;
   },
@@ -37,7 +40,34 @@ const TOOL_HANDLERS = {
       patientName: args.patient_name || args.patientName,
       reason: args.reason || args.reason_for_visit,
       sessionId: ctx.sessionId,
+      timezone: cfg.timezone || 'UTC',
     });
+
+    if (result.success) {
+      try {
+        const { startTime, endTime } = calendarTool.toSlotIso(
+          args.date,
+          args.time,
+          args.duration_minutes || 30,
+          cfg.timezone || 'UTC'
+        );
+        platformQueries.insertAppointment.run(
+          randomUUID(),
+          tenantId,
+          ctx.sessionId || null,
+          startTime,
+          endTime,
+          args.patient_name || args.patientName || null,
+          args.reason || args.reason_for_visit || null,
+          'confirmed',
+          null,
+          new Date().toISOString()
+        );
+      } catch (dbErr) {
+        console.error('[book_appointment] DB dual-write failed (non-fatal):', dbErr.message);
+      }
+    }
+
     return result.message;
   },
 

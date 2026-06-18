@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -78,7 +78,7 @@ export function seedTenantsFromConfigs() {
 
   if (!existsSync(CONFIGS_DIR)) return;
 
-  const files = ['medical-clinic.json', 'default.json'];
+  const files = readdirSync(CONFIGS_DIR).filter((f) => f.endsWith('.json'));
 
   for (const file of files) {
     const filePath = path.join(CONFIGS_DIR, file);
@@ -115,6 +115,7 @@ export function seedTenantsFromConfigs() {
       JSON.stringify(config.services || []),
       webhookUrl,
       webhookSecret,
+      config.timezone || 'UTC',
       new Date().toISOString()
     );
   }
@@ -177,6 +178,7 @@ export function getTenantConfig(tenantId) {
       voice_id: cfg.voice_id,
       calendar_id: cfg.calendar_id,
       calendar_enabled: Boolean(cfg.calendar_enabled),
+      timezone: cfg.timezone || 'UTC',
       business_hours: cfg.business_hours ? JSON.parse(cfg.business_hours) : null,
       emergency_keywords: cfg.emergency_keywords ? JSON.parse(cfg.emergency_keywords) : [],
       emergency_response: cfg.emergency_response,
@@ -206,6 +208,7 @@ export function resolveTenantByPhone(phoneNumber) {
       voice_id: row.voice_id,
       calendar_id: row.calendar_id,
       calendar_enabled: Boolean(row.calendar_enabled),
+      timezone: row.timezone || 'UTC',
       business_hours: row.business_hours ? JSON.parse(row.business_hours) : null,
       emergency_keywords: row.emergency_keywords ? JSON.parse(row.emergency_keywords) : [],
       emergency_response: row.emergency_response,

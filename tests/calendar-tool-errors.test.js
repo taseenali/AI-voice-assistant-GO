@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import * as calendarTool from '../server/platform/tools/calendar-tool.js';
+import { toSlotIso } from '../server/platform/tools/calendar-tool.js';
 
 const TEST_CALENDAR = 'test@group.calendar.google.com';
 
@@ -12,6 +13,19 @@ beforeAll(async () => {
 afterEach(() => {
   calendarTool.__clearTestCalendarClient();
   vi.restoreAllMocks();
+});
+
+describe('toSlotIso timezone conversion', () => {
+  it('converts 10:00 Asia/Karachi (UTC+5) to 05:00 UTC', () => {
+    const { startTime, endTime } = toSlotIso('2026-06-23', '10:00', 30, 'Asia/Karachi');
+    expect(startTime).toBe('2026-06-23T05:00:00.000Z');
+    expect(endTime).toBe('2026-06-23T05:30:00.000Z');
+  });
+
+  it('leaves UTC wall-clock unchanged', () => {
+    const { startTime } = toSlotIso('2026-06-23', '10:00', 30, 'UTC');
+    expect(startTime).toBe('2026-06-23T10:00:00.000Z');
+  });
 });
 
 describe('calendar tool error paths (Vapi-safe strings, not throws)', () => {

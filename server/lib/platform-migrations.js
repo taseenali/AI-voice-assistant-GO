@@ -27,6 +27,7 @@ export function runPlatformMigrations(db) {
       services TEXT,
       webhook_url TEXT,
       webhook_secret TEXT,
+      timezone TEXT NOT NULL DEFAULT 'UTC',
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -47,10 +48,32 @@ export function runPlatformMigrations(db) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS appointments (
+      appointment_id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id),
+      session_id TEXT,
+      start_time TEXT NOT NULL,
+      end_time TEXT,
+      patient_name TEXT,
+      reason TEXT,
+      status TEXT NOT NULL DEFAULT 'confirmed',
+      html_link TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_phone_tenant ON phone_numbers(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_appointments_tenant ON appointments(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_appointments_start ON appointments(start_time);
   `);
+
+  // Extend tenant_config with timezone (safe column add for existing DBs)
+  const configCols = db.pragma('table_info(tenant_config)').map((c) => c.name);
+  if (!configCols.includes('timezone')) {
+    db.exec(`ALTER TABLE tenant_config ADD COLUMN timezone TEXT NOT NULL DEFAULT 'UTC'`);
+    console.log('[Database] Migration: tenant_config.timezone');
+  }
 
   // Extend sessions for phone channel (safe column adds)
   const sessionCols = db.pragma('table_info(sessions)').map((c) => c.name);
@@ -88,6 +111,8 @@ export const platformQueries = {
   getUserByEmail: null,
   insertUser: null,
   updateSessionPhoneMeta: null,
+  getAppointmentsByTenant: null,
+  insertAppointment: null,
 };
 
 export function initPlatformQueries(db) {
@@ -114,8 +139,8 @@ export function initPlatformQueries(db) {
       tenant_id, assistant_name, system_prompt, first_message,
       voice_provider, voice_id, calendar_id, calendar_enabled,
       business_hours, emergency_keywords, emergency_response,
-      services, webhook_url, webhook_secret, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      services, webhook_url, webhook_secret, timezone, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tenant_id) DO UPDATE SET
       assistant_name = excluded.assistant_name,
       system_prompt = excluded.system_prompt,
@@ -130,6 +155,7 @@ export function initPlatformQueries(db) {
       services = excluded.services,
       webhook_url = excluded.webhook_url,
       webhook_secret = excluded.webhook_secret,
+      timezone = excluded.timezone,
       updated_at = excluded.updated_at
   `);
   platformQueries.upsertPhoneNumber = db.prepare(`
@@ -149,5 +175,17 @@ export function initPlatformQueries(db) {
     SET channel = ?, external_call_id = ?, recording_url = ?, phone_number = ?, end_time = ?,
         duration_seconds = ?
     WHERE session_id = ?
+  `);
+  platformQueries.getAppointmentsByTenant = db.prepare(`
+    SELECT * FROM appointments
+    WHERE tenant_id = ? AND start_time >= ?
+    ORDER BY start_time ASC
+    LIMIT ?
+  `);
+  platformQueries.insertAppointment = db.prepare(`
+    INSERT INTO appointments
+      (appointment_id, tenant_id, session_id, start_time, end_time,
+       patient_name, reason, status, html_link, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 }

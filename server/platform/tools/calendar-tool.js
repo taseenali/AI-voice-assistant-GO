@@ -43,11 +43,23 @@ export function __clearTestCalendarClient() {
 export { getCalendarClient };
 
 /**
- * Parse date + time in local clinic context → ISO UTC window.
- * Phase 1: treats input as local, stores UTC ISO strings.
+ * Convert a naive wall-clock datetime in a given IANA timezone to a UTC Date.
+ * Uses the sv-locale Intl trick: format the UTC guess in the target timezone,
+ * then subtract the difference to find the true UTC instant.
  */
-export function toSlotIso(date, time, durationMinutes = 30) {
-  const start = new Date(`${date}T${time}:00`);
+function wallClockToUtc(dateStr, timeStr, timezone) {
+  const asIfUtc = new Date(`${dateStr}T${timeStr}:00Z`);
+  const tzString = asIfUtc.toLocaleString('sv', { timeZone: timezone });
+  const tzAsUtc = new Date(tzString.replace(' ', 'T') + 'Z');
+  return new Date(2 * asIfUtc.getTime() - tzAsUtc.getTime());
+}
+
+/**
+ * Parse date + time in the clinic's IANA timezone → UTC ISO window for freebusy queries.
+ * timezone defaults to 'UTC' so Railway and local produce identical results.
+ */
+export function toSlotIso(date, time, durationMinutes = 30, timezone = 'UTC') {
+  const start = wallClockToUtc(date, time, timezone);
   if (Number.isNaN(start.getTime())) {
     throw new Error(`Invalid date/time: ${date} ${time}`);
   }
@@ -58,7 +70,7 @@ export function toSlotIso(date, time, durationMinutes = 30) {
   };
 }
 
-export async function checkAvailability({ calendarId, date, time, durationMinutes = 30 }) {
+export async function checkAvailability({ calendarId, date, time, durationMinutes = 30, timezone = 'UTC' }) {
   if (!calendarId) {
     return { available: false, message: 'Calendar is not configured for this clinic.' };
   }
@@ -72,7 +84,7 @@ export async function checkAvailability({ calendarId, date, time, durationMinute
   }
 
   try {
-    const { startTime, endTime } = toSlotIso(date, time, durationMinutes);
+    const { startTime, endTime } = toSlotIso(date, time, durationMinutes, timezone);
 
     const response = await cal.freebusy.query({
       requestBody: {
@@ -158,6 +170,7 @@ export async function bookAppointment({
   reason,
   leadId,
   sessionId,
+  timezone = 'UTC',
 }) {
   if (!calendarId) {
     return { success: false, message: 'Calendar is not configured for this clinic.' };
@@ -169,10 +182,17 @@ export async function bookAppointment({
   }
 
   try {
-    const check = await checkAvailability({ calendarId, date, time, durationMinutes });
+    const check = await checkAvailability({ calendarId, date, time, durationMinutes, timezone });
     if (!check.available) {
       return { success: false, message: check.message };
     }
+
+    // Compute end wall-clock time by adding durationMinutes to the start time string.
+    // Passing naive datetime + timeZone lets Google store the event in the clinic's zone
+    // regardless of where the server runs (UTC on Railway, UTC+5 locally, etc.).
+    const [startH, startM] = time.split(':').map(Number);
+    const endTotal = startH * 60 + startM + durationMinutes;
+    const endTimeStr = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`;
 
     const event = {
       summary: `MedVoice: ${patientName || 'Patient'}`,
@@ -183,8 +203,8 @@ export async function bookAppointment({
       ]
         .filter(Boolean)
         .join('\n'),
-      start: { dateTime: check.startTime },
-      end: { dateTime: check.endTime },
+      start: { dateTime: `${date}T${time}:00`, timeZone: timezone },
+      end: { dateTime: `${date}T${endTimeStr}:00`, timeZone: timezone },
       reminders: {
         useDefault: false,
         overrides: [
