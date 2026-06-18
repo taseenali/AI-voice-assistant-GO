@@ -7,35 +7,38 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Bridged to System A (tokens/brand.css). Alpha-using keys use the
+        // rgb channel form so Tailwind opacity modifiers keep working.
         // Backgrounds
-        page: '#F1F5F9',
-        sidebar: '#0F172A',
+        page: 'var(--mvair-surface)',
+        sidebar: 'var(--mvair-dark)',
         card: {
-          bg: '#FFFFFF',
-          border: '#E2E8F0',
+          bg: '#FFFFFF', // neutral surface, not a brand identity color
+          border: 'var(--mvair-border)',
         },
         
         // Sidebar
-        'sidebar-text': '#94A3B8',
-        'sidebar-active': '#2563EB',
-        'sidebar-active-text': '#FFFFFF',
+        'sidebar-text': 'var(--mvair-on-dark)',
+        'sidebar-active': 'rgb(var(--mvair-primary-rgb) / <alpha-value>)',
+        'sidebar-active-text': '#FFFFFF', // neutral
         
         // Semantic
         primary: {
-          DEFAULT: '#2563EB',
-          light: '#EFF6FF',
+          DEFAULT: 'rgb(var(--mvair-primary-rgb) / <alpha-value>)',
+          light: 'var(--mvair-primary-light)',
         },
-        success: '#10B981',
-        warning: '#F59E0B',
-        danger: '#EF4444',
-        neutral: '#64748B',
+        accent: 'rgb(var(--mvair-accent-rgb) / <alpha-value>)',
+        success: 'rgb(var(--mvair-success-rgb) / <alpha-value>)',
+        warning: 'rgb(var(--mvair-warning-rgb) / <alpha-value>)',
+        danger: 'rgb(var(--mvair-danger-rgb) / <alpha-value>)',
+        neutral: 'var(--mvair-text-secondary)',
         
         // Text
-        'text-primary': '#0F172A',
-        'text-secondary': '#64748B',
-        'text-muted': '#94A3B8',
+        'text-primary': 'var(--mvair-text-primary)',
+        'text-secondary': 'var(--mvair-text-secondary)',
+        'text-muted': '#94A3B8', // neutral muted grey (not part of the 10-token identity)
         
-        // Intent badges
+        // Intent badges — categorical palette (neutral/3rd-party utility hues)
         intent: {
           general: '#8B5CF6',
           dental: '#0EA5E9',
@@ -47,7 +50,9 @@ export default {
       },
       
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+        serif: ['Newsreader', 'Georgia', 'serif'],
+        display: ['Newsreader', 'Georgia', 'serif'],
       },
       
       fontSize: {

@@ -23,4 +23,55 @@
 
   /* Border */
   --mvair-border: #E3E8EA;
+
+  /* ---------------------------------------------------------------------
+     RGB channel companions (single source = the locked hexes above).
+     Required because Tailwind v3 needs space-separated channels to honor
+     opacity modifiers, e.g. rgb(var(--mvair-primary-rgb) / <alpha-value>).
+     These are NOT new identity values — they mirror the locked colors.
+     Keep each triplet in sync with its hex token above.
+     --------------------------------------------------------------------- */
+  --mvair-primary-rgb: 11 85 99;        /* #0B5563 */
+  --mvair-primary-dark-rgb: 8 65 73;    /* #084149 */
+  --mvair-accent-rgb: 45 212 191;       /* #2DD4BF */
+  --mvair-danger-rgb: 218 54 51;        /* #DA3633 */
+
+  /* Primary light wash — petrol-tinted tint for badges/info backgrounds
+     (replaces the drifted blue #EFF6FF). */
+  --mvair-primary-light: #E6F0F1;
+
+  /* ---------------------------------------------------------------------
+     Success / warning — MVAIR-considered semantics (not Tailwind defaults).
+     --------------------------------------------------------------------- */
+  /* Cool-leaning emerald: shares petrol's blue undertone so it sits in the
+     same family, yet reads clearly as "go"/green and stays distinct from the
+     aqua accent — deeper and less neon than Tailwind #10B981. */
+  --mvair-success: #168F67;
+  --mvair-success-rgb: 22 143 103;      /* #168F67 */
+  /* Warm muted amber: deliberate temperature contrast against the cool
+     petrol/aqua palette for unmistakable "caution," desaturated enough not
+     to clash with the chartreuse signal token (vs neon Tailwind #F59E0B). */
+  --mvair-warning: #E0922A;
+  --mvair-warning-rgb: 224 146 42;      /* #E0922A */
+
+  /* ---------------------------------------------------------------------
+     Supporting tokens (landing-page handoff spec) — role-named.
+     Registered now to prevent hardcodes leaking in during D2.
+     --------------------------------------------------------------------- */
+  --mvair-card-border: #EAEEF0;
+  --mvair-chip-teal-bg: #E8FAF6;
+  --mvair-chip-teal-stroke: #0B7E72;
+  --mvair-chip-danger-bg: #FCEAEA;
+  --mvair-on-dark: #A9BAC0;
+  --mvair-on-dark-muted: #8FA3AA;
+  --mvair-on-dark-dim: #6E838A;
+  --mvair-accent-hover: #5FE3D3;
+  --mvair-timeline-dash: #CBD7DB;
+  --mvair-on-accent: #06222A;
+
+  /* ---------------------------------------------------------------------
+     Skeleton / shimmer — harmonized with --mvair-surface (cool light).
+     --------------------------------------------------------------------- */
+  --mvair-skeleton-base: #F4F6F7;
+  --mvair-skeleton-shimmer: #E9EDEF;
 }
