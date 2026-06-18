@@ -16,6 +16,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    fs: {
+      // Allow serving files from the monorepo root (tokens/, etc.)
+      allow: ['..'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
