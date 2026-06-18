@@ -2,6 +2,7 @@
 export default {
   content: [
     "./index.html",
+    "./landing.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
@@ -27,10 +28,20 @@ export default {
         'on-dark-dim': 'var(--mvair-on-dark-dim)',
         'accent-hover': 'var(--mvair-accent-hover)',
         signal: 'var(--mvair-signal)', // live pulse dot ONLY — never decorative
+
+        // Supporting role tokens (landing page + chips)
+        'chip-teal-bg': 'var(--mvair-chip-teal-bg)',
+        'chip-teal-stroke': 'var(--mvair-chip-teal-stroke)',
+        'chip-danger-bg': 'var(--mvair-chip-danger-bg)',
+        'timeline-dash': 'var(--mvair-timeline-dash)',
+        'on-accent': 'var(--mvair-on-accent)',
+        'dark-border': '#14282F', // dark-on-dark hairline for the featured tile
+        hairline: 'var(--mvair-border)', // #E3E8EA default hairline (nav, dividers)
         
         // Semantic
         primary: {
           DEFAULT: 'rgb(var(--mvair-primary-rgb) / <alpha-value>)',
+          dark: 'var(--mvair-primary-dark)',
           light: 'var(--mvair-primary-light)',
         },
         accent: 'rgb(var(--mvair-accent-rgb) / <alpha-value>)',
