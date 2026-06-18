@@ -1,0 +1,21 @@
+{
+  "pkg": "medvoice-dashboard",
+  "globalName": "MVAIR",
+  "shape": "package",
+  "tsconfig": "dashboard/tsconfig.json",
+  "cssEntry": "tokens/mvair-styles.css",
+  "runtimeFontPrefixes": ["Fraunces", "Hanken Grotesk"],
+  "componentSrcMap": {
+    "KPICard": "dashboard/src/components/shared/KPICard.tsx",
+    "Badge": "dashboard/src/components/shared/Badge.tsx",
+    "StatusDot": "dashboard/src/components/shared/StatusDot.tsx",
+    "Table": "dashboard/src/components/shared/Table.tsx",
+    "EmptyState": "dashboard/src/components/shared/EmptyState.tsx",
+    "LoadingState": "dashboard/src/components/shared/LoadingState.tsx",
+    "Toast": "dashboard/src/components/shared/Toast.tsx",
+    "Modal": "dashboard/src/components/shared/Modal.tsx",
+    "ChannelBadge": "dashboard/src/components/shared/ChannelBadge.tsx",
+    "RecordingLink": "dashboard/src/components/shared/SessionFieldCells.tsx",
+    "PhoneDisplay": "dashboard/src/components/shared/SessionFieldCells.tsx"
+  }
+}

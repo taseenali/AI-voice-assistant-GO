@@ -1,0 +1,26 @@
+/* MVAIR brand tokens — MedVoice AI visual identity */
+:root {
+  /* Surface */
+  --mvair-surface: #FBFCFD;
+  --mvair-dark: #0C1A20;
+
+  /* Primary — petrol teal */
+  --mvair-primary: #0B5563;
+  --mvair-primary-dark: #084149;
+
+  /* Accent — aqua */
+  --mvair-accent: #2DD4BF;
+
+  /* Signal — chartreuse (single-use micro-pop only) */
+  --mvair-signal: #C6F24E;
+
+  /* Semantic */
+  --mvair-danger: #DA3633;
+
+  /* Text */
+  --mvair-text-primary: #0E1B23;
+  --mvair-text-secondary: #5A6B72;
+
+  /* Border */
+  --mvair-border: #E3E8EA;
+}
