@@ -1,8 +1,63 @@
-/* MVAIR brand tokens — single source of truth (System A). Must precede
-   Tailwind so var(--mvair-*) resolve for the bridged theme. */
-@import './brand.css';
-/* Body/UI = Hanken Grotesk; display = Newsreader (incl. italic for the
-   signature accent word and 700 for headings). */
+/* MVAIR brand tokens — inlined so no @import path can fail.
+   Must precede Tailwind so var(--mvair-*) resolve for the bridged theme. */
+:root {
+  /* Surface */
+  --mvair-surface: #FBFCFD;
+  --mvair-dark: #0C1A20;
+
+  /* Primary — petrol teal */
+  --mvair-primary: #0B5563;
+  --mvair-primary-dark: #084149;
+
+  /* Accent — aqua */
+  --mvair-accent: #2DD4BF;
+
+  /* Signal — chartreuse (live pulse dot only) */
+  --mvair-signal: #C6F24E;
+
+  /* Semantic */
+  --mvair-danger: #DA3633;
+
+  /* Text */
+  --mvair-text-primary: #0E1B23;
+  --mvair-text-secondary: #5A6B72;
+
+  /* Border */
+  --mvair-border: #E3E8EA;
+
+  /* RGB channel companions for Tailwind opacity modifiers */
+  --mvair-primary-rgb: 11 85 99;
+  --mvair-primary-dark-rgb: 8 65 73;
+  --mvair-accent-rgb: 45 212 191;
+  --mvair-danger-rgb: 218 54 51;
+
+  /* Primary light wash */
+  --mvair-primary-light: #E6F0F1;
+
+  /* Success / warning */
+  --mvair-success: #168F67;
+  --mvair-success-rgb: 22 143 103;
+  --mvair-warning: #E0922A;
+  --mvair-warning-rgb: 224 146 42;
+
+  /* Supporting tokens */
+  --mvair-card-border: #EAEEF0;
+  --mvair-chip-teal-bg: #E8FAF6;
+  --mvair-chip-teal-stroke: #0B7E72;
+  --mvair-chip-danger-bg: #FCEAEA;
+  --mvair-on-dark: #A9BAC0;
+  --mvair-on-dark-muted: #8FA3AA;
+  --mvair-on-dark-dim: #6E838A;
+  --mvair-accent-hover: #5FE3D3;
+  --mvair-timeline-dash: #CBD7DB;
+  --mvair-on-accent: #06222A;
+
+  /* Skeleton / shimmer */
+  --mvair-skeleton-base: #F4F6F7;
+  --mvair-skeleton-shimmer: #E9EDEF;
+}
+
+/* Body/UI = Hanken Grotesk; display = Newsreader */
 @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500;1,6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
@@ -16,22 +71,18 @@
 }
 
 @layer components {
-  /* Card styles */
   .card {
     @apply bg-card-bg border border-card-border rounded-card shadow-card;
   }
 
-  /* Badge base */
   .badge {
     @apply inline-flex items-center px-2 py-1 rounded-badge text-badge font-semibold;
   }
 
-  /* Table styles */
   .table-header {
     @apply text-table-header font-semibold uppercase tracking-wider text-text-secondary;
   }
 
-  /* Status dot with pulse animation */
   .status-dot-online {
     @apply w-2 h-2 rounded-full bg-success animate-pulse;
   }
@@ -42,7 +93,6 @@
 }
 
 @layer utilities {
-  /* Shimmer loading animation */
   @keyframes shimmer {
     0% { background-position: -1000px 0; }
     100% { background-position: 1000px 0; }
@@ -54,16 +104,9 @@
     background-size: 1000px 100%;
   }
 
-  /* Toast slide-in animation */
   @keyframes slide-in {
-    from {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
   }
 
   .animate-slide-in {
