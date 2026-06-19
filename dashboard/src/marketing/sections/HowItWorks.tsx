@@ -18,8 +18,8 @@ const steps: Step[] = [
   {
     n: '02',
     Icon: UserPlus,
-    title: 'Captures the patient',
-    body: "Confirms who's calling, why they're calling, and how urgent it is.",
+    title: 'Understands the need',
+    body: "Confirms the caller's name, the reason for their visit, and how urgent it is — then routes accordingly.",
   },
   {
     n: '03',

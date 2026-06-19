@@ -79,18 +79,18 @@ export function Features() {
             body="Recognizes urgent language and escalates the call to your team's protocol — quickly and correctly."
           />
 
-          {/* Phone + web · spans 2 · horizontal */}
+          {/* Every call documented · spans 2 · horizontal */}
           <div className="m-card md:col-span-2 bg-white border border-card-border rounded-[20px] p-9 flex items-center gap-[30px]">
             <div className="flex-none w-[46px] h-[46px] rounded-[13px] bg-chip-teal-bg flex items-center justify-center">
               <MonitorSmartphone className="w-[23px] h-[23px] text-chip-teal-stroke" strokeWidth={1.8} />
             </div>
             <div>
               <h3 className="font-display font-semibold text-[23px] tracking-[-0.01em] m-0 mb-[9px] text-text-primary">
-                Phone and web, one system
+                Every call, documented
               </h3>
               <p className="text-[15.5px] leading-[1.62] text-text-secondary m-0 max-w-[520px]">
-                The same receptionist answers your phone line and your website, with a single view
-                of every conversation.
+                Session transcript, patient details, and booking status logged automatically — no manual entry,
+                no gaps, no calls lost to voicemail.
               </p>
             </div>
           </div>

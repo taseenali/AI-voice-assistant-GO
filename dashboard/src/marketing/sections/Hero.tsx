@@ -35,7 +35,7 @@ function Buttons({ centered = false }: { centered?: boolean }) {
         Book a demo
       </CTAButton>
       <CTAButton href="#listen" variant="ghost" size="lg">
-        Hear it in action
+        See it in action
       </CTAButton>
     </div>
   );
@@ -48,7 +48,7 @@ const HEADLINE = (
   </>
 );
 
-const SUBCOPY = 'MVAIR answers every call, books appointments, and flags urgent cases — day or night.';
+const SUBCOPY = 'MVAIR answers every call, books the appointment, and flags urgent cases — day or night, without a human at the desk.';
 
 export function Hero({ variant, showLivePulse }: HeroProps) {
   if (variant === 'centered') {

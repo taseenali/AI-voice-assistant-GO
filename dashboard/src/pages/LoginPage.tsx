@@ -6,7 +6,7 @@ export function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from || '/';
+  const from = (location.state as { from?: string } | null)?.from || '/app';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,7 +57,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-card-border rounded-button focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="clinic@medical-clinic.local"
+              placeholder="you@yourclinic.com"
             />
           </div>
 
@@ -91,9 +91,6 @@ export function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-xs text-text-secondary text-center">
-          Dev: clinic@medical-clinic.local or admin@medvoice.local · changeme-dev-only
-        </p>
       </div>
     </div>
   );

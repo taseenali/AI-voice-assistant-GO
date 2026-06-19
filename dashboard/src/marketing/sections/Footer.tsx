@@ -2,14 +2,14 @@ import { MvairMark } from '../components/MvairMark';
 import { CTAButton } from '../components/CTAButton';
 
 const product = [
-  { href: '#product', label: 'Overview' },
+  { href: '#product', label: 'What it does' },
   { href: '#how', label: 'How it works' },
-  { href: '#pricing', label: 'Pricing' },
+  { href: '#listen', label: 'See it in action' },
 ];
 const company = [
-  { href: '#security', label: 'Security' },
-  { href: '#about', label: 'About' },
-  { href: '#contact', label: 'Contact' },
+  { href: '#security', label: 'Privacy & reliability' },
+  { href: '#demo', label: 'Book a demo' },
+  { href: 'mailto:hello@medvoice.ai', label: 'Contact' },
 ];
 
 function FooterCol({ title, links }: { title: string; links: { href: string; label: string }[] }) {
