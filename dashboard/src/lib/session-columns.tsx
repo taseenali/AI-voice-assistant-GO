@@ -1,7 +1,8 @@
+import { Mic } from 'lucide-react';
 import type { Column } from '../components/shared/Table';
 import { Badge } from '../components/shared/Badge';
 import { ChannelBadge } from '../components/shared/ChannelBadge';
-import { PhoneDisplay, RecordingLink } from '../components/shared/SessionFieldCells';
+import { PhoneDisplay } from '../components/shared/SessionFieldCells';
 import type { Session } from '../types/session';
 
 /** Shared session table columns — channel first for visual scan */
@@ -68,7 +69,15 @@ export function buildSessionColumns(options?: {
     cols.push({
       key: 'recordingUrl',
       header: 'Recording',
-      render: (session) => <RecordingLink url={session.recordingUrl} />,
+      render: (session) =>
+        session.recordingUrl ? (
+          <span className="flex items-center gap-1 text-xs text-primary font-medium" title="Open transcript to play">
+            <Mic className="w-3 h-3" />
+            Recorded
+          </span>
+        ) : (
+          <span className="text-text-muted">—</span>
+        ),
     });
   }
 
