@@ -12,7 +12,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "seed:demo": "node server/scripts/seed-demo.js",
-    "seed:clear": "node server/scripts/seed-clear.js"
+    "seed:clear": "node server/scripts/seed-clear.js",
+    "seed:recover": "node server/scripts/recover-vapi-calls.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
