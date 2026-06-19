@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X, User, Bot, ExternalLink } from 'lucide-react';
 import { ChannelBadge } from '../../shared/ChannelBadge';
 import { PhoneDisplay } from '../../shared/SessionFieldCells';
@@ -10,6 +11,8 @@ interface TranscriptViewerProps {
 }
 
 export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerProps) {
+  const [audioFailed, setAudioFailed] = useState(false);
+
   return (
     <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-40 overflow-y-auto">
       <div className="p-6">
@@ -39,34 +42,34 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
             <span className="text-text-secondary">Caller</span>
             <PhoneDisplay number={session.phoneNumber} channel={session.channel} />
           </div>
-          {session.recordingUrl ? (
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-text-secondary">Recording</span>
-                <a
-                  href={session.recordingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open
-                </a>
-              </div>
-              <audio
-                controls
-                src={session.recordingUrl}
-                className="w-full"
-                style={{ height: '34px' }}
-                preload="metadata"
-              />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-text-secondary">Recording</span>
-              <span className="text-text-muted">—</span>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-text-secondary">Recording</span>
+            {!session.recordingUrl || audioFailed ? (
+              <span className="text-xs text-text-muted">
+                {audioFailed ? 'Unavailable' : '—'}
+              </span>
+            ) : (
+              <a
+                href={session.recordingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open
+              </a>
+            )}
+          </div>
+          {session.recordingUrl && !audioFailed && (
+            <audio
+              controls
+              src={session.recordingUrl}
+              className="w-full"
+              style={{ height: '34px' }}
+              preload="metadata"
+              onError={() => setAudioFailed(true)}
+            />
           )}
         </div>
 
