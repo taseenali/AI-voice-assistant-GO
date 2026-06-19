@@ -7,7 +7,7 @@ import { JSONView } from './JSONView';
 import { LoadingState } from '../../shared/LoadingState';
 
 export function Configuration() {
-  const { config, loading, error } = useConfig();
+  const { config, editableConfig, loading, error, saveConfig } = useConfig();
   const { tenantId } = useAuth();
   const [viewMode, setViewMode] = useState<'visual' | 'json'>('visual');
 
@@ -67,18 +67,8 @@ export function Configuration() {
       {viewMode === 'visual' ? (
         <VisualView config={config} />
       ) : (
-        <JSONView config={config} />
+        <JSONView config={config} editableConfig={editableConfig} onSave={saveConfig} />
       )}
-
-      {/* Edit Warning */}
-      <div className="mt-6 card p-4 border-l-4 border-warning bg-warning/5">
-        <p className="text-sm text-text-secondary">
-          <strong>Note:</strong> Configuration editing is not available in this
-          version. To update the config: edit{' '}
-          <code>configs/medical-clinic.json</code> on the server, then restart
-          the Node.js process. A write API endpoint is planned for v1.1.
-        </p>
-      </div>
     </div>
   );
 }

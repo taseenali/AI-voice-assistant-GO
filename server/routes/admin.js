@@ -1,6 +1,6 @@
 import express from 'express';
 import { platformQueries } from '../lib/platform-migrations.js';
-import { getTenantConfig } from '../platform/tenants/tenant-service.js';
+import { getTenantConfig, updateTenantConfig } from '../platform/tenants/tenant-service.js';
 import { authMiddleware, requireSuperAdmin } from '../platform/auth/middleware.js';
 
 const router = express.Router();
@@ -34,6 +34,28 @@ router.get('/tenants/:id', (req, res) => {
     if (!bundle) return res.status(404).json({ error: 'Tenant not found' });
 
     res.json(bundle);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * PUT /api/admin/tenants/:id — update editable config fields
+ */
+router.put('/tenants/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user?.role !== 'super_admin' && req.user?.tenantId !== id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({ error: 'Request body must be a JSON object' });
+    }
+
+    const updated = updateTenantConfig(id, req.body);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

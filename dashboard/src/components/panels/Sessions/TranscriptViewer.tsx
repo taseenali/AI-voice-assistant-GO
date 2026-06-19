@@ -1,6 +1,6 @@
-import { X, User, Bot } from 'lucide-react';
+import { X, User, Bot, ExternalLink } from 'lucide-react';
 import { ChannelBadge } from '../../shared/ChannelBadge';
-import { PhoneDisplay, RecordingLink } from '../../shared/SessionFieldCells';
+import { PhoneDisplay } from '../../shared/SessionFieldCells';
 import type { ConversationTurn, Session } from '../../../types/session';
 
 interface TranscriptViewerProps {
@@ -39,10 +39,35 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
             <span className="text-text-secondary">Caller</span>
             <PhoneDisplay number={session.phoneNumber} channel={session.channel} />
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-text-secondary">Recording</span>
-            <RecordingLink url={session.recordingUrl} />
-          </div>
+          {session.recordingUrl ? (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-text-secondary">Recording</span>
+                <a
+                  href={session.recordingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open
+                </a>
+              </div>
+              <audio
+                controls
+                src={session.recordingUrl}
+                className="w-full"
+                style={{ height: '34px' }}
+                preload="metadata"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-text-secondary">Recording</span>
+              <span className="text-text-muted">—</span>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">

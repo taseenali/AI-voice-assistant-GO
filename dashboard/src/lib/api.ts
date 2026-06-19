@@ -69,6 +69,25 @@ class APIClient {
 
     return response.json();
   }
+
+  async put<T>(endpoint: string, body: unknown): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      const message =
+        typeof errBody?.error === 'string'
+          ? errBody.error
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(message);
+    }
+
+    return response.json();
+  }
 }
 
 export const api = new APIClient(API_BASE_URL);

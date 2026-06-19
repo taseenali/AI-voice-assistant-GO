@@ -11,9 +11,28 @@ interface TenantBundle {
     first_message: string;
     calendar_enabled: boolean;
     calendar_id?: string | null;
+    timezone?: string;
     emergency_keywords: string[];
+    emergency_response?: string;
+    business_hours?: Record<string, unknown> | null;
     services: Config['services'];
   };
+}
+
+// Fields shown in the JSON editor — no secrets, no derived fields
+const EDITABLE_KEYS = [
+  'assistant_name', 'first_message', 'timezone',
+  'calendar_enabled', 'calendar_id', 'emergency_response',
+  'emergency_keywords', 'business_hours', 'services',
+] as const;
+
+function toEditableConfig(bundle: TenantBundle): Record<string, unknown> {
+  const result: Record<string, unknown> = { company_name: bundle.company_name };
+  for (const key of EDITABLE_KEYS) {
+    const val = (bundle.config as Record<string, unknown>)[key];
+    if (val !== undefined) result[key] = val;
+  }
+  return result;
 }
 
 function mapTenantBundleToConfig(bundle: TenantBundle): Config {
@@ -40,6 +59,7 @@ function mapTenantBundleToConfig(bundle: TenantBundle): Config {
 export function useConfig() {
   const { tenantId } = useAuth();
   const [config, setConfig] = useState<Config | null>(null);
+  const [editableConfig, setEditableConfig] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +67,7 @@ export function useConfig() {
     try {
       const data = await api.get<TenantBundle>(`/api/admin/tenants/${tenantId}`);
       setConfig(mapTenantBundleToConfig(data));
+      setEditableConfig(toEditableConfig(data));
       setError(null);
     } catch (err) {
       setError('Failed to load configuration');
@@ -61,5 +82,10 @@ export function useConfig() {
     fetchConfig();
   }, [fetchConfig]);
 
-  return { config, loading, error };
+  const saveConfig = useCallback(async (updates: Record<string, unknown>) => {
+    await api.put<TenantBundle>(`/api/admin/tenants/${tenantId}`, updates);
+    await fetchConfig();
+  }, [tenantId, fetchConfig]);
+
+  return { config, editableConfig, loading, error, saveConfig };
 }

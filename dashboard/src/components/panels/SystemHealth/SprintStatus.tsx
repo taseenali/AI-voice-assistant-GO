@@ -17,13 +17,14 @@ const done = [
   'Security headers — helmet + per-route rate limits',
   'Emergency → Session cross-panel navigation',
   'Dead codebase isolation — pre-Vapi files removed',
+  'Recording playback — inline audio player in Transcript viewer',
 ];
 
 const next = [
   'Railway + Vercel deployment (Sprint E)',
-  'Recording playback — recording_url is stored, no audio player yet',
   'Editable tenant config via dashboard UI',
   'Webhook URL pingback when on-call provider is configured',
+  'Recording proxy — serve audio through API (privacy hardening)',
 ];
 
 export function SprintStatus() {

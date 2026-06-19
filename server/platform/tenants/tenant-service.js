@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -297,4 +297,59 @@ export function resolveTenantByPhone(phoneNumber) {
 
 export function resolveTenantBySlug(tenantId) {
   return getTenantConfig(tenantId);
+}
+
+const ALLOWED_EDIT_KEYS = [
+  'company_name', 'assistant_name', 'first_message', 'greetings',
+  'emergency_response', 'emergency_keywords', 'business_hours',
+  'services', 'timezone', 'calendar_enabled', 'calendar_id',
+];
+
+/**
+ * Update a tenant's config from the dashboard JSON editor.
+ * Merges allowed fields only, writes to configs/<id>.json, re-upserts SQLite.
+ */
+export function updateTenantConfig(tenantId, updates) {
+  if (!/^[a-z0-9-]+$/.test(tenantId)) throw new Error('Invalid tenant ID');
+
+  const filePath = path.join(CONFIGS_DIR, `${tenantId}.json`);
+  if (!existsSync(filePath)) throw new Error(`Config file not found: ${tenantId}`);
+
+  const current = JSON.parse(readFileSync(filePath, 'utf8'));
+  const merged = { ...current };
+  for (const key of ALLOWED_EDIT_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(updates, key)) {
+      merged[key] = updates[key];
+    }
+  }
+
+  writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf8');
+
+  const slug = tenantId;
+  const clientUpper = slug.toUpperCase().replace(/-/g, '_');
+  const webhookUrl = process.env[`${clientUpper}_WEBHOOK_URL`] || merged.webhook_url || '';
+  const webhookSecret = process.env[`${clientUpper}_WEBHOOK_SECRET`] || merged.webhook_secret || '';
+
+  platformQueries.upsertTenant.run(slug, merged.company_name || slug, 'active', 'starter');
+  platformQueries.upsertTenantConfig.run(
+    slug,
+    merged.assistant_name || 'Aria',
+    buildSystemPrompt({ ...merged }),
+    firstGreeting(merged),
+    '11labs',
+    process.env.DEFAULT_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL',
+    merged.calendar_id || null,
+    merged.calendar_enabled ? 1 : 0,
+    JSON.stringify(merged.business_hours || null),
+    JSON.stringify(merged.emergency_keywords || []),
+    merged.emergency_response || '',
+    JSON.stringify(merged.services || []),
+    webhookUrl,
+    webhookSecret,
+    merged.timezone || 'UTC',
+    new Date().toISOString()
+  );
+
+  console.log(`[Platform] Tenant config updated: ${slug}`);
+  return getTenantConfig(slug);
 }
