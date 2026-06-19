@@ -1,5 +1,6 @@
 export interface Lead {
   name: string | null;
+  phone: string | null;
   patient_type: 'new' | 'returning' | null;
   dob: string | null;
   reason_for_visit: string | null;

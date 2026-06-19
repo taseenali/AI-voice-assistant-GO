@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useSessions } from '../../../hooks/useSessions';
 import { KPIRow } from './KPIRow';
 import { RecentSessionsTable } from './RecentSessionsTable';
@@ -6,7 +7,17 @@ import { PageHeader } from '../../layout/PageHeader';
 import { LoadingState } from '../../shared/LoadingState';
 import { Calendar } from 'lucide-react';
 
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return '0s';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m === 0) return `${s}s`;
+  if (s === 0) return `${m}m`;
+  return `${m}m ${s}s`;
+}
+
 export function Overview() {
+  const navigate = useNavigate();
   const { sessions, stats, loading } = useSessions();
 
   if (loading) {
@@ -46,12 +57,12 @@ export function Overview() {
         phoneCalls={stats?.phoneCallsToday || 0}
         webCalls={stats?.webCallsToday || 0}
         leadsCaptured={stats?.leadsToday || 0}
-        avgDuration={stats?.avgDuration ? `${stats.avgDuration}s` : '0s'}
+        avgDuration={formatDuration(stats?.avgDuration || 0)}
         emergencies={stats?.emergenciesToday || 0}
       />
       <RecentSessionsTable
         sessions={sessions}
-        onSessionClick={(s) => window.location.hash = `#/sessions#${s.sessionId}`}
+        onSessionClick={() => navigate('/app/sessions')}
       />
     </div>
   );

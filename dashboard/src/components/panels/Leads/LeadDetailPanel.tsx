@@ -50,6 +50,12 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
         <div className="space-y-4">
           <DetailField icon={User} label="Name" value={lead.name || 'Not provided'} />
           <DetailField
+            icon={Phone}
+            label="Phone"
+            value={lead.phone || 'Not provided'}
+            mono={Boolean(lead.phone)}
+          />
+          <DetailField
             icon={User}
             label="Patient Type"
             value={lead.patient_type || 'Unknown'}
@@ -74,7 +80,7 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
             }
           />
           <DetailField
-            icon={Phone}
+            icon={Mail}
             label="Preferred Contact"
             value={lead.contactMethod || 'Not specified'}
           />

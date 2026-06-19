@@ -1,14 +1,17 @@
 import { Check } from 'lucide-react';
 
 const items = [
-  { title: 'Always on', body: 'Answers nights, weekends, and overflow so no call goes to voicemail.' },
   {
-    title: 'Privacy-minded',
-    body: 'Built with patient privacy in mind and clear records of every interaction.',
+    title: 'Always on',
+    body: 'Answers nights, weekends, and overflow — so no call ever goes to voicemail.',
+  },
+  {
+    title: 'HIPAA pathway',
+    body: 'A signed Business Associate Agreement is required before any live patient traffic. We are transparent about that gate and prepared to move through it with you.',
   },
   {
     title: 'Your protocols',
-    body: 'Follows the booking rules and escalation paths your practice already uses.',
+    body: 'Follows the booking rules, emergency escalation paths, and business hours your practice already uses.',
   },
 ];
 

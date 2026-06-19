@@ -4,7 +4,7 @@ import { CTAButton } from '../components/CTAButton';
 const links = [
   { href: '#product', label: 'Product' },
   { href: '#how', label: 'How it works' },
-  { href: '#pricing', label: 'Pricing' },
+  { href: '#listen', label: 'Hear it' },
   { href: '#security', label: 'Security' },
 ];
 
@@ -30,6 +30,12 @@ export function Nav() {
               </a>
             ))}
           </div>
+          <a
+            href="/login"
+            className="text-[14px] font-medium text-text-secondary hover:text-text-primary transition-colors no-underline"
+          >
+            Sign in
+          </a>
           <CTAButton href="#demo" variant="petrol" size="sm">
             Book a demo
           </CTAButton>

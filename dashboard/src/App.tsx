@@ -13,6 +13,7 @@ import { SystemHealth } from './components/panels/SystemHealth/SystemHealth';
 import { Configuration } from './components/panels/Configuration/Configuration';
 import { TenantsAdmin } from './components/panels/Admin/TenantsAdmin';
 import { SuperAdminRoute } from './components/auth/SuperAdminRoute';
+import { Landing } from './marketing/Landing';
 
 function App() {
   return (
@@ -25,22 +26,26 @@ function App() {
           }}
         >
           <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Landing heroVariant="split" showLivePulse />} />
             <Route path="/login" element={<LoginPage />} />
+
+            {/* Protected dashboard — all under /app */}
             <Route
-              path="/*"
+              path="/app/*"
               element={
                 <ProtectedRoute>
                   <MainLayout>
                     <Routes>
                       <Route path="/" element={<Overview />} />
-                      <Route path="/leads" element={<Leads />} />
-                      <Route path="/sessions" element={<Sessions />} />
-                      <Route path="/appointments" element={<Appointments />} />
-                      <Route path="/emergency" element={<EmergencyLog />} />
-                      <Route path="/health" element={<SystemHealth />} />
-                      <Route path="/config" element={<Configuration />} />
+                      <Route path="leads" element={<Leads />} />
+                      <Route path="sessions" element={<Sessions />} />
+                      <Route path="appointments" element={<Appointments />} />
+                      <Route path="emergency" element={<EmergencyLog />} />
+                      <Route path="health" element={<SystemHealth />} />
+                      <Route path="config" element={<Configuration />} />
                       <Route
-                        path="/admin/tenants"
+                        path="admin/tenants"
                         element={
                           <SuperAdminRoute>
                             <TenantsAdmin />

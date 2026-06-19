@@ -18,6 +18,7 @@ export function useAppointments(refreshInterval = 60000) {
       setError(null);
     } catch {
       setError('Failed to load appointments');
+      setCalendarEnabled(false);
     } finally {
       setLoading(false);
     }

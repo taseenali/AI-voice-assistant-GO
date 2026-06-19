@@ -54,7 +54,14 @@ const columns: Column<Lead>[] = [
   {
     key: 'capturedAt',
     header: 'Captured',
-    render: (lead: Lead) => new Date(lead.capturedAt).toLocaleTimeString(),
+    render: (lead: Lead) => {
+      const d = new Date(lead.capturedAt);
+      return (
+        <span title={d.toISOString()}>
+          {d.toLocaleDateString()} {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      );
+    },
   },
 ];
 
@@ -68,7 +75,7 @@ export function LeadsTable({ leads, onLeadClick }: LeadsTableProps) {
     <Table
       columns={columns}
       data={leads}
-      keyExtractor={(l) => l.capturedAt + (l.name || Math.random())}
+      keyExtractor={(l) => `${l.capturedAt}::${l.name ?? ''}::${l.client_id}`}
       onRowClick={onLeadClick}
       emptyMessage="No leads captured yet"
     />

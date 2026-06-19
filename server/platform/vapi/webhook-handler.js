@@ -14,6 +14,49 @@ import {
   extractCallerText,
 } from '../safety/transcript-scanner.js';
 import * as emergencyTool from '../tools/emergency-tool.js';
+import * as leadTool from '../tools/lead-tool.js';
+import { broadcast } from '../../lib/call-events.js';
+
+/**
+ * Extract partial patient info from a Vapi messages array (end-of-call-report).
+ * Looks for name and reason in the user-side utterances without NLP — just
+ * simple heuristics for display in the dashboard ("partial lead").
+ */
+function extractPartialLead(messages = [], callerPhone = null) {
+  const userTexts = messages
+    .filter(m => m.role === 'user' && m.message?.trim())
+    .map(m => m.message.trim());
+
+  if (userTexts.length === 0) return null;
+
+  // Name: first non-trivial user utterance is often just their name (1-4 words, no digits)
+  let name = null;
+  for (const t of userTexts) {
+    const words = t.split(/\s+/);
+    if (words.length >= 1 && words.length <= 5 && !/\d/.test(t) && t.length < 40) {
+      const lower = t.toLowerCase();
+      // Skip greetings and affirmations
+      if (!['yes', 'no', 'hi', 'hello', 'yeah', 'sure', 'okay', 'ok', 'yep', 'nope'].includes(lower)) {
+        name = t;
+        break;
+      }
+    }
+  }
+
+  // Reason: look for utterances mentioning clinical keywords
+  const REASON_KEYWORDS = /check.?up|appointment|pain|ache|sick|fever|doctor|consult|dental|tooth|follow.?up|urgent|infection|prescription|refill|lab|result/i;
+  let reason = null;
+  for (const t of userTexts) {
+    if (REASON_KEYWORDS.test(t) && t.length < 200) {
+      reason = t;
+      break;
+    }
+  }
+
+  if (!name && !reason && !callerPhone) return null;
+
+  return { name, reason, phone: callerPhone };
+}
 
 const TRANSCRIPT_EVENT_TYPES = new Set([
   'transcript',
@@ -43,6 +86,16 @@ async function handleAssistantRequest(body) {
   }
 
   const bundle = requireTenant(tenantId);
+
+  // Notify monitor: call is starting
+  const callId = body?.message?.call?.id;
+  broadcast('call:started', {
+    callId,
+    tenantId,
+    callerPhone: body?.message?.call?.customer?.number ?? null,
+    ts: Date.now(),
+  });
+
   return buildAssistantResponse(bundle);
 }
 
@@ -67,7 +120,34 @@ async function handleToolCallsEvent(body) {
     }
   }
 
-  return handleToolCalls(body.message, tenantId, ctx);
+  // Notify monitor: tool calls are about to fire
+  const toolList = body.message?.toolCallList || [];
+  for (const tc of toolList) {
+    broadcast('call:tool:start', {
+      callId,
+      toolName: tc.function?.name,
+      args: tc.function?.arguments ?? {},
+      ts: Date.now(),
+    });
+  }
+
+  const response = await handleToolCalls(body.message, tenantId, ctx);
+
+  // Notify monitor: tool results
+  const resultMap = Object.fromEntries(
+    (response.results ?? []).map(r => [r.toolCallId, r.result])
+  );
+  for (const tc of toolList) {
+    broadcast('call:tool:done', {
+      callId,
+      toolName: tc.function?.name,
+      args: tc.function?.arguments ?? {},
+      result: resultMap[tc.id] ?? null,
+      ts: Date.now(),
+    });
+  }
+
+  return response;
 }
 
 /**
@@ -76,7 +156,21 @@ async function handleToolCallsEvent(body) {
  */
 async function handleTranscriptEvent(body) {
   const tenantId = extractTenantId(body);
+  const callId = extractCallId(body);
   const text = extractCallerText(body);
+
+  // Broadcast the full updated conversation to the monitor on every conversation-update
+  const type = body?.message?.type;
+  if (type === 'conversation-update') {
+    const messages = body?.message?.messages ?? [];
+    const turns = messages
+      .filter(m => m.role === 'user' || m.role === 'bot')
+      .map(m => ({ role: m.role, text: m.message, ts: m.time ?? Date.now() }));
+    if (turns.length > 0) {
+      broadcast('call:transcript', { callId, turns, ts: Date.now() });
+    }
+  }
+
   if (!text || !tenantId) return null;
 
   const bundle = requireTenant(tenantId);
@@ -116,7 +210,13 @@ async function handleEndOfCallReport(body) {
   }
 
   const sessionId = callId;
-  const duration = call.duration ?? msg.duration ?? 0;
+  // Vapi doesn't send a duration field — compute from startedAt/endedAt
+  const startedAt = call.startedAt ? new Date(call.startedAt).getTime() : null;
+  const endedAt = call.endedAt ? new Date(call.endedAt).getTime() : null;
+  const duration =
+    startedAt && endedAt
+      ? Math.round((endedAt - startedAt) / 1000)
+      : (call.duration ?? msg.duration ?? 0);
   const recordingUrl =
     artifact.recordingUrl ||
     artifact.recording?.url ||
@@ -158,9 +258,10 @@ async function handleEndOfCallReport(body) {
     const lines = transcript.split('\n').filter(Boolean);
     let turnNum = 1;
     for (const line of lines) {
-      const match = line.match(/^(User|Assistant|Customer):\s*(.+)$/i);
+      const match = line.match(/^(User|Customer|Assistant|AI|Bot|Aria|System):\s*(.+)$/i);
       if (!match) continue;
-      const role = match[1].toLowerCase() === 'assistant' ? 'assistant' : 'user';
+      const speakerLc = match[1].toLowerCase();
+      const role = (speakerLc === 'user' || speakerLc === 'customer') ? 'user' : 'assistant';
       queries.insertTurn.run(
         sessionId,
         turnNum++,
@@ -174,6 +275,42 @@ async function handleEndOfCallReport(body) {
     }
     queries.syncSessionTurnCount.run(sessionId, sessionId);
   }
+
+  // Partial lead capture: if the call ended without a lead saved, extract what we can
+  // from the conversation so the clinic doesn't lose the contact entirely.
+  try {
+    const sessionRow = queries.getSession.get(sessionId);
+    const alreadyCaptured = sessionRow?.lead_captured;
+    if (!alreadyCaptured) {
+      const messages = msg.artifact?.messages ?? msg.messages ?? [];
+      const partial = extractPartialLead(messages, phone);
+      if (partial && (partial.name || partial.reason || partial.phone)) {
+        const effectiveTenantId = tenantId || 'unknown';
+        // Completeness: phone only → 0.2, phone+name → 0.5, all three → 0.7
+        const fieldCount = [partial.name, partial.reason, partial.phone].filter(Boolean).length;
+        const score = fieldCount === 3 ? 0.7 : fieldCount === 2 ? 0.5 : 0.2;
+        leadTool.captureLead({
+          tenantId: effectiveTenantId,
+          sessionId,
+          name: partial.name || null,
+          phone: partial.phone || null,
+          reason_for_visit: partial.reason || null,
+          completeness_score: score,
+        });
+        console.log(`[Vapi] Partial lead saved for ${sessionId} (score ${score})`);
+      }
+    }
+  } catch (leadErr) {
+    console.warn('[Vapi] Partial lead save failed (non-fatal):', leadErr.message);
+  }
+
+  broadcast('call:ended', {
+    callId,
+    duration,
+    recordingUrl: recordingUrl ?? null,
+    callerPhone: phone ?? null,
+    ts: Date.now(),
+  });
 
   return { ok: true };
 }

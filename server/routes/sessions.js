@@ -44,8 +44,9 @@ router.get('/', requireDashboardAuth, (req, res) => {
     const leadsToday = todaySessions.filter(s => s.leadCaptured).length;
     const phoneCallsToday = todaySessions.filter(s => s.channel === 'phone').length;
     const webCallsToday = todaySessions.filter(s => s.channel !== 'phone').length;
-    const avgDuration = sessions.length > 0
-      ? Math.round(sessions.reduce((sum, s) => sum + (s.duration || 0), 0) / sessions.length)
+    // avgDuration is scoped to today's sessions only (not all-time) for the KPI card
+    const avgDuration = todaySessions.length > 0
+      ? Math.round(todaySessions.reduce((sum, s) => sum + (s.duration || 0), 0) / todaySessions.length)
       : 0;
 
     res.json({
@@ -85,12 +86,20 @@ router.get('/:id', requireDashboardAuth, (req, res) => {
       state: t.state,
       text: t.message,
     }));
-    const lead = queries.getLeadBySession.get(id);
 
     res.json({
-      ...session,
+      sessionId:         session.session_id,
+      startTime:         session.start_time,
+      endTime:           session.end_time,
+      duration:          session.duration_seconds || 0,
+      turnCount:         Number(session.computed_turns ?? session.total_turns) || 0,
+      intent:            session.intent_detected || '',
+      leadCaptured:      Boolean(session.lead_captured),
+      emergencyDetected: Boolean(session.emergency_detected),
+      channel:           session.channel || 'web',
+      phone_number:      session.phone_number || null,
+      recording_url:     session.recording_url || null,
       turns,
-      lead
     });
   } catch (error) {
     console.error('[Sessions API] Error:', error);

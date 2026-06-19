@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, ExternalLink } from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
@@ -9,6 +9,7 @@ import {
   Activity,
   Settings,
   Building2,
+  Radio,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { TenantSwitcher } from '../admin/TenantSwitcher';
@@ -17,17 +18,17 @@ const navItems = [
   {
     section: 'ANALYTICS',
     items: [
-      { path: '/', icon: LayoutDashboard, label: 'Overview', badge: 0, alert: false },
-      { path: '/leads', icon: Users, label: 'Leads', badge: 0, alert: false },
-      { path: '/sessions', icon: MessageSquare, label: 'Sessions', badge: 0, alert: false },
-      { path: '/appointments', icon: CalendarDays, label: 'Appointments', badge: 0, alert: false },
+      { path: '/app', icon: LayoutDashboard, label: 'Overview', badge: 0, alert: false },
+      { path: '/app/leads', icon: Users, label: 'Leads', badge: 0, alert: false },
+      { path: '/app/sessions', icon: MessageSquare, label: 'Sessions', badge: 0, alert: false },
+      { path: '/app/appointments', icon: CalendarDays, label: 'Appointments', badge: 0, alert: false },
     ],
   },
   {
     section: 'SAFETY',
     items: [
       {
-        path: '/emergency',
+        path: '/app/emergency',
         icon: AlertTriangle,
         label: 'Emergency Log',
         badge: 0,
@@ -38,11 +39,13 @@ const navItems = [
   {
     section: 'SYSTEM',
     items: [
-      { path: '/health', icon: Activity, label: 'System Health', badge: 0, alert: false },
-      { path: '/config', icon: Settings, label: 'Configuration', badge: 0, alert: false },
+      { path: '/app/health', icon: Activity, label: 'System Health', badge: 0, alert: false },
+      { path: '/app/config', icon: Settings, label: 'Configuration', badge: 0, alert: false },
     ],
   },
 ];
+
+const LIVE_MONITOR_URL = 'http://localhost:3000';
 
 export function Sidebar() {
   const { user, tenantId, logout, isSuperAdmin } = useAuth();
@@ -55,7 +58,7 @@ export function Sidebar() {
             section: 'ADMIN',
             items: [
               {
-                path: '/admin/tenants',
+                path: '/app/admin/tenants',
                 icon: Building2,
                 label: 'Tenants',
                 badge: 0,
@@ -92,7 +95,7 @@ export function Sidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.path === '/'}
+                end={item.path === '/app'}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-6 py-2 transition-colors ${
                     isActive
@@ -107,6 +110,23 @@ export function Sidebar() {
             ))}
           </div>
         ))}
+
+        {/* Live Monitor — opens in new tab (separate Vite app on port 3000) */}
+        <div className="mb-6">
+          <div className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-wider text-on-dark-dim">
+            LIVE
+          </div>
+          <a
+            href={LIVE_MONITOR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-6 py-2 transition-colors hover:bg-white/5 text-on-dark-muted hover:text-white border-l-[3px] border-transparent group"
+          >
+            <Radio className="w-4 h-4 text-signal" />
+            <span className="flex-1 text-sm font-medium">Live Monitor</span>
+            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+          </a>
+        </div>
       </nav>
 
       <div className="p-6 border-t border-white/10">

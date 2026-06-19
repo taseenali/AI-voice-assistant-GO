@@ -31,6 +31,7 @@ router.get('/', requireDashboardAuth, (req, res) => {
     res.json({
       appointments: rows.map(mapAppointment),
       calendarEnabled: true,
+      message: rows.length === 0 ? 'No upcoming appointments found.' : null,
     });
   } catch (err) {
     console.error('[Appointments API]', err);

@@ -77,8 +77,8 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
                   <p>{turn.text}</p>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-text-muted">
-                    {new Date(turn.timestamp).toLocaleTimeString()}
+                  <span className="text-xs text-text-muted" title={turn.timestamp}>
+                    {new Date(turn.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                   </span>
                   {turn.state && (
                     <span className="badge text-xs bg-page border border-card-border text-text-muted">

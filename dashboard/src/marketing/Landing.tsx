@@ -1,6 +1,8 @@
+import './marketing.css';
 import { Nav } from './sections/Nav';
 import { Hero } from './sections/Hero';
 import { HowItWorks } from './sections/HowItWorks';
+import { Listen } from './sections/Listen';
 import { Features } from './sections/Features';
 import { Reassurance } from './sections/Reassurance';
 import { ClosingCTA } from './sections/ClosingCTA';
@@ -19,6 +21,7 @@ export function Landing({ heroVariant = 'split', showLivePulse = true }: Landing
       <Nav />
       <Hero variant={heroVariant} showLivePulse={showLivePulse} />
       <HowItWorks />
+      <Listen />
       <Features />
       <Reassurance />
       <ClosingCTA />

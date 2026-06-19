@@ -1,0 +1,49 @@
+/* MVAIR brand tokens — inlined (same pattern as dashboard/src/styles/globals.css) */
+:root {
+  --mvair-surface:          #FBFCFD;
+  --mvair-dark:             #0C1A20;
+  --mvair-primary:          #0B5563;
+  --mvair-primary-dark:     #084149;
+  --mvair-accent:           #2DD4BF;
+  --mvair-signal:           #C6F24E;
+  --mvair-danger:           #DA3633;
+  --mvair-success:          #168F67;
+  --mvair-warning:          #E0922A;
+  --mvair-text-primary:     #0E1B23;
+  --mvair-text-secondary:   #5A6B72;
+  --mvair-border:           #E3E8EA;
+  --mvair-card-border:      #EAEEF0;
+  --mvair-on-dark:          #A9BAC0;
+  --mvair-on-dark-muted:    #8FA3AA;
+  --mvair-primary-light:    #E6F0F1;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply font-sans text-sm bg-dark text-on-dark;
+  }
+}
+
+@layer utilities {
+  @keyframes mvairPulse {
+    0%   { transform: scale(1); opacity: 1; }
+    70%  { transform: scale(2.6); opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .animate-live-pulse { animation: mvairPulse 2.2s ease-out infinite; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-in { animation: slideIn 0.2s ease-out forwards; }
+}
