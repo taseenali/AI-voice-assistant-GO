@@ -5,23 +5,52 @@
  */
 
 const EMERGENCY_PATTERNS = [
+  // Cardiac
   /\bchest\s+pain\b/i,
   /\bheart\s+attack\b/i,
+  /\bcardiac\s+arrest\b/i,
+
+  // Respiratory
   /\bcan'?t\s+breath/i,
   /\b(difficulty|trouble|hard\s+time)\s+breath/i,
   /\bnot\s+breath/i,
-  /\bstroke\b/i,
+  /\bstopped?\s+breath/i,
+  /\bchoking\b/i,
+
+  // Neurological — specific to active event (not medical history)
+  /\b(having|i'?m\s+having|he'?s\s+having|she'?s\s+having)\s+a\s+stroke\b/i,
+  /\b(signs?\s+of\s+(a\s+)?stroke|stroke\s+symptoms?)\b/i,
   /\bface\s+(drooping|droop|numb)\b/i,
   /\barm\s+weak/i,
-  /\bsevere\s+(bleeding|blood)\b/i,
+  /\bseizure\b/i,
+  /\bnot\s+respond/i,
+
+  // Bleeding
+  /\bsevere\s+(bleeding|blood\s+loss)\b/i,
+  /\bcan'?t\s+stop\s+(the\s+)?bleed/i,
+  /\buncontrolled\s+bleed/i,
+
+  // Unconscious / collapse
   /\bunconscious\b/i,
   /\bpassed?\s+out\b/i,
-  /\bchoking\b/i,
-  /\b911\b/i,
+  /\bnot\s+moving\b/i,
+
+  // Allergic / toxic
+  /\banaphylaxis\b/i,
+  /\bepipen\b|\bepinephrine\s+pen\b/i,
+  /\boverdose\b/i,
+  /\bpoisoning\b/i,
+
+  // Self-harm
   /\bkill\s+myself\b/i,
   /\bsuicide\b/i,
+
+  // Obstetric
   /\bwater\s+broke\b/i,
   /\bcontractions\b/i,
+
+  // Emergency services mention
+  /\b911\b/i,
 ];
 
 export function scanTranscriptForEmergency(text, extraKeywords = []) {

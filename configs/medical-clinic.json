@@ -80,11 +80,20 @@
     "baby not breathing", "child unconscious", "infant not moving",
     "car accident", "severe burn", "overdose", "poisoning"
   ],
-  "emergency_response": "🚨 This sounds like a medical emergency. Please call 911 (or your local emergency number) immediately. Do not wait — emergency services can help you right now. If you are unable to call, ask someone nearby for help or text 911 if available in your area.",
+  "emergency_response": "This sounds like a medical emergency. Please call 911 right away. I am alerting the clinic team now.",
   "qualification_fields": ["name", "patient_type", "dob", "reason_for_visit", "insurance_provider"],
   "calendar_id": "9778ebc2c96b0848737361f71f482a07a2f2a515997fa8acd328e85dec908871@group.calendar.google.com",
   "calendar_enabled": true,
   "timezone": "Asia/Karachi",
+  "business_hours": {
+    "monday":    { "open": "09:00", "close": "17:00" },
+    "tuesday":   { "open": "09:00", "close": "17:00" },
+    "wednesday": { "open": "09:00", "close": "17:00" },
+    "thursday":  { "open": "09:00", "close": "17:00" },
+    "friday":    { "open": "09:00", "close": "17:00" },
+    "saturday":  null,
+    "sunday":    null
+  },
   "closing_responses": {
     "soft": ["Would you like to schedule an appointment to discuss this with our medical team?"],
     "direct": ["Great, I've noted your details. I'll pass this to our scheduling team and they'll call you to confirm."],

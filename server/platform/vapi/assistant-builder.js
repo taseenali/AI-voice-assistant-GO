@@ -127,6 +127,7 @@ export function buildAssistantResponse(tenantBundle) {
                   time: { type: 'string' },
                   patient_name: { type: 'string' },
                   reason_for_visit: { type: 'string' },
+                  phone: { type: 'string', description: "Patient's callback phone number — include so it appears in the calendar event" },
                 },
                 required: ['date', 'time', 'patient_name'],
               },
@@ -138,7 +139,7 @@ export function buildAssistantResponse(tenantBundle) {
             type: 'function',
             function: {
               name: 'capture_lead',
-              description: 'Save patient contact information and reason for visit. Always collect phone before calling this.',
+              description: 'Save patient contact information as soon as name, phone, and reason are collected. Call this before discussing appointment times.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -150,6 +151,23 @@ export function buildAssistantResponse(tenantBundle) {
               },
             },
             server,
+            messages: [{ type: 'request-start', content: 'Let me save your details.' }],
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'get_available_slots',
+              description: 'Get all available appointment times on a specific date. Call this when the patient asks what times are available, or when a requested time is not available.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  date: { type: 'string', description: 'YYYY-MM-DD format' },
+                },
+                required: ['date'],
+              },
+            },
+            server,
+            messages: [{ type: 'request-start', content: 'Let me check what times are open.' }],
           },
           {
             type: 'function',
@@ -169,6 +187,8 @@ export function buildAssistantResponse(tenantBundle) {
           },
         ],
       },
+      silenceTimeoutSeconds: 8,
+      maxDurationSeconds: 600,
       voice: process.env.ELEVENLABS_API_KEY
         ? { provider: '11labs', voiceId: config.voice_id || 'EXAVITQu4vr4xnSDxMaL' }
         : { provider: 'vapi', voiceId: 'Elliot' },

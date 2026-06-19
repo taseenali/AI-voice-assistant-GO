@@ -70,9 +70,43 @@ export function toSlotIso(date, time, durationMinutes = 30, timezone = 'UTC') {
   };
 }
 
-export async function checkAvailability({ calendarId, date, time, durationMinutes = 30, timezone = 'UTC' }) {
+function getDayHours(businessHours, date) {
+  if (!businessHours) return null;
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const dayName = dayNames[new Date(`${date}T12:00:00Z`).getUTCDay()];
+  const dayLabel = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  return { dayName, dayLabel, hours: businessHours[dayName] ?? null };
+}
+
+export async function checkAvailability({ calendarId, date, time, durationMinutes = 30, timezone = 'UTC', businessHours = null }) {
   if (!calendarId) {
     return { available: false, message: 'Calendar is not configured for this clinic.' };
+  }
+
+  // Reject past dates before hitting the calendar — gives the LLM a clear error to correct
+  const today = new Date().toISOString().slice(0, 10);
+  if (date < today) {
+    return {
+      available: false,
+      message: `${date} is in the past. Today is ${today}. Please use a future date.`,
+    };
+  }
+
+  if (businessHours) {
+    const { dayLabel, hours } = getDayHours(businessHours, date);
+    if (!hours) {
+      return { available: false, message: `The clinic is closed on ${dayLabel}s. Please choose a weekday.` };
+    }
+    const [reqH, reqM] = time.split(':').map(Number);
+    const reqMin = reqH * 60 + reqM;
+    const [openH, openM] = hours.open.split(':').map(Number);
+    const [closeH, closeM] = hours.close.split(':').map(Number);
+    if (reqMin < openH * 60 + openM || reqMin + durationMinutes > closeH * 60 + closeM) {
+      return {
+        available: false,
+        message: `${time} is outside clinic hours (${hours.open}–${hours.close}). Please choose a time within business hours.`,
+      };
+    }
   }
 
   const cal = resolveCalendarClient();
@@ -108,6 +142,101 @@ export async function checkAvailability({ calendarId, date, time, durationMinute
       available: false,
       message: `Could not check availability: ${err.message}`,
     };
+  }
+}
+
+/**
+ * Return all available 30-minute appointment slots on a given date.
+ * Scans the clinic's operating hours (09:00–17:00) and returns slots not blocked
+ * by existing calendar events. Gives the LLM concrete options to offer the caller.
+ */
+export async function getAvailableSlots({ calendarId, date, timezone = 'UTC', businessHours = null }) {
+  if (!calendarId) {
+    return { slots: [], message: 'Calendar is not configured for this clinic.' };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (date < today) {
+    return { slots: [], message: `${date} is in the past. Please use a future date.` };
+  }
+
+  if (businessHours) {
+    const { dayLabel, hours } = getDayHours(businessHours, date);
+    if (!hours) {
+      return { slots: [], message: `The clinic is closed on ${dayLabel}s. Please ask the patient for a weekday.` };
+    }
+  }
+
+  const cal = resolveCalendarClient();
+  if (!cal) {
+    return { slots: [], message: 'Calendar service is not configured on the server.' };
+  }
+
+  try {
+    const [openH, openM] = businessHours
+      ? (getDayHours(businessHours, date).hours?.open || '09:00').split(':').map(Number)
+      : [9, 0];
+    const [closeH, closeM] = businessHours
+      ? (getDayHours(businessHours, date).hours?.close || '17:00').split(':').map(Number)
+      : [17, 0];
+    const CLINIC_OPEN = openH * 60 + openM;
+    const CLINIC_CLOSE = closeH * 60 + closeM;
+    const SLOT_DURATION = 30;
+
+    const candidateSlots = [];
+    for (let m = CLINIC_OPEN; m + SLOT_DURATION <= CLINIC_CLOSE; m += SLOT_DURATION) {
+      const hh = String(Math.floor(m / 60)).padStart(2, '0');
+      const mm = String(m % 60).padStart(2, '0');
+      candidateSlots.push(`${hh}:${mm}`);
+    }
+
+    // Convert each slot to a UTC window and build a freebusy query for the whole day
+    const dayStart = wallClockToUtc(date, '00:00', timezone);
+    const dayEnd   = wallClockToUtc(date, '23:59', timezone);
+
+    const response = await cal.freebusy.query({
+      requestBody: {
+        timeMin: dayStart.toISOString(),
+        timeMax: dayEnd.toISOString(),
+        items: [{ id: calendarId }],
+      },
+    });
+
+    const busyIntervals = response.data.calendars?.[calendarId]?.busy || [];
+
+    // A slot is available if its UTC window doesn't overlap any busy interval
+    const availableSlots = candidateSlots.filter(time => {
+      const { startTime, endTime } = toSlotIso(date, time, SLOT_DURATION, timezone);
+      const slotStart = new Date(startTime).getTime();
+      const slotEnd   = new Date(endTime).getTime();
+      return !busyIntervals.some(b => {
+        const busyStart = new Date(b.start).getTime();
+        const busyEnd   = new Date(b.end).getTime();
+        return slotStart < busyEnd && slotEnd > busyStart;
+      });
+    });
+
+    if (availableSlots.length === 0) {
+      return {
+        slots: [],
+        message: `No available slots on ${date}. Please ask the patient for a different date.`,
+      };
+    }
+
+    const formatted = availableSlots.map(t => {
+      const [h, m] = t.split(':').map(Number);
+      const suffix = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
+    });
+
+    return {
+      slots: availableSlots,
+      message: `Available times on ${date}: ${formatted.join(', ')}. Ask the patient which works best.`,
+    };
+  } catch (err) {
+    console.error('[Calendar] getAvailableSlots:', err.message);
+    return { slots: [], message: `Could not retrieve available slots: ${err.message}` };
   }
 }
 
@@ -168,12 +297,21 @@ export async function bookAppointment({
   durationMinutes = 30,
   patientName,
   reason,
+  phone,
   leadId,
   sessionId,
   timezone = 'UTC',
 }) {
   if (!calendarId) {
     return { success: false, message: 'Calendar is not configured for this clinic.' };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (date < today) {
+    return {
+      success: false,
+      message: `Cannot book ${date} — that date is in the past. Today is ${today}. Ask the patient for a future date.`,
+    };
   }
 
   const cal = resolveCalendarClient();
@@ -197,9 +335,10 @@ export async function bookAppointment({
     const event = {
       summary: `MedVoice: ${patientName || 'Patient'}`,
       description: [
+        phone ? `Phone: ${phone}` : null,
+        reason ? `Reason: ${reason}` : null,
         leadId ? `Lead ID: ${leadId}` : null,
         sessionId ? `Session: ${sessionId}` : null,
-        reason ? `Reason: ${reason}` : null,
       ]
         .filter(Boolean)
         .join('\n'),

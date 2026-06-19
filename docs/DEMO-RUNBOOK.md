@@ -43,12 +43,12 @@ This is the exact conversation to run. Do not improvise on the first test — es
 |---|---|---|
 | 1 | *"Hi, I'd like to book an appointment."* | Asks for your name |
 | 2 | *"My name is James Smith."* | Thanks you, asks for reason for visit |
-| 3 | *"I need a general check-up."* | Asks for a preferred date or checks availability |
-| 4 | *"How about next Tuesday?"* | Says "Let me check the schedule for you…" → calls `check_availability` → offers available times |
-| 5 | *"The 10 AM slot works."* | Confirms slot, asks for phone number |
-| 6 | *"My number is [your real number]."* | Calls `book_appointment` → confirms booking aloud |
-| 7 | *"Great, thanks."* | Wraps up, offers help with anything else |
-| 8 | *"No, that's all."* | Closes the call warmly |
+| 3 | *"I need a general check-up."* | Asks for callback phone number |
+| 4 | *"My number is [your real number]."* | Repeats number back digit-by-digit, confirms. Calls `capture_lead`. Asks what date works. |
+| 5 | *"How about next Tuesday?"* | Says "Let me check what times are open." → calls `get_available_slots` → reads out available times |
+| 6 | *"10 AM works for me."* | Confirms "Tuesday the Nth at 10 AM — does that work for you?" |
+| 7 | *"Yes, perfect."* | Calls `book_appointment` → confirms booking aloud |
+| 8 | *"Great, thanks."* | Wraps up, closes the call warmly |
 
 **Hang up.** The `end-of-call-report` fires ~5 seconds after hang-up.
 

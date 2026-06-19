@@ -8,10 +8,11 @@
     "server": "node server/index.js",
     "dev:server": "node --watch server/index.js",
     "dashboard": "npm run dev --prefix dashboard",
+    "live": "npm run dev --prefix live",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "seed:demo": "node scripts/seed-demo.js",
-    "seed:demo:reset": "node scripts/seed-demo.js --reset"
+    "seed:demo": "node server/scripts/seed-demo.js",
+    "seed:clear": "node server/scripts/seed-clear.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -21,6 +22,7 @@
     "express": "^4.18.0",
     "express-rate-limit": "^8.5.2",
     "googleapis": "^144.0.0",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
     "twilio": "^5.13.1"
   },
