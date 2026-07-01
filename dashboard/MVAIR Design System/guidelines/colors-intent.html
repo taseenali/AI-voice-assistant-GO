@@ -1,0 +1,30 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="On-Dark Ramp &amp; Intent" subtitle="Text on the dark canvas + session-intent palette" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; padding: 20px; background: #fff; font-family: var(--mvair-font-sans); }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing:.06em; color: var(--mvair-text-muted); margin: 0 0 10px; }
+  .dark { background: var(--mvair-dark); border-radius: 12px; padding: 16px; display:flex; gap:22px; margin-bottom:18px; }
+  .dark span { font-size: 14px; }
+  .intent { display:flex; gap:10px; flex-wrap:wrap; }
+  .badge { display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; text-transform:capitalize; }
+</style></head>
+<body>
+  <div class="lbl">On-dark text ramp</div>
+  <div class="dark">
+    <span style="color:#fff">White</span>
+    <span style="color:var(--mvair-on-dark)">On-dark</span>
+    <span style="color:var(--mvair-on-dark-muted)">Muted</span>
+    <span style="color:var(--mvair-on-dark-dim)">Dim</span>
+    <span style="color:var(--mvair-accent)">Aqua accent</span>
+  </div>
+  <div class="lbl">Session-intent badges</div>
+  <div class="intent">
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-general) 15%,transparent);color:var(--mvair-intent-general)">general</span>
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-dental) 15%,transparent);color:var(--mvair-intent-dental)">dental</span>
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-followup) 15%,transparent);color:var(--mvair-intent-followup)">followup</span>
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-urgent) 15%,transparent);color:var(--mvair-intent-urgent)">urgent</span>
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-inquiry) 15%,transparent);color:var(--mvair-intent-inquiry)">inquiry</span>
+    <span class="badge" style="background:color-mix(in srgb,var(--mvair-intent-unknown) 15%,transparent);color:var(--mvair-intent-unknown)">unknown</span>
+  </div>
+</body></html>

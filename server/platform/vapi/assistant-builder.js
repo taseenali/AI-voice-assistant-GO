@@ -88,8 +88,8 @@ export function buildAssistantResponse(tenantBundle) {
       name: config.assistant_name || 'Aria',
       firstMessage: config.first_message,
       model: {
-        provider: 'openai',
-        model: process.env.VAPI_LLM_MODEL || 'gpt-4o-mini',
+        provider: config.llm_provider || 'openai',
+        model: config.llm_model || process.env.VAPI_LLM_MODEL || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -185,6 +185,32 @@ export function buildAssistantResponse(tenantBundle) {
             },
             server,
           },
+          ...(config.transfer_number
+            ? [{
+                type: 'transferCall',
+                function: {
+                  name: 'transfer_to_human',
+                  description: 'Transfer the caller to a human staff member when they explicitly ask to speak with a person, or when the request is too complex for the AI to handle.',
+                  parameters: { type: 'object', properties: {} },
+                },
+                destinations: [{
+                  type: 'number',
+                  number: config.transfer_number,
+                  message: 'Please hold while I connect you with a staff member.',
+                  description: 'Clinic front desk',
+                }],
+              }]
+            : [{
+                type: 'function',
+                function: {
+                  name: 'transfer_to_human',
+                  description: 'Tell the caller how to reach a human staff member when they ask to speak with a person.',
+                  parameters: { type: 'object', properties: {} },
+                },
+                server,
+                messages: [{ type: 'request-start', content: 'Let me help connect you.' }],
+              }]
+          ),
         ],
       },
       silenceTimeoutSeconds: 8,

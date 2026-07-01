@@ -4,6 +4,8 @@ import * as calendarTool from './calendar-tool.js';
 import * as leadTool from './lead-tool.js';
 import * as emergencyTool from './emergency-tool.js';
 import { platformQueries } from '../../lib/platform-migrations.js';
+import { sendAppointmentConfirmation } from '../../lib/sms.js';
+import log from '../../lib/logger.js';
 
 /**
  * Normalize a raw phone string to E.164 (+1XXXXXXXXXX for US/CA).
@@ -116,6 +118,17 @@ const TOOL_HANDLERS = {
       } catch (dbErr) {
         console.error('[book_appointment] DB dual-write failed (non-fatal):', dbErr.message);
       }
+
+      // SMS confirmation — fire-and-forget, never blocks or throws
+      const patientPhone = args.phone || null;
+      if (patientPhone) {
+        sendAppointmentConfirmation({
+          to: patientPhone,
+          date: args.date,
+          time: args.time,
+          clinic: bundle.config.company_name || 'the clinic',
+        }).catch(() => {});
+      }
     }
 
     return result.message;
@@ -130,6 +143,15 @@ const TOOL_HANDLERS = {
       phone: normalizePhone(args.phone),
     });
     return result.message;
+  },
+
+  transfer_to_human: async (tenantId) => {
+    const bundle = requireTenant(tenantId);
+    const phone = bundle.config.clinic_phone || bundle.config.transfer_number;
+    if (phone) {
+      return `I'm unable to transfer you directly right now. Please hang up and call the clinic at ${phone} to speak with a staff member.`;
+    }
+    return 'I\'m unable to transfer you directly. Please hang up and call the clinic during business hours to speak with a staff member.';
   },
 
   log_emergency: async (tenantId, args, ctx) => {
@@ -152,7 +174,16 @@ export async function executeTool(toolName, tenantId, args = {}, ctx = {}) {
     err.status = 400;
     throw err;
   }
-  return handler(tenantId, args, ctx);
+
+  const start = Date.now();
+  try {
+    const result = await handler(tenantId, args, ctx);
+    log.info('tool:ok', { tool: toolName, tenantId, ms: Date.now() - start });
+    return result;
+  } catch (err) {
+    log.error('tool:error', { tool: toolName, tenantId, err: err.message, ms: Date.now() - start });
+    throw err;
+  }
 }
 
 export { TOOL_HANDLERS };

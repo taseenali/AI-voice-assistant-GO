@@ -93,11 +93,67 @@ export function runPlatformMigrations(db) {
     db.exec(`ALTER TABLE sessions ADD COLUMN phone_number TEXT`);
     console.log('[Database] Migration: sessions.phone_number');
   }
+  if (!sessionCols.includes('cost_usd')) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN cost_usd REAL`);
+    console.log('[Database] Migration: sessions.cost_usd');
+  }
+  if (!sessionCols.includes('summary')) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN summary TEXT`);
+    console.log('[Database] Migration: sessions.summary');
+  }
+  if (!sessionCols.includes('success_evaluation')) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN success_evaluation TEXT`);
+    console.log('[Database] Migration: sessions.success_evaluation');
+  }
+
+  // Add transfer_number and oncall_webhook_url to tenant_config
+  const tcCols = db.pragma('table_info(tenant_config)').map((c) => c.name);
+  if (!tcCols.includes('transfer_number')) {
+    db.exec(`ALTER TABLE tenant_config ADD COLUMN transfer_number TEXT`);
+    console.log('[Database] Migration: tenant_config.transfer_number');
+  }
+  if (!tcCols.includes('oncall_webhook_url')) {
+    db.exec(`ALTER TABLE tenant_config ADD COLUMN oncall_webhook_url TEXT`);
+    console.log('[Database] Migration: tenant_config.oncall_webhook_url');
+  }
+  if (!tcCols.includes('llm_model')) {
+    db.exec(`ALTER TABLE tenant_config ADD COLUMN llm_model TEXT`);
+    console.log('[Database] Migration: tenant_config.llm_model');
+  }
+  if (!tcCols.includes('llm_provider')) {
+    db.exec(`ALTER TABLE tenant_config ADD COLUMN llm_provider TEXT NOT NULL DEFAULT 'openai'`);
+    console.log('[Database] Migration: tenant_config.llm_provider');
+  }
+
+  // BAA records table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS baa_records (
+      baa_id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id),
+      signed_by TEXT NOT NULL,
+      signed_at TEXT NOT NULL,
+      effective_date TEXT NOT NULL,
+      expiry_date TEXT,
+      document_ref TEXT,
+      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'expired', 'revoked')),
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_baa_tenant ON baa_records(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_baa_status ON baa_records(status);
+  `);
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_sessions_external_call ON sessions(external_call_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_channel ON sessions(channel);
   `);
+
+  // Add active flag to users (soft-delete / deactivation)
+  const userCols = db.pragma('table_info(users)').map((c) => c.name);
+  if (!userCols.includes('active')) {
+    db.exec(`ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1`);
+    console.log('[Database] Migration: users.active');
+  }
 }
 
 export const platformQueries = {
@@ -113,6 +169,14 @@ export const platformQueries = {
   updateSessionPhoneMeta: null,
   getAppointmentsByTenant: null,
   insertAppointment: null,
+  // BAA
+  insertBaa: null,
+  listBaaByTenant: null,
+  updateBaaStatus: null,
+  // Users
+  listUsersByTenant: null,
+  listAllUsers: null,
+  deactivateUser: null,
 };
 
 export function initPlatformQueries(db) {
@@ -173,9 +237,32 @@ export function initPlatformQueries(db) {
   platformQueries.updateSessionPhoneMeta = db.prepare(`
     UPDATE sessions
     SET channel = ?, external_call_id = ?, recording_url = ?, phone_number = ?, end_time = ?,
-        duration_seconds = ?
+        duration_seconds = ?, cost_usd = ?, summary = ?, success_evaluation = ?
     WHERE session_id = ?
   `);
+  platformQueries.insertBaa = db.prepare(`
+    INSERT INTO baa_records
+      (baa_id, tenant_id, signed_by, signed_at, effective_date, expiry_date, document_ref, status, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  platformQueries.listBaaByTenant = db.prepare(`
+    SELECT * FROM baa_records WHERE tenant_id = ? ORDER BY signed_at DESC
+  `);
+  platformQueries.updateBaaStatus = db.prepare(`
+    UPDATE baa_records SET status = ? WHERE baa_id = ? AND tenant_id = ?
+  `);
+  platformQueries.listUsersByTenant = db.prepare(`
+    SELECT user_id, tenant_id, email, role, active, created_at
+    FROM users WHERE tenant_id = ? ORDER BY created_at DESC
+  `);
+  platformQueries.listAllUsers = db.prepare(`
+    SELECT user_id, tenant_id, email, role, active, created_at
+    FROM users ORDER BY tenant_id, created_at DESC
+  `);
+  platformQueries.deactivateUser = db.prepare(`
+    UPDATE users SET active = 0 WHERE user_id = ?
+  `);
+
   platformQueries.getAppointmentsByTenant = db.prepare(`
     SELECT * FROM appointments
     WHERE tenant_id = ? AND start_time >= ?

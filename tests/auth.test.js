@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import authRouter from '../server/routes/auth.js';
 import leadsRouter from '../server/routes/leads.js';
@@ -27,8 +28,10 @@ async function login(email) {
     body: JSON.stringify({ email, password: 'changeme-dev-only' }),
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
-  return body.token;
+  // Auth now uses httpOnly cookies — extract the JWT value from Set-Cookie
+  const setCookie = res.headers.get('set-cookie') || '';
+  const match = setCookie.match(/mvair_session=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 function authGet(path, token) {
@@ -78,6 +81,7 @@ beforeAll(async () => {
 
   const app = express();
   app.use(express.json());
+  app.use(cookieParser());
   app.use('/api/auth', authRouter);
   app.use('/api/leads', leadsRouter);
   app.use('/api/sessions', sessionsRouter);

@@ -10,6 +10,10 @@ import {
   Settings,
   Building2,
   Radio,
+  BarChart2,
+  ShieldCheck,
+  ClipboardList,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { TenantSwitcher } from '../admin/TenantSwitcher';
@@ -19,6 +23,7 @@ const navItems = [
     section: 'ANALYTICS',
     items: [
       { path: '/app', icon: LayoutDashboard, label: 'Overview', badge: 0, alert: false },
+      { path: '/app/analytics', icon: BarChart2, label: 'Analytics', badge: 0, alert: false },
       { path: '/app/leads', icon: Users, label: 'Leads', badge: 0, alert: false },
       { path: '/app/sessions', icon: MessageSquare, label: 'Sessions', badge: 0, alert: false },
       { path: '/app/appointments', icon: CalendarDays, label: 'Appointments', badge: 0, alert: false },
@@ -61,6 +66,27 @@ export function Sidebar() {
                 path: '/app/admin/tenants',
                 icon: Building2,
                 label: 'Tenants',
+                badge: 0,
+                alert: false,
+              },
+              {
+                path: '/app/admin/compliance',
+                icon: ShieldCheck,
+                label: 'Compliance',
+                badge: 0,
+                alert: false,
+              },
+              {
+                path: '/app/admin/audit-log',
+                icon: ClipboardList,
+                label: 'Audit Log',
+                badge: 0,
+                alert: false,
+              },
+              {
+                path: '/app/admin/users',
+                icon: UserCog,
+                label: 'Users',
                 badge: 0,
                 alert: false,
               },

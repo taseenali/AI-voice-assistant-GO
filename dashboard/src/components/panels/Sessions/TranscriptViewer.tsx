@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, Bot, ExternalLink } from 'lucide-react';
+import { X, User, Bot } from 'lucide-react';
 import { ChannelBadge } from '../../shared/ChannelBadge';
 import { PhoneDisplay } from '../../shared/SessionFieldCells';
 import type { ConversationTurn, Session } from '../../../types/session';
@@ -12,6 +12,11 @@ interface TranscriptViewerProps {
 
 export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerProps) {
   const [audioFailed, setAudioFailed] = useState(false);
+
+  // Audio served through the server proxy — never expose the raw Vapi URL.
+  const recordingProxyUrl = session.hasRecording
+    ? `/api/recordings/${encodeURIComponent(session.sessionId)}`
+    : null;
 
   return (
     <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-40 overflow-y-auto">
@@ -44,34 +49,44 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-text-secondary">Recording</span>
-            {!session.recordingUrl || audioFailed ? (
+            {!recordingProxyUrl || audioFailed ? (
               <span className="text-xs text-text-muted">
                 {audioFailed ? 'Unavailable' : '—'}
               </span>
             ) : (
-              <a
-                href={session.recordingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="w-3 h-3" />
-                Open
-              </a>
+              <span className="text-xs text-text-muted">Available</span>
             )}
           </div>
-          {session.recordingUrl && !audioFailed && (
+          {recordingProxyUrl && !audioFailed && (
             <audio
               controls
-              src={session.recordingUrl}
+              src={recordingProxyUrl}
               className="w-full"
               style={{ height: '34px' }}
               preload="metadata"
               onError={() => setAudioFailed(true)}
             />
           )}
+          {session.costUsd != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-text-secondary">Cost</span>
+              <span className="text-xs font-mono text-text-primary">${session.costUsd.toFixed(4)}</span>
+            </div>
+          )}
+          {session.successEvaluation && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-text-secondary">Success</span>
+              <span className="text-xs text-text-primary capitalize">{session.successEvaluation}</span>
+            </div>
+          )}
         </div>
+
+        {session.summary && (
+          <div className="mb-6 p-4 rounded-card bg-page border border-card-border text-sm text-text-secondary leading-relaxed">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">AI Summary</p>
+            <p>{session.summary}</p>
+          </div>
+        )}
 
         <div className="space-y-4">
           {turns.map((turn, i) => (

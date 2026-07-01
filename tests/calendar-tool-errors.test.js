@@ -36,7 +36,7 @@ describe('calendar tool error paths (Vapi-safe strings, not throws)', () => {
           data: {
             calendars: {
               [TEST_CALENDAR]: {
-                busy: [{ start: '2026-06-20T14:00:00Z', end: '2026-06-20T14:30:00Z' }],
+                busy: [{ start: '2027-03-15T14:00:00Z', end: '2027-03-15T14:30:00Z' }],
               },
             },
           },
@@ -47,7 +47,7 @@ describe('calendar tool error paths (Vapi-safe strings, not throws)', () => {
 
     const result = await calendarTool.bookAppointment({
       calendarId: TEST_CALENDAR,
-      date: '2026-06-20',
+      date: '2027-03-15',
       time: '10:00',
       patientName: 'Jane Doe',
       reason: 'checkup',
@@ -71,7 +71,7 @@ describe('calendar tool error paths (Vapi-safe strings, not throws)', () => {
 
     const result = await calendarTool.bookAppointment({
       calendarId: TEST_CALENDAR,
-      date: '2026-06-20',
+      date: '2027-03-15',
       time: '10:00',
       patientName: 'Jane Doe',
     });
@@ -100,7 +100,7 @@ describe('book_appointment via tool loop (200-shaped for Vapi)', () => {
           function: {
             name: 'book_appointment',
             arguments: {
-              date: '2026-06-20',
+              date: '2027-03-15',
               time: '10:00',
               patient_name: 'Jane',
               reason_for_visit: 'checkup',
@@ -141,7 +141,7 @@ describe('book_appointment via tool loop (200-shaped for Vapi)', () => {
           type: 'function',
           function: {
             name: 'book_appointment',
-            arguments: { date: '2026-06-20', time: '10:00' },
+            arguments: { date: '2027-03-15', time: '10:00' },
           },
         },
       ],

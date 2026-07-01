@@ -12,16 +12,27 @@ export function verifyToken(token) {
 }
 
 /**
+ * Resolve a JWT token from the request.
+ * Cookie takes priority over Authorization header (cookie is httpOnly, harder to steal).
+ */
+function extractToken(req) {
+  const cookie = req.cookies?.mvair_session;
+  if (cookie) return cookie;
+  const header = req.headers.authorization || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : null;
+}
+
+/**
  * Express middleware — optional unless PLATFORM_REQUIRE_AUTH=true.
  * Attaches req.user = { userId, tenantId, role, email }
  */
 export function authMiddleware(req, res, next) {
   const requireAuth = process.env.PLATFORM_REQUIRE_AUTH === 'true';
 
-  const header = req.headers.authorization || '';
-  const match = header.match(/^Bearer\s+(.+)$/i);
+  const token = extractToken(req);
 
-  if (!match) {
+  if (!token) {
     if (requireAuth) {
       return res.status(401).json({ error: 'Authorization required' });
     }
@@ -29,7 +40,7 @@ export function authMiddleware(req, res, next) {
   }
 
   try {
-    const decoded = verifyToken(match[1]);
+    const decoded = verifyToken(token);
     req.user = {
       userId: decoded.sub,
       tenantId: decoded.tenant_id ?? null,

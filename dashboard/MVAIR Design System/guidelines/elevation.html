@@ -1,0 +1,21 @@
+<!-- @dsCard group="Spacing" viewport="700x210" name="Elevation" subtitle="Two-layer cool-tinted shadows + hover lift" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; padding: 28px; background: var(--mvair-surface); font-family: var(--mvair-font-sans); }
+  .row { display:flex; gap:26px; }
+  .col { display:flex; flex-direction:column; gap:10px; }
+  .box { width: 150px; height: 96px; background:#fff; border:1px solid var(--mvair-card-border); border-radius: 12px; }
+  .b1 { box-shadow: var(--mvair-shadow-card); }
+  .b2 { box-shadow: var(--mvair-shadow-card-hover); }
+  .b3 { box-shadow: var(--mvair-shadow-panel); }
+  .nm { font-size: 12px; font-weight:600; color: var(--mvair-text-primary); }
+  .tok { font-family: var(--mvair-font-mono); font-size: 10px; color: var(--mvair-text-muted); }
+</style></head>
+<body>
+  <div class="row">
+    <div class="col"><div class="box b1"></div><span class="nm">shadow-card</span><span class="tok">resting surface</span></div>
+    <div class="col"><div class="box b2"></div><span class="nm">shadow-card-hover</span><span class="tok">−4px lift on hover</span></div>
+    <div class="col"><div class="box b3"></div><span class="nm">shadow-panel</span><span class="tok">large featured panel</span></div>
+  </div>
+</body></html>

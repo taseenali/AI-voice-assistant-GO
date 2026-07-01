@@ -8,14 +8,33 @@ const router = express.Router();
 const START_TIME = Date.now();
 
 /**
- * GET /health — public, minimal.
+ * GET /health — public.
  * Used by Vapi, Railway health checks, and the dashboard status card.
+ * Returns non-200 only if the server is critically broken (DB down, required env missing).
  */
 router.get('/health', (req, res) => {
-  res.json({
-    status: 'UP',
+  const checks = {};
+
+  // DB connectivity
+  try {
+    queries.listSessions.all('__health_check__', 1, 0);
+    checks.db = 'ok';
+  } catch {
+    checks.db = 'error';
+  }
+
+  // Critical env presence (no values exposed)
+  checks.vapi_key = !!(process.env.VAPI_API_KEY?.trim());
+  checks.vapi_secret = !!(process.env.VAPI_WEBHOOK_SECRET?.trim());
+  checks.public_url = !!(process.env.PUBLIC_URL?.trim());
+  checks.calendar = !!(process.env.G_CLIENT_EMAIL?.trim());
+
+  const healthy = checks.db === 'ok';
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'UP' : 'DEGRADED',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    checks,
   });
 });
 

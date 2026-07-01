@@ -5,10 +5,13 @@ import { fileURLToPath } from 'url';
 import { runPlatformMigrations, initPlatformQueries } from './platform-migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, '../data/medvoice.db');
 
-// Ensure data directory exists
-const dataDir = path.join(__dirname, '../data');
+// SQLITE_PATH env var allows Railway Volume or any absolute path.
+// Default: server/data/medvoice.db (local dev / fallback).
+const dbPath = process.env.SQLITE_PATH ?? path.join(__dirname, '../data/medvoice.db');
+
+// Ensure parent directory exists (handles both local data/ and volume mounts)
+const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }

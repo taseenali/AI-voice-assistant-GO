@@ -1,0 +1,92 @@
+/* ============================================================
+   MVAIR — Base layer
+   Element defaults + a few brand utility classes that the
+   product relies on (card, badge, status dots, shimmer).
+   Tokens come from tokens/*.css.
+   ============================================================ */
+
+body {
+  margin: 0;
+  font-family: var(--mvair-font-sans);
+  font-size: var(--mvair-body);
+  line-height: var(--mvair-body-lh);
+  background: var(--mvair-bg-page);
+  color: var(--mvair-text-primary);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Newsreader for the display role */
+.mvair-display {
+  font-family: var(--mvair-font-display);
+  font-weight: var(--mvair-weight-semibold);
+  letter-spacing: var(--mvair-display-card-tracking);
+}
+
+.mvair-mono { font-family: var(--mvair-font-mono); }
+
+/* Eyebrow — uppercase, tracked, petrol or aqua */
+.mvair-eyebrow {
+  font-size: var(--mvair-eyebrow);
+  font-weight: var(--mvair-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--mvair-eyebrow-tracking);
+  color: var(--mvair-primary);
+}
+
+/* Card — the workhorse surface */
+.mvair-card {
+  background: var(--mvair-bg-card);
+  border: 1px solid var(--mvair-border-card);
+  border-radius: var(--mvair-radius-card);
+  box-shadow: var(--mvair-shadow-card);
+}
+
+/* Badge base */
+.mvair-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--mvair-radius-badge);
+  font-size: var(--mvair-badge);
+  font-weight: var(--mvair-weight-semibold);
+  line-height: 1;
+}
+
+/* Table header cell */
+.mvair-th {
+  font-size: var(--mvair-table-header);
+  font-weight: var(--mvair-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--mvair-table-header-tracking);
+  color: var(--mvair-text-secondary);
+}
+
+/* Status dots */
+.mvair-dot { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; }
+.mvair-dot--online { background: var(--mvair-success); animation: mvair-pulse 2s infinite; }
+.mvair-dot--offline { background: var(--mvair-danger); }
+.mvair-dot--warning { background: var(--mvair-warning); }
+
+@keyframes mvair-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Skeleton shimmer */
+@keyframes mvair-shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+.mvair-shimmer {
+  animation: mvair-shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    var(--mvair-skeleton-base) 0%,
+    var(--mvair-skeleton-shimmer) 20%,
+    var(--mvair-skeleton-base) 40%,
+    var(--mvair-skeleton-base) 100%
+  );
+  background-size: 1000px 100%;
+}

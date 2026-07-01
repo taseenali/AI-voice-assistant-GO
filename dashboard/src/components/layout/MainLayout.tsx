@@ -1,14 +1,10 @@
-import type { ReactNode } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Eye, Building2 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Toast } from '../shared/Toast.tsx';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../context/AuthContext';
 import { useTenants } from '../../hooks/useTenants';
-
-interface MainLayoutProps {
-  children: ReactNode;
-}
 
 /** Turn a tenant slug ("northgate-family-health") into a readable name. */
 function prettyTenant(slug: string): string {
@@ -19,7 +15,7 @@ function prettyTenant(slug: string): string {
     .join(' ');
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+export function MainLayout() {
   const { toasts, removeToast } = useToast();
   const { isSuperAdmin, viewingTenantId } = useAuth();
   const { tenants } = useTenants();
@@ -50,7 +46,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               </span>
             </div>
           )}
-          {children}
+          <Outlet />
         </div>
       </main>
 

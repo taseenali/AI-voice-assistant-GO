@@ -10,14 +10,15 @@ import { verifyToken } from './middleware.js';
  */
 export function requireDashboardAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const match = header.match(/^Bearer\s+(.+)$/i);
+  const bearerMatch = header.match(/^Bearer\s+(.+)$/i);
+  const token = bearerMatch?.[1] || req.cookies?.mvair_session;
 
-  if (!match) {
+  if (!token) {
     return res.status(401).json({ error: 'Authorization required' });
   }
 
   try {
-    const decoded = verifyToken(match[1]);
+    const decoded = verifyToken(token);
     req.user = {
       userId: decoded.sub,
       tenantId: decoded.tenant_id ?? null,

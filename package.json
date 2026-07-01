@@ -5,19 +5,25 @@
   "main": "index.html",
   "type": "module",
   "scripts": {
+    "start": "node server/index.js",
     "server": "node server/index.js",
     "dev:server": "node --watch server/index.js",
     "dashboard": "npm run dev --prefix dashboard",
+    "build:dashboard": "npm run build --prefix dashboard",
     "live": "npm run dev --prefix live",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "seed:demo": "node server/scripts/seed-demo.js",
     "seed:clear": "node server/scripts/seed-clear.js",
-    "seed:recover": "node server/scripts/recover-vapi-calls.js"
+    "seed:recover": "node server/scripts/recover-vapi-calls.js",
+    "retain:dry": "node server/scripts/retain-data.mjs --dry-run",
+    "retain:run": "node server/scripts/retain-data.mjs",
+    "admin:create": "node server/scripts/create-admin.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.9.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",

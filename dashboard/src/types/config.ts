@@ -7,6 +7,10 @@ export interface Config {
   secondary_goals: string[];
   ai_tier: number;
   llm_model: string;
+  llm_provider?: string;
+  transfer_number?: string;
+  oncall_webhook_url?: string;
+  clinic_phone?: string;
   services: Service[];
   qualification_fields: string[];
   emergency_keywords: string[];

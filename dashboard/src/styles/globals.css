@@ -75,6 +75,18 @@
     @apply bg-card-bg border border-card-border rounded-card shadow-card;
   }
 
+  .btn-primary {
+    @apply bg-primary text-white rounded-button hover:bg-primary-dark transition-colors disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary border border-card-border rounded-button hover:bg-page hover:text-text-primary transition-colors;
+  }
+
+  .input {
+    @apply border border-card-border rounded-button px-3 py-2 text-sm text-text-primary bg-white focus:outline-none focus:ring-1 focus:ring-primary;
+  }
+
   .badge {
     @apply inline-flex items-center px-2 py-1 rounded-badge text-badge font-semibold;
   }

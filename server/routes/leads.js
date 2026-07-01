@@ -1,6 +1,8 @@
 import express from 'express';
 import { queries } from '../lib/database.js';
 import { requireDashboardAuth } from '../platform/auth/clinic-auth.js';
+import { writeAuditLog } from '../lib/audit.js';
+import { requireStrings, parseIntParam } from '../lib/validate.js';
 
 const router = express.Router();
 
@@ -29,9 +31,20 @@ function normalizePatientType(v) {
 router.get('/', requireDashboardAuth, (req, res) => {
   try {
     const client = req.tenantId;
-    const { limit = 50, offset = 0, service, completeness_min } = req.query;
+    const limit = parseIntParam(req.query.limit, 50, 1, 200);
+    const offset = parseIntParam(req.query.offset, 0, 0, 1_000_000);
+    const { service, completeness_min } = req.query;
 
-    let rows = queries.getLeads.all(client, parseInt(limit), parseInt(offset));
+    writeAuditLog({
+      event_type: 'phi_access',
+      action: 'list_leads',
+      resource: 'leads',
+      client_id: client,
+      user_id: req.user?.userId,
+      req,
+    });
+
+    let rows = queries.getLeads.all(client, limit, offset);
 
     // Filter by service if provided
     if (service && service !== 'all') {
@@ -71,6 +84,9 @@ router.get('/', requireDashboardAuth, (req, res) => {
 // POST /api/leads - Create new lead
 router.post('/', (req, res) => {
   try {
+    const err = requireStrings(req.body, ['session_id', 'client_id']);
+    if (err) return res.status(400).json({ error: err });
+
     const {
       session_id,
       client_id,

@@ -1,0 +1,65 @@
+/* ============================================================
+   MVAIR — Typography tokens
+   Pairing: Newsreader (serif) for display/headlines + emphasis,
+            Hanken Grotesk (grotesque sans) for all UI/body,
+            system mono for IDs, code, technical values.
+   Webfonts declared in tokens/fonts.css.
+   ============================================================ */
+:root {
+  /* ---- Families ---- */
+  --mvair-font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --mvair-font-sans: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mvair-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; /* @kind font */
+
+  /* ---- Weights ---- */
+  --mvair-weight-regular: 400;
+  --mvair-weight-medium: 500;
+  --mvair-weight-semibold: 600;
+  --mvair-weight-bold: 700;
+
+  /* ============================================================
+     ROLE SCALE — size / line-height / tracking, matched to the
+     compiled Tailwind theme the product ships.
+     ============================================================ */
+
+  /* Display (Newsreader, serif) — marketing & big moments */
+  --mvair-display-hero: 62px;        /* hero H1            */
+  --mvair-display-hero-lh: 1.04; /* @kind other */
+  --mvair-display-hero-tracking: -0.025em; /* @kind other */
+
+  --mvair-display-section: 42px;     /* section H2         */
+  --mvair-display-section-lh: 1.1; /* @kind other */
+  --mvair-display-section-tracking: -0.02em; /* @kind other */
+
+  --mvair-display-card: 23px;        /* card / feature H3  */
+  --mvair-display-card-lh: 1.2; /* @kind other */
+  --mvair-display-card-tracking: -0.01em; /* @kind other */
+
+  /* App headings */
+  --mvair-page-title: 28px;          /* dashboard page H1 (Newsreader medium) */
+  --mvair-page-title-lh: 1.2; /* @kind other */
+  --mvair-page-title-tracking: -0.01em; /* @kind other */
+
+  --mvair-section-heading: 16px;     /* panel / card heading (sans semibold) */
+  --mvair-section-heading-lh: 1.4; /* @kind other */
+
+  --mvair-kpi: 30px;                 /* big metric number (sans bold)        */
+  --mvair-kpi-lh: 1.1; /* @kind other */
+
+  /* Body */
+  --mvair-body-lg: 19px;             /* hero/section lede   */
+  --mvair-body-lg-lh: 1.6; /* @kind other */
+  --mvair-body: 15px;                /* default UI body     */
+  --mvair-body-lh: 1.6; /* @kind other */
+  --mvair-body-sm: 13px;             /* meta / secondary    */
+  --mvair-body-sm-lh: 1.5; /* @kind other */
+
+  /* Micro / labels */
+  --mvair-card-title: 11px;          /* uppercase KPI label */
+  --mvair-card-title-tracking: 0.06em; /* @kind other */
+  --mvair-table-header: 11px;        /* uppercase th        */
+  --mvair-table-header-tracking: 0.06em; /* @kind other */
+  --mvair-badge: 12px;
+  --mvair-eyebrow: 13px;             /* uppercase eyebrow   */
+  --mvair-eyebrow-tracking: 0.16em; /* @kind other */
+}

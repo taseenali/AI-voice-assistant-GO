@@ -52,10 +52,10 @@ export function VisualView({ config }: VisualViewProps) {
         </div>
       </div>
 
-      {/* AI Configuration */}
+      {/* AI & Voice Configuration */}
       <div className="card p-6">
         <h3 className="text-section-heading font-semibold text-text-primary mb-4">
-          AI Configuration
+          AI & Voice Configuration
         </h3>
         <div className="grid grid-cols-2 gap-6">
           <div>
@@ -63,8 +63,24 @@ export function VisualView({ config }: VisualViewProps) {
             <p className="text-sm font-medium text-text-primary">Tier {config.ai_tier}</p>
           </div>
           <div>
+            <p className="text-xs text-text-muted mb-1">LLM Provider</p>
+            <p className="text-sm font-medium text-text-primary">{config.llm_provider ?? 'openai'}</p>
+          </div>
+          <div>
             <p className="text-xs text-text-muted mb-1">LLM Model</p>
-            <p className="text-sm font-medium text-text-primary">{config.llm_model}</p>
+            <p className="text-sm font-mono text-text-primary">{config.llm_model}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted mb-1">Transfer Number</p>
+            <p className="text-sm font-mono text-text-primary">{config.transfer_number ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted mb-1">Clinic Phone</p>
+            <p className="text-sm font-mono text-text-primary">{config.clinic_phone ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted mb-1">On-Call Webhook</p>
+            <p className="text-sm font-mono text-text-secondary truncate">{config.oncall_webhook_url ?? '—'}</p>
           </div>
         </div>
       </div>
@@ -159,7 +175,7 @@ export function VisualView({ config }: VisualViewProps) {
         <div className="grid grid-cols-2 gap-6">
           <div>
             <p className="text-xs text-text-muted mb-1">Enabled</p>
-            <p className={`text-sm font-medium ${config.calendar_enabled ? 'text-success' : 'text-neutral'}`}>
+            <p className={`text-sm font-medium ${config.calendar_enabled ? 'text-success' : 'text-text-secondary'}`}>
               {config.calendar_enabled ? 'Yes' : 'No'}
             </p>
           </div>

@@ -1,6 +1,8 @@
 import express from 'express';
 import { queries } from '../lib/database.js';
 import { requireDashboardAuth, canAccessSession } from '../platform/auth/clinic-auth.js';
+import { writeAuditLog } from '../lib/audit.js';
+import { requireStrings, parseIntParam } from '../lib/validate.js';
 
 const router = express.Router();
 
@@ -8,8 +10,17 @@ const router = express.Router();
 router.get('/', requireDashboardAuth, (req, res) => {
   try {
     const client = req.tenantId;
-    const { limit = 50, offset = 0 } = req.query;
+    const limit = parseIntParam(req.query.limit, 50, 1, 200);
+    const offset = parseIntParam(req.query.offset, 0, 0, 1_000_000);
 
+    writeAuditLog({
+      event_type: 'phi_access',
+      action: 'list_sessions',
+      resource: 'sessions',
+      client_id: client,
+      user_id: req.user?.userId,
+      req,
+    });
 
     const rows = queries.listSessions.all(client, parseInt(limit), parseInt(offset));
 
@@ -36,7 +47,10 @@ router.get('/', requireDashboardAuth, (req, res) => {
       finalState:        s.final_state,
       channel:           s.channel || 'web',
       phoneNumber:       s.phone_number || null,
-      recordingUrl:      s.recording_url || null,
+      hasRecording:      Boolean(s.recording_url),
+      costUsd:           s.cost_usd ?? null,
+      summary:           s.summary ?? null,
+      successEvaluation: s.success_evaluation ?? null,
     }));
 
     // Stats: "today" = server's local calendar date, same basis as localYMD(startTime)
@@ -98,7 +112,7 @@ router.get('/:id', requireDashboardAuth, (req, res) => {
       emergencyDetected: Boolean(session.emergency_detected),
       channel:           session.channel || 'web',
       phone_number:      session.phone_number || null,
-      recording_url:     session.recording_url || null,
+      hasRecording:      Boolean(session.recording_url),
       turns,
     });
   } catch (error) {
@@ -111,6 +125,9 @@ router.get('/:id', requireDashboardAuth, (req, res) => {
 router.post('/', (req, res) => {
   try {
     const { session_id, client_id, start_time, intent_detected } = req.body;
+
+    const err = requireStrings(req.body, ['session_id', 'client_id']);
+    if (err) return res.status(400).json({ error: err });
 
     queries.insertSession.run(session_id, client_id, start_time, intent_detected || null);
 

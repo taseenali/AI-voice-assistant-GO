@@ -1,0 +1,48 @@
+<!-- @dsCard group="Components" viewport="700x240" name="Brand — Logo &amp; CTA" subtitle="Waveform mark, lockup and marketing buttons" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style> body { margin: 0; padding: 24px; background: var(--mvair-surface); } .lbl { font-family: var(--mvair-font-sans); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--mvair-text-muted); margin: 0 0 10px; } .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .light, .dark { border-radius: 14px; padding: 22px; } .light { background: #fff; border: 1px solid var(--mvair-card-border); } .dark { background: var(--mvair-dark); } .grp { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; } </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { MvairMark, MvairLogo, CTAButton } = window.MVAIRDesignSystem_49370a;
+function Demo() {
+  return (
+    <div>
+      <div className="panel" style={{ marginBottom: 18 }}>
+        <div className="light">
+          <div className="lbl">On light</div>
+          <div className="grp">
+            <MvairMark tone="petrol" size={36} />
+            <MvairLogo tone="petrol" size={28} />
+          </div>
+        </div>
+        <div className="dark">
+          <div className="lbl" style={{ color: 'var(--mvair-on-dark-dim)' }}>On dark</div>
+          <div className="grp">
+            <MvairMark tone="aqua" size={36} />
+            <MvairLogo tone="aqua" size={28} />
+          </div>
+        </div>
+      </div>
+      <div className="lbl">CTA buttons</div>
+      <div className="dark grp">
+        <CTAButton variant="aqua" size="lg">Book a demo</CTAButton>
+        <CTAButton variant="ghost" size="lg">See it in action</CTAButton>
+        <CTAButton variant="petrol" size="sm">Book a demo</CTAButton>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

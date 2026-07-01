@@ -2,8 +2,22 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { platformQueries } from '../lib/platform-migrations.js';
 import { signToken, verifyToken } from '../platform/auth/middleware.js';
+import { writeAuditLog } from '../lib/audit.js';
 
 const router = express.Router();
+
+const COOKIE_NAME = 'mvair_session';
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function cookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE_MS,
+    path: '/',
+  };
+}
 
 router.post('/login', async (req, res) => {
   try {
@@ -29,8 +43,18 @@ router.post('/login', async (req, res) => {
       tenant_id: user.tenant_id,
     });
 
+    res.cookie(COOKIE_NAME, token, cookieOptions());
+
+    writeAuditLog({
+      event_type: 'auth',
+      action: 'login',
+      resource: 'session',
+      client_id: user.tenant_id || 'system',
+      user_id: user.user_id,
+      req,
+    });
+
     res.json({
-      token,
       user: {
         userId: user.user_id,
         email: user.email,
@@ -45,12 +69,11 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/me', (req, res) => {
-  const header = req.headers.authorization || '';
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) return res.status(401).json({ error: 'Not authenticated' });
+  const token = req.cookies?.[COOKIE_NAME];
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
   try {
-    const decoded = verifyToken(match[1]);
+    const decoded = verifyToken(token);
     res.json({
       userId: decoded.sub,
       email: decoded.email,
@@ -58,8 +81,30 @@ router.get('/me', (req, res) => {
       tenantId: decoded.tenant_id ?? null,
     });
   } catch {
+    res.clearCookie(COOKIE_NAME, { path: '/' });
     res.status(401).json({ error: 'Invalid token' });
   }
+});
+
+router.post('/logout', (req, res) => {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (token) {
+    try {
+      const decoded = verifyToken(token);
+      writeAuditLog({
+        event_type: 'auth',
+        action: 'logout',
+        resource: 'session',
+        client_id: decoded.tenant_id || 'system',
+        user_id: decoded.sub,
+        req,
+      });
+    } catch {
+      /* expired token on logout is fine */
+    }
+  }
+  res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.json({ ok: true });
 });
 
 export default router;

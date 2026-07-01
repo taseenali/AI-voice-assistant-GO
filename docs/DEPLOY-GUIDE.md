@@ -54,7 +54,19 @@ ALLOWED_ORIGINS=https://your-dashboard.vercel.app
 - `TWILIO_*` vars
 - `MEDICAL_CLINIC_WEBHOOK_URL` / `MEDICAL_CLINIC_WEBHOOK_SECRET`
 
-### Step 3 — Deploy
+### Step 3 — Attach a persistent Volume (required for SQLite)
+
+Railway's filesystem is ephemeral — the database is wiped on every redeploy unless you mount a Volume.
+
+1. Railway dashboard → your project → your service → **Volumes**
+2. New Volume → Mount path: `/data`
+3. Go back to Variables → add: `SQLITE_PATH=/data/medvoice.db`
+
+The server reads `SQLITE_PATH` on boot and creates the file at that path. On first boot it auto-creates the super_admin from `PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD`.
+
+> If you skip the Volume, the DB resets to empty on every deploy — all sessions, leads, and users are lost.
+
+### Step 4 — Deploy
 
 ```powershell
 railway up
@@ -64,7 +76,7 @@ Railway will print your server URL: `https://medvoice-server-xxxx.up.railway.app
 
 **Copy this URL.** Go back to Railway Variables and set `PUBLIC_URL` to this URL, then redeploy.
 
-### Step 4 — Smoke test the server
+### Step 5 — Smoke test the server
 
 ```powershell
 curl https://your-server.up.railway.app/health

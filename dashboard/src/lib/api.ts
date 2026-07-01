@@ -1,35 +1,11 @@
-const TOKEN_KEY = 'medvoice_token';
-
 // Dev: empty string → Vite proxy forwards /api to backend (vite.config.ts).
-// Production: set VITE_API_BASE_URL=https://your-server.up.railway.app in Vercel/Netlify env.
+// Production: set VITE_API_BASE_URL=https://your-server.up.railway.app in Vercel env.
 const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? '';
 
-let authToken: string | null =
-  typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
-
-export function getAuthToken(): string | null {
-  return authToken;
-}
-
-export function setAuthToken(token: string | null): void {
-  authToken = token;
-  if (typeof localStorage === 'undefined') return;
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
-}
-
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-  return headers;
-}
+// All requests include credentials so the httpOnly session cookie is sent automatically.
+const BASE_OPTS: RequestInit = {
+  credentials: 'include',
+};
 
 class APIClient {
   private baseURL: string;
@@ -40,12 +16,18 @@ class APIClient {
 
   async get<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...BASE_OPTS,
       method: 'GET',
-      headers: authHeaders(),
+      headers: { 'Content-Type': 'application/json' },
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errBody = await response.json().catch(() => ({}));
+      const message =
+        typeof errBody?.error === 'string'
+          ? errBody.error
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(message);
     }
 
     return response.json();
@@ -53,8 +35,9 @@ class APIClient {
 
   async post<T>(endpoint: string, body: unknown): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...BASE_OPTS,
       method: 'POST',
-      headers: authHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
@@ -72,9 +55,29 @@ class APIClient {
 
   async put<T>(endpoint: string, body: unknown): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...BASE_OPTS,
       method: 'PUT',
-      headers: authHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      const message =
+        typeof errBody?.error === 'string'
+          ? errBody.error
+          : `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(message);
+    }
+
+    return response.json();
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...BASE_OPTS,
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
     });
 
     if (!response.ok) {

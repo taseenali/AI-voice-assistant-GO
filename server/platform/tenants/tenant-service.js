@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, existsSync, writeFileSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
+import db from '../../lib/database.js';
 import { platformQueries } from '../../lib/platform-migrations.js';
 
 const CONFIGS_DIR = path.join(process.cwd(), 'configs');
@@ -208,15 +209,30 @@ export function seedTenantsFromConfigs() {
  * Seed default users for local development (super_admin + clinic_admin).
  */
 export async function seedDefaultUsers() {
-  if (process.env.NODE_ENV === 'production') {
-    console.warn('[Platform] Refusing to seed default users in production');
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const adminEmail = (process.env.PLATFORM_ADMIN_EMAIL || 'admin@medvoice.local').trim().toLowerCase();
+  const adminPassword = process.env.PLATFORM_ADMIN_PASSWORD || 'changeme-dev-only';
+
+  if (isProd) {
+    // In production: only create the super_admin on first boot (empty users table).
+    // This lets Railway Volume deployments self-initialize without shipping credentials in code.
+    const anyUser = db.prepare('SELECT 1 FROM users LIMIT 1').get();
+    if (!anyUser) {
+      if (!adminPassword || adminPassword === 'changeme-dev-only') {
+        console.error('[Platform] PLATFORM_ADMIN_PASSWORD is not set — skipping first-boot user creation. Set it in Railway env vars.');
+        return;
+      }
+      const hash = await bcrypt.hash(adminPassword, 10);
+      platformQueries.insertUser.run(randomUUID(), null, adminEmail, hash, 'super_admin');
+      console.log(`[Platform] First-boot super_admin created: ${adminEmail}`);
+    }
     return;
   }
 
-  const password = process.env.PLATFORM_ADMIN_PASSWORD || 'changeme-dev-only';
-  const hash = await bcrypt.hash(password, 10);
+  // Development: create default users if they don't exist yet
+  const hash = await bcrypt.hash(adminPassword, 10);
 
-  const adminEmail = (process.env.PLATFORM_ADMIN_EMAIL || 'admin@medvoice.local').trim().toLowerCase();
   if (!platformQueries.getUserByEmail.get(adminEmail)) {
     platformQueries.insertUser.run(randomUUID(), null, adminEmail, hash, 'super_admin');
     console.log(`[Platform] Default super_admin created: ${adminEmail}`);

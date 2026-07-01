@@ -12,6 +12,10 @@ import { Appointments } from './components/panels/Appointments/Appointments';
 import { SystemHealth } from './components/panels/SystemHealth/SystemHealth';
 import { Configuration } from './components/panels/Configuration/Configuration';
 import { TenantsAdmin } from './components/panels/Admin/TenantsAdmin';
+import { Compliance } from './components/panels/Admin/Compliance';
+import { AuditLog } from './components/panels/Admin/AuditLog';
+import { UserManagement } from './components/panels/Admin/UserManagement';
+import { Analytics } from './components/panels/Analytics/Analytics';
 import { SuperAdminRoute } from './components/auth/SuperAdminRoute';
 import { Landing } from './marketing/Landing';
 
@@ -19,44 +23,55 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
-            {/* Public routes */}
+            {/* Public */}
             <Route path="/" element={<Landing heroVariant="split" showLivePulse />} />
             <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected dashboard — all under /app */}
+            {/* Protected dashboard — proper nested routes, Outlet in MainLayout */}
             <Route
-              path="/app/*"
+              path="/app"
               element={
                 <ProtectedRoute>
-                  <MainLayout>
-                    <Routes>
-                      <Route path="/" element={<Overview />} />
-                      <Route path="leads" element={<Leads />} />
-                      <Route path="sessions" element={<Sessions />} />
-                      <Route path="appointments" element={<Appointments />} />
-                      <Route path="emergency" element={<EmergencyLog />} />
-                      <Route path="health" element={<SystemHealth />} />
-                      <Route path="config" element={<Configuration />} />
-                      <Route
-                        path="admin/tenants"
-                        element={
-                          <SuperAdminRoute>
-                            <TenantsAdmin />
-                          </SuperAdminRoute>
-                        }
-                      />
-                    </Routes>
-                  </MainLayout>
+                  <MainLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<Overview />} />
+              <Route path="leads" element={<Leads />} />
+              <Route path="sessions" element={<Sessions />} />
+              <Route path="appointments" element={<Appointments />} />
+              <Route path="emergency" element={<EmergencyLog />} />
+              <Route path="health" element={<SystemHealth />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="config" element={<Configuration />} />
+              <Route
+                path="admin/tenants"
+                element={
+                  <SuperAdminRoute>
+                    <TenantsAdmin />
+                  </SuperAdminRoute>
+                }
+              />
+              <Route
+                path="admin/compliance"
+                element={
+                  <SuperAdminRoute>
+                    <Compliance />
+                  </SuperAdminRoute>
+                }
+              />
+              <Route
+                path="admin/audit-log"
+                element={
+                  <SuperAdminRoute>
+                    <AuditLog />
+                  </SuperAdminRoute>
+                }
+              />
+              <Route path="admin/users" element={<UserManagement />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </ToastProvider>

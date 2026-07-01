@@ -1,0 +1,68 @@
+<!-- @dsCard group="Clinic Dashboard" viewport="1440x920" name="MedVoice Command Center" subtitle="Elite AI-receptionist dashboard — calls, trust, health, analytics (light/dark, ⌘K)" -->
+<!-- @startingPoint section="Clinic Dashboard" subtitle="MedVoice elite command center" viewport="1440x920" -->
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-density="comfortable">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MedVoice — Command Center</title>
+<link rel="stylesheet" href="../../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../assets/mvair-icons.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--app-bg); color: var(--app-text); font-family: var(--mvair-font-sans); }
+  #root { min-height: 100%; }
+  code { font-size: .92em; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--app-scroll); border-radius: 9px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  :root, [data-theme="light"] {
+    --app-bg: #F5F7F8; --app-surface: #FBFCFD; --app-card: #FFFFFF; --app-elevated: #FFFFFF;
+    --app-text: #0E1B23; --app-text2: #5A6B72; --app-muted: #8A979D;
+    --app-border: #E7ECEE; --app-border-strong: #D8E0E3; --app-hover: #F2F5F6; --app-active: #EAF1F1; --app-scroll: #C7D2D6;
+    --app-sidebar: #0C1A20; --app-sidebar-2: #0A161B;
+    --app-accent: var(--mvair-primary); --app-accent-soft: rgb(var(--mvair-primary-rgb) / 0.10); --app-ring: rgb(var(--mvair-primary-rgb) / 0.28);
+    --app-shadow: 0 1px 2px rgba(14,27,35,.04), 0 12px 30px -16px rgba(14,27,35,.10);
+    --app-shadow-pop: 0 12px 40px -8px rgba(14,27,35,.22);
+  }
+  [data-theme="dark"] {
+    --app-bg: #081317; --app-surface: #0B181E; --app-card: #0F212A; --app-elevated: #13262F;
+    --app-text: #EAF1F3; --app-text2: #9FB2B9; --app-muted: #6E838A;
+    --app-border: #1C2F38; --app-border-strong: #284049; --app-hover: #16282F; --app-active: #102A2C; --app-scroll: #243A42;
+    --app-sidebar: #060F12; --app-sidebar-2: #050C0F;
+    --app-accent: #34D8C2; --app-accent-soft: rgb(45 212 191 / 0.14); --app-ring: rgb(45 212 191 / 0.35);
+    --app-shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 36px -16px rgba(0,0,0,.6);
+    --app-shadow-pop: 0 16px 48px -8px rgba(0,0,0,.65);
+  }
+
+  [data-density="comfortable"] { --pad: 24px; --gap: 20px; --row: 13px; --cardpad: 22px; }
+  [data-density="compact"]     { --pad: 16px; --gap: 12px; --row: 8px;  --cardpad: 15px; }
+
+  .mv-card { background: var(--app-card); border: 1px solid var(--app-border); border-radius: var(--mvair-radius-card); box-shadow: var(--app-shadow); }
+  button { font-family: inherit; }
+  a { color: inherit; text-decoration: none; }
+  @keyframes mv-fade { from { transform: translateY(5px); } to { transform: none; } }
+  @keyframes mv-pop { from { transform: scale(.98); } to { transform: none; } }
+  @keyframes mv-live { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .mv-anim { animation: mv-fade .28s ease; }
+  @media (prefers-reduced-motion: reduce) { .mv-anim { animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="./data.js"></script>
+<script type="text/babel" src="./charts.jsx"></script>
+<script type="text/babel" src="./shell.jsx"></script>
+<script type="text/babel" src="./screens1.jsx"></script>
+<script type="text/babel" src="./screens2.jsx"></script>
+<script type="text/babel" src="./screens3.jsx"></script>
+<script type="text/babel" src="./screens4.jsx"></script>
+<script type="text/babel" src="./app.jsx"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Read CLAUDE.md at the project root before doing anything. It contains the full current architecture, what's dead code, design conventions, and active sprint status.
+
+Key rules:
+- The `js/` directory, root `index.html`, root `styles.css`, `sw.js`, `dist/` (root), and `operational-intelligence-files/` are ALL dead code from a pre-Vapi prototype. Do not edit, reference, or base decisions on them.
+- The live system is: `server/` (Express/Node, port 3001) + `dashboard/` (React/Vite, port 5173) + `live/` (monitor, port 3000)
+- MVAIR design tokens come from `tokens/brand.css`. Never hardcode colors. Use `--mvair-*` CSS variables.
+- Never print or log `G_PRIVATE_KEY`, `VAPI_WEBHOOK_SECRET`, or `VAPI_API_KEY` values.
+- Run `npm test` after any server-side change. 69 tests must pass.

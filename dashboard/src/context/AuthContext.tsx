@@ -7,8 +7,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { api, setAuthToken, getAuthToken } from '../lib/api';
-import type { AuthUser, LoginResponse } from '../types/auth';
+import { api } from '../lib/api';
+import type { AuthUser } from '../types/auth';
 import { DEFAULT_CLIENT_ID } from '../lib/constants';
 
 const VIEWING_TENANT_KEY = 'medvoice_viewing_tenant';
@@ -22,7 +22,7 @@ interface AuthContextValue {
   isSuperAdmin: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,43 +40,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [viewingTenantId, setViewingTenantIdState] = useState(readStoredViewingTenant);
 
-  const setViewingTenantId = useCallback((tenantId: string) => {
-    setViewingTenantIdState(tenantId);
+  const setViewingTenantId = useCallback((id: string) => {
+    setViewingTenantIdState(id);
     try {
-      localStorage.setItem(VIEWING_TENANT_KEY, tenantId);
+      localStorage.setItem(VIEWING_TENANT_KEY, id);
     } catch {
       /* private browsing */
     }
   }, []);
 
-  const logout = useCallback(() => {
-    setAuthToken(null);
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/api/auth/logout', {});
+    } catch {
+      /* ignore network errors on logout */
+    }
     setUser(null);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await api.post<LoginResponse>('/api/auth/login', { email, password });
-    setAuthToken(data.token);
+    const data = await api.post<{ user: AuthUser }>('/api/auth/login', { email, password });
     setUser(data.user);
     if (data.user.role === 'super_admin') {
       setViewingTenantIdState(readStoredViewingTenant());
     }
   }, []);
 
+  // On mount: hit /me to check if a valid session cookie already exists.
   useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     api
       .get<AuthUser>('/api/auth/me')
       .then((me) => setUser(me))
-      .catch(() => {
-        setAuthToken(null);
-        setUser(null);
-      })
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 

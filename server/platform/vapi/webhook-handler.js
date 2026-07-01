@@ -234,6 +234,14 @@ async function handleEndOfCallReport(body) {
     msg.transcript ||
     '';
 
+  // Cost, summary, success evaluation from end-of-call-report
+  const costUsd =
+    msg.cost?.total ?? msg.cost ?? call.cost?.total ?? call.cost ?? null;
+  const summary =
+    msg.summary ?? msg.analysis?.summary ?? artifact.summary ?? null;
+  const successEval =
+    msg.analysis?.successEvaluation ?? msg.successEvaluation ?? null;
+
   try {
     queries.insertSession.run(sessionId, tenantId || 'unknown', new Date().toISOString(), null);
   } catch {
@@ -248,6 +256,9 @@ async function handleEndOfCallReport(body) {
       phone,
       new Date().toISOString(),
       duration,
+      costUsd ?? null,
+      summary ?? null,
+      successEval ?? null,
       sessionId
     );
   } catch (e) {

@@ -1,0 +1,57 @@
+/* ============================================================
+   MVAIR — Radii, shadows, spacing
+   ============================================================ */
+:root {
+  /* ---- Corner radii ----
+     Cards are generously rounded; controls a touch tighter.
+     Marketing surfaces go larger (16–24px). */
+  --mvair-radius-badge: 6px;
+  --mvair-radius-button: 8px;
+  --mvair-radius-card: 12px;     /* app cards            */
+  --mvair-radius-chip: 13px;     /* icon chips           */
+  --mvair-radius-lg: 18px;       /* marketing cards      */
+  --mvair-radius-xl: 22px;       /* hero / large panels  */
+  --mvair-radius-2xl: 24px;      /* reassurance panel    */
+  --mvair-radius-full: 9999px;
+
+  /* ---- Shadows ----
+     Cool-tinted (rgba 14 27 35) and built in two layers:
+     a tight contact shadow + a soft, far-throw ambient. */
+  --mvair-shadow-card:
+    0 1px 2px rgba(14, 27, 35, 0.04),
+    0 12px 30px -16px rgba(14, 27, 35, 0.10);
+  --mvair-shadow-card-hover:
+    0 2px 4px rgba(14, 27, 35, 0.05),
+    0 22px 48px -18px rgba(14, 27, 35, 0.18);
+  --mvair-shadow-panel:
+    0 1px 2px rgba(14, 27, 35, 0.04),
+    0 30px 70px -34px rgba(14, 27, 35, 0.22);
+  --mvair-shadow-dark-tile:
+    0 1px 2px rgba(14, 27, 35, 0.06),
+    0 24px 60px -28px rgba(12, 26, 32, 0.55);
+  --mvair-shadow-modal: 0 20px 60px -12px rgba(14, 27, 35, 0.30);
+  --mvair-shadow-badge-glow: 0 8px 20px -6px rgba(11, 85, 99, 0.5); /* petrol step badge */
+
+  /* ---- Spacing scale (4px base) ---- */
+  --mvair-space-1: 4px;
+  --mvair-space-2: 8px;
+  --mvair-space-3: 12px;
+  --mvair-space-4: 16px;
+  --mvair-space-5: 20px;
+  --mvair-space-6: 24px;
+  --mvair-space-8: 32px;
+  --mvair-space-10: 40px;
+  --mvair-space-12: 48px;
+  --mvair-space-16: 64px;
+  --mvair-space-24: 96px;
+
+  /* ---- Layout ---- */
+  --mvair-sidebar-width: 220px;
+  --mvair-content-max: 1400px;   /* dashboard content    */
+  --mvair-marketing-max: 1180px; /* marketing container  */
+
+  /* ---- Motion ---- */
+  --mvair-ease: ease; /* @kind other */
+  --mvair-duration-fast: 0.15s; /* @kind other */
+  --mvair-duration: 0.25s; /* @kind other */
+}

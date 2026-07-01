@@ -3,14 +3,19 @@ export type SessionChannel = 'phone' | 'web';
 export interface Session {
   sessionId: string;
   startTime: string;
+  endTime?: string;
   duration: number;
   turns: number;
   intent: string;
   leadCaptured: boolean;
   emergencyDetected: boolean;
+  finalState?: string;
   channel: SessionChannel;
   phoneNumber: string | null;
-  recordingUrl: string | null;
+  hasRecording: boolean;
+  costUsd?: number | null;
+  summary?: string | null;
+  successEvaluation?: string | null;
 }
 
 export interface ConversationTurn {

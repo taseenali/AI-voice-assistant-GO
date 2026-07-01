@@ -67,10 +67,10 @@ export function buildSessionColumns(options?: {
 
   if (includeRecording) {
     cols.push({
-      key: 'recordingUrl',
+      key: 'hasRecording',
       header: 'Recording',
       render: (session) =>
-        session.recordingUrl ? (
+        session.hasRecording ? (
           <span className="flex items-center gap-1 text-xs text-primary font-medium" title="Open transcript to play">
             <Mic className="w-3 h-3" />
             Recorded

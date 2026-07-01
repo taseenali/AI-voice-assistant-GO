@@ -47,7 +47,7 @@ export function Sessions() {
         ...session,
         channel: (data.channel as Session['channel']) || session.channel,
         phoneNumber: data.phone_number ?? session.phoneNumber,
-        recordingUrl: data.recording_url ?? session.recordingUrl,
+        hasRecording: Boolean(data.recording_url) || session.hasRecording,
       });
     } catch {
       setTranscript([]);

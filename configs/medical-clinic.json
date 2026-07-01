@@ -1,16 +1,36 @@
 {
-  "company_name": "MedVoice Clinic",
+  "company_name": "MedVoice",
   "assistant_name": "Aria",
   "role": "AI medical receptionist",
   "tone": "warm, calm, professional",
   "primary_goal": "book_appointment",
-  "secondary_goals": ["collect_patient_info", "answer_faq"],
+  "secondary_goals": [
+    "collect_patient_info",
+    "answer_faq"
+  ],
   "services": [
     {
       "intent_key": "GENERAL_CONSULT",
       "display_name": "General Consultation",
-      "keywords": ["general", "checkup", "consultation", "doctor", "appointment", "see a doctor", "visit", "clinic", "routine"],
-      "phrases": ["general checkup", "routine visit", "see the doctor", "book appointment", "need appointment", "make appointment"],
+      "keywords": [
+        "general",
+        "checkup",
+        "consultation",
+        "doctor",
+        "appointment",
+        "see a doctor",
+        "visit",
+        "clinic",
+        "routine"
+      ],
+      "phrases": [
+        "general checkup",
+        "routine visit",
+        "see the doctor",
+        "book appointment",
+        "need appointment",
+        "make appointment"
+      ],
       "discovery_questions": [
         "What's the main reason for your visit today?",
         "How long have you been experiencing these symptoms?",
@@ -20,8 +40,28 @@
     {
       "intent_key": "DENTAL",
       "display_name": "Dental Care",
-      "keywords": ["dental", "dentist", "teeth", "tooth", "cavity", "cleaning", "toothache", "mouth", "gum", "wisdom tooth", "braces", "filling"],
-      "phrases": ["dental appointment", "teeth cleaning", "tooth pain", "see the dentist", "dental checkup", "tooth hurts"],
+      "keywords": [
+        "dental",
+        "dentist",
+        "teeth",
+        "tooth",
+        "cavity",
+        "cleaning",
+        "toothache",
+        "mouth",
+        "gum",
+        "wisdom tooth",
+        "braces",
+        "filling"
+      ],
+      "phrases": [
+        "dental appointment",
+        "teeth cleaning",
+        "tooth pain",
+        "see the dentist",
+        "dental checkup",
+        "tooth hurts"
+      ],
       "discovery_questions": [
         "Are you experiencing any tooth pain or sensitivity?",
         "Is this for a routine cleaning or a specific dental issue?",
@@ -31,8 +71,26 @@
     {
       "intent_key": "FOLLOW_UP",
       "display_name": "Follow-up Appointment",
-      "keywords": ["follow-up", "followup", "follow up", "return", "check-in", "recheck", "again", "back", "another", "next"],
-      "phrases": ["follow up visit", "return appointment", "check back", "come back", "see the doctor again", "next appointment"],
+      "keywords": [
+        "follow-up",
+        "followup",
+        "follow up",
+        "return",
+        "check-in",
+        "recheck",
+        "again",
+        "back",
+        "another",
+        "next"
+      ],
+      "phrases": [
+        "follow up visit",
+        "return appointment",
+        "check back",
+        "come back",
+        "see the doctor again",
+        "next appointment"
+      ],
       "discovery_questions": [
         "What was your previous visit for?",
         "How are you feeling since your last appointment?",
@@ -42,8 +100,27 @@
     {
       "intent_key": "URGENT_CARE",
       "display_name": "Urgent Care",
-      "keywords": ["urgent", "asap", "today", "now", "immediately", "pain", "severe", "acute", "right away", "soon", "quick"],
-      "phrases": ["urgent care", "need to see someone today", "as soon as possible", "severe pain", "right away", "can't wait"],
+      "keywords": [
+        "urgent",
+        "asap",
+        "today",
+        "now",
+        "immediately",
+        "pain",
+        "severe",
+        "acute",
+        "right away",
+        "soon",
+        "quick"
+      ],
+      "phrases": [
+        "urgent care",
+        "need to see someone today",
+        "as soon as possible",
+        "severe pain",
+        "right away",
+        "can't wait"
+      ],
       "discovery_questions": [
         "Could you describe the urgency of your situation?",
         "Are you currently in significant pain?",
@@ -64,40 +141,104 @@
     "I can arrange a time for you to see the doctor. Does that work for you?"
   ],
   "service_domain_tokens": [
-    "pain", "doctor", "appointment", "symptoms", "checkup", "clinic", "health", "dental", "medical", "treatment", "booking", "schedule"
+    "pain",
+    "doctor",
+    "appointment",
+    "symptoms",
+    "checkup",
+    "clinic",
+    "health",
+    "dental",
+    "medical",
+    "treatment",
+    "booking",
+    "schedule"
   ],
   "llm_model": "llama3.1:8b",
   "ai_tier": 2,
   "ollama_endpoint": "http://localhost:11434",
   "calendar_url": "https://calendly.com/medvoice-clinic",
   "emergency_keywords": [
-    "chest pain", "heart attack", "crushing pain", "squeezing chest",
-    "can't breathe", "difficulty breathing", "trouble breathing", "choking",
-    "stroke", "face drooping", "arm weakness", "sudden confusion",
-    "severe bleeding", "bleeding heavily", "blood loss", "uncontrolled bleeding",
-    "suicide", "kill myself", "want to die", "end my life",
-    "labor", "baby coming", "water broke", "contractions",
-    "baby not breathing", "child unconscious", "infant not moving",
-    "car accident", "severe burn", "overdose", "poisoning"
+    "chest pain",
+    "heart attack",
+    "crushing pain",
+    "squeezing chest",
+    "can't breathe",
+    "difficulty breathing",
+    "trouble breathing",
+    "choking",
+    "stroke",
+    "face drooping",
+    "arm weakness",
+    "sudden confusion",
+    "severe bleeding",
+    "bleeding heavily",
+    "blood loss",
+    "uncontrolled bleeding",
+    "suicide",
+    "kill myself",
+    "want to die",
+    "end my life",
+    "labor",
+    "baby coming",
+    "water broke",
+    "contractions",
+    "baby not breathing",
+    "child unconscious",
+    "infant not moving",
+    "car accident",
+    "severe burn",
+    "overdose",
+    "poisoning"
   ],
   "emergency_response": "This sounds like a medical emergency. Please call 911 right away. I am alerting the clinic team now.",
-  "qualification_fields": ["name", "patient_type", "dob", "reason_for_visit", "insurance_provider"],
+  "qualification_fields": [
+    "name",
+    "patient_type",
+    "dob",
+    "reason_for_visit",
+    "insurance_provider"
+  ],
   "calendar_id": "9778ebc2c96b0848737361f71f482a07a2f2a515997fa8acd328e85dec908871@group.calendar.google.com",
   "calendar_enabled": true,
   "timezone": "Asia/Karachi",
   "business_hours": {
-    "monday":    { "open": "09:00", "close": "17:00" },
-    "tuesday":   { "open": "09:00", "close": "17:00" },
-    "wednesday": { "open": "09:00", "close": "17:00" },
-    "thursday":  { "open": "09:00", "close": "17:00" },
-    "friday":    { "open": "09:00", "close": "17:00" },
-    "saturday":  null,
-    "sunday":    null
+    "monday": {
+      "open": "09:00",
+      "close": "17:00"
+    },
+    "tuesday": {
+      "open": "09:00",
+      "close": "17:00"
+    },
+    "wednesday": {
+      "open": "09:00",
+      "close": "17:00"
+    },
+    "thursday": {
+      "open": "09:00",
+      "close": "17:00"
+    },
+    "friday": {
+      "open": "09:00",
+      "close": "17:00"
+    },
+    "saturday": null,
+    "sunday": null
   },
   "closing_responses": {
-    "soft": ["Would you like to schedule an appointment to discuss this with our medical team?"],
-    "direct": ["Great, I've noted your details. I'll pass this to our scheduling team and they'll call you to confirm."],
-    "confirmations": ["Excellent! Your request has been received. Is there anything else I can help you with today?"],
-    "exit": ["Thank you for reaching out to MedVoice Clinic. Take care, and we'll speak soon."]
-  }
+    "soft": [
+      "Would you like to schedule an appointment to discuss this with our medical team?"
+    ],
+    "direct": [
+      "Great, I've noted your details. I'll pass this to our scheduling team and they'll call you to confirm."
+    ],
+    "confirmations": [
+      "Excellent! Your request has been received. Is there anything else I can help you with today?"
+    ],
+    "exit": [
+      "Thank you for reaching out to MedVoice Clinic. Take care, and we'll speak soon."
+    ]
+  },
+  "first_message": "Hi! I'm Aria, an AI medical assistant for MedVoice Clinic. How can I help you with your health today?"
 }

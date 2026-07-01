@@ -1,0 +1,19 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Semantic Status" subtitle="Success, warning, danger — cool/warm-considered" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; padding: 20px; background: #fff; font-family: var(--mvair-font-sans); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .sw { border-radius: 10px; height: 72px; display:flex; align-items:center; justify-content:center; box-sizing: border-box; }
+  .chip { display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600; }
+  .name { font-size: 12px; font-weight: 600; color: var(--mvair-text-primary); margin-top: 8px; }
+  .hex { font-family: var(--mvair-font-mono); font-size: 11px; color: var(--mvair-text-muted); }
+</style></head>
+<body>
+  <div class="grid">
+    <div><div class="sw" style="background:var(--mvair-success)"><span class="chip" style="background:color-mix(in srgb,var(--mvair-success) 15%,transparent);color:var(--mvair-success)">Captured</span></div><div class="name">Success</div><div class="hex">#168F67</div></div>
+    <div><div class="sw" style="background:var(--mvair-warning)"><span class="chip" style="background:color-mix(in srgb,var(--mvair-warning) 15%,transparent);color:var(--mvair-warning)">Pending</span></div><div class="name">Warning</div><div class="hex">#E0922A</div></div>
+    <div><div class="sw" style="background:var(--mvair-danger)"><span class="chip" style="background:color-mix(in srgb,var(--mvair-danger) 15%,transparent);color:var(--mvair-danger)">Emergency</span></div><div class="name">Danger</div><div class="hex">#DA3633</div></div>
+    <div><div class="sw" style="background:var(--mvair-primary-light)"><span class="chip" style="background:var(--mvair-primary-light);color:var(--mvair-primary)">Info</span></div><div class="name">Primary light</div><div class="hex">#E6F0F1</div></div>
+  </div>
+</body></html>
