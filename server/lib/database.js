@@ -20,6 +20,19 @@ const db = new Database(dbPath);
 
 // Enable WAL mode for better concurrent read/write performance
 db.pragma('journal_mode = WAL');
+
+// Runtime migrations — add columns that weren't in the original schema.
+// SQLite doesn't support IF NOT EXISTS on ALTER TABLE; guard with a pragma check.
+(function runColumnMigrations() {
+  const cols = db.prepare("PRAGMA table_info(emergency_events)").all();
+  const names = cols.map(c => c.name);
+  if (!names.includes('resolved_at')) {
+    db.prepare("ALTER TABLE emergency_events ADD COLUMN resolved_at TEXT").run();
+  }
+  if (!names.includes('owner')) {
+    db.prepare("ALTER TABLE emergency_events ADD COLUMN owner TEXT").run();
+  }
+})();
 db.pragma('synchronous = NORMAL');
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
@@ -223,6 +236,12 @@ export const queries = {
     WHERE s.client_id = ?
     ORDER BY e.timestamp DESC
     LIMIT ? OFFSET ?
+  `),
+
+  resolveEmergencyEvent: db.prepare(`
+    UPDATE emergency_events
+    SET resolved_at = CURRENT_TIMESTAMP, owner = ?
+    WHERE event_id = ?
   `),
 
   // Audit logs

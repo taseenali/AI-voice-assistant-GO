@@ -18,18 +18,37 @@ router.get('/', requireDashboardAuth, (req, res) => {
 
     // Map to camelCase for dashboard
     const events = rows.map(e => ({
-      id:        `ev_${e.event_id}`,
-      sessionId: e.session_id,
-      detectedAt: e.timestamp,
-      keyword:   e.pattern_matched,
-      severity:  'high',
-      resolved:  true
+      id:          `ev_${e.event_id}`,
+      rawId:       e.event_id,
+      sessionId:   e.session_id,
+      detectedAt:  e.timestamp,
+      keyword:     e.pattern_matched,
+      userMessage: e.user_message || null,
+      severity:    'high',
+      resolved:    e.resolved_at != null,
+      resolvedAt:  e.resolved_at || null,
+      owner:       e.owner || null,
     }));
 
     res.json({ events });
   } catch (error) {
     console.error('[Emergency API] Error:', error);
     res.status(500).json({ error: 'Failed to fetch emergency events' });
+  }
+});
+
+// PUT /api/emergency/:id/resolve - Mark an emergency event as resolved
+router.put('/:id/resolve', requireDashboardAuth, (req, res) => {
+  try {
+    const rawId = parseInt(req.params.id, 10);
+    if (isNaN(rawId)) return res.status(400).json({ error: 'Invalid event ID' });
+    const { owner = 'dashboard' } = req.body || {};
+    const result = queries.resolveEmergencyEvent.run(String(owner), rawId);
+    if (result.changes === 0) return res.status(404).json({ error: 'Event not found' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Emergency API] Resolve error:', error);
+    res.status(500).json({ error: 'Failed to resolve emergency event' });
   }
 });
 

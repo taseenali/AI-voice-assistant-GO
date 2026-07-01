@@ -4,11 +4,15 @@ import { useAuth } from '../context/AuthContext';
 
 export interface EmergencyEvent {
   id: string;
+  rawId: number;
   sessionId: string;
   detectedAt: string;
   keyword: string;
+  userMessage: string | null;
   severity: 'high' | 'medium' | 'low';
   resolved: boolean;
+  resolvedAt: string | null;
+  owner: string | null;
 }
 
 interface EmergencyResponse {
@@ -35,11 +39,16 @@ export function useEmergencyEvents(refreshInterval = 15000) {
     }
   }, [tenantId]);
 
+  const resolve = useCallback(async (rawId: number) => {
+    await api.put(`/api/emergency/${rawId}/resolve`, {});
+    await fetchEvents();
+  }, [fetchEvents]);
+
   useEffect(() => {
     fetchEvents();
     const interval = setInterval(fetchEvents, refreshInterval);
     return () => clearInterval(interval);
   }, [fetchEvents, refreshInterval]);
 
-  return { events, loading, error, refetch: fetchEvents };
+  return { events, loading, error, refetch: fetchEvents, resolve };
 }

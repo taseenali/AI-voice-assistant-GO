@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
-interface DailyPoint {
+export interface DailyPoint {
   date: string;
   calls: number;
   leads: number;
