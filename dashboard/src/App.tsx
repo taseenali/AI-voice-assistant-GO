@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -16,66 +17,76 @@ import { Compliance } from './components/panels/Admin/Compliance';
 import { AuditLog } from './components/panels/Admin/AuditLog';
 import { UserManagement } from './components/panels/Admin/UserManagement';
 import { Analytics } from './components/panels/Analytics/Analytics';
+import { LiveMonitor } from './components/panels/LiveMonitor/LiveMonitor';
+import { Integrations } from './components/panels/Integrations/Integrations';
+import { Billing } from './components/panels/Billing/Billing';
 import { SuperAdminRoute } from './components/auth/SuperAdminRoute';
 import { Landing } from './marketing/Landing';
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<Landing heroVariant="split" showLivePulse />} />
-            <Route path="/login" element={<LoginPage />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Landing heroVariant="split" showLivePulse />} />
+              <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected dashboard — proper nested routes, Outlet in MainLayout */}
-            <Route
-              path="/app"
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Overview />} />
-              <Route path="leads" element={<Leads />} />
-              <Route path="sessions" element={<Sessions />} />
-              <Route path="appointments" element={<Appointments />} />
-              <Route path="emergency" element={<EmergencyLog />} />
-              <Route path="health" element={<SystemHealth />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="config" element={<Configuration />} />
+              {/* Protected dashboard — nested routes, Outlet in MainLayout */}
               <Route
-                path="admin/tenants"
+                path="/app"
                 element={
-                  <SuperAdminRoute>
-                    <TenantsAdmin />
-                  </SuperAdminRoute>
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
                 }
-              />
-              <Route
-                path="admin/compliance"
-                element={
-                  <SuperAdminRoute>
-                    <Compliance />
-                  </SuperAdminRoute>
-                }
-              />
-              <Route
-                path="admin/audit-log"
-                element={
-                  <SuperAdminRoute>
-                    <AuditLog />
-                  </SuperAdminRoute>
-                }
-              />
-              <Route path="admin/users" element={<UserManagement />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
+              >
+                <Route index element={<Overview />} />
+                <Route path="live" element={<LiveMonitor />} />
+                <Route path="calls" element={<Sessions />} />
+                <Route path="sessions" element={<Sessions />} />
+                <Route path="leads" element={<Leads />} />
+                <Route path="appointments" element={<Appointments />} />
+                <Route path="emergency" element={<EmergencyLog />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="health" element={<SystemHealth />} />
+                <Route path="trust" element={<Compliance />} />
+                <Route path="integrations" element={<Integrations />} />
+                <Route path="config" element={<Configuration />} />
+                <Route path="billing" element={<Billing />} />
+                <Route
+                  path="admin/tenants"
+                  element={
+                    <SuperAdminRoute>
+                      <TenantsAdmin />
+                    </SuperAdminRoute>
+                  }
+                />
+                <Route
+                  path="admin/compliance"
+                  element={
+                    <SuperAdminRoute>
+                      <Compliance />
+                    </SuperAdminRoute>
+                  }
+                />
+                <Route
+                  path="admin/audit-log"
+                  element={
+                    <SuperAdminRoute>
+                      <AuditLog />
+                    </SuperAdminRoute>
+                  }
+                />
+                <Route path="admin/users" element={<UserManagement />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

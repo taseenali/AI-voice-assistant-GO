@@ -5,6 +5,8 @@ export default {
     "./landing.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // Switches on [data-theme="dark"] attribute on <html> — no prefers-color-scheme
+  darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -55,6 +57,23 @@ export default {
         'text-secondary': 'var(--mvair-text-secondary)',
         'text-muted': '#94A3B8', // neutral muted grey (not part of the 10-token identity)
         
+        // Theme-switching semantic tokens (light↔dark via [data-theme] attribute)
+        app: {
+          bg:      'var(--app-bg)',
+          surface: 'var(--app-surface)',
+          card:    'var(--app-card)',
+          text:    'var(--app-text)',
+          text2:   'var(--app-text2)',
+          muted:   'var(--app-muted)',
+          border:  'var(--app-border)',
+          'border-strong': 'var(--app-border-strong)',
+          hover:   'var(--app-hover)',
+          active:  'var(--app-active)',
+          sidebar: 'var(--app-sidebar)',
+          accent:  'var(--app-accent)',
+          'accent-soft': 'var(--app-accent-soft)',
+        },
+
         // Intent badges — categorical palette (neutral/3rd-party utility hues)
         intent: {
           general: '#8B5CF6',

@@ -60,7 +60,7 @@ export function Sessions() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Sessions" subtitle="Loading conversations..." />
+        <PageHeader title="Calls" subtitle="Loading conversations..." />
         <LoadingState variant="panel" />
       </div>
     );
@@ -69,7 +69,7 @@ export function Sessions() {
   if (!loading && sessions.length === 0) {
     return (
       <div>
-        <PageHeader title="Sessions" subtitle="Conversation sessions" />
+        <PageHeader title="Calls" subtitle="Conversation sessions" />
         <EmptyState
           icon={MessageSquare}
           title="No session data available"
@@ -86,8 +86,8 @@ export function Sessions() {
   return (
     <div>
       <PageHeader
-        title="Sessions"
-        subtitle={`${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${phoneCount} phone · ${webCount} web`}
+        title="Calls"
+        subtitle={`${sessions.length} call${sessions.length !== 1 ? 's' : ''} · ${phoneCount} phone · ${webCount} web`}
       />
       <SessionsTable sessions={sessions} onSessionClick={loadTranscript} />
 

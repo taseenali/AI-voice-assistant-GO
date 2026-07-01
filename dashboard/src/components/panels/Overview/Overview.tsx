@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useSessions } from '../../../hooks/useSessions';
 import { KPIRow } from './KPIRow';
 import { RecentSessionsTable } from './RecentSessionsTable';
+import { OutcomeRow } from './OutcomeRow';
+import { AIInsightCard } from './AIInsightCard';
 import { EmptyState } from '../../shared/EmptyState';
 import { PageHeader } from '../../layout/PageHeader';
 import { LoadingState } from '../../shared/LoadingState';
@@ -60,9 +62,13 @@ export function Overview() {
         avgDuration={formatDuration(stats?.avgDuration || 0)}
         emergencies={stats?.emergenciesToday || 0}
       />
+      <div className="grid grid-cols-[1fr_340px] gap-6 mb-6">
+        <OutcomeRow sessions={sessions} />
+        <AIInsightCard sessions={sessions} />
+      </div>
       <RecentSessionsTable
         sessions={sessions}
-        onSessionClick={() => navigate('/app/sessions')}
+        onSessionClick={() => navigate('/app/calls')}
       />
     </div>
   );
