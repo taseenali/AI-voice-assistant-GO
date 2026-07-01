@@ -16,8 +16,8 @@ export default {
         page: 'var(--mvair-surface)',
         sidebar: 'var(--mvair-dark)',
         card: {
-          bg: '#FFFFFF', // neutral surface, not a brand identity color
-          border: 'var(--mvair-border)',
+          bg: 'var(--app-card)',   // switches light (#FFF) ↔ dark (#0F212A) via data-theme
+          border: 'var(--mvair-card-border)',
         },
         skeleton: 'var(--mvair-skeleton-base)', // loading placeholder blocks
         

@@ -1,3 +1,6 @@
+/* Google Fonts — must be first @import in the file */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500;1,6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
 /* MVAIR brand tokens — inlined so no @import path can fail.
    Must precede Tailwind so var(--mvair-*) resolve for the bridged theme. */
 
@@ -60,7 +63,7 @@
   --app-shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 36px -16px rgba(0,0,0,.6);
   --app-shadow-pop: 0 16px 48px -8px rgba(0,0,0,.65);
   --app-scroll: #243A42;
-  /* override brand tokens for dark readability */
+  /* override brand tokens so existing Tailwind classes adapt */
   --mvair-surface: #081317;
   --mvair-dark: #060F12;
   --mvair-text-primary: #EAF1F3;
@@ -132,9 +135,6 @@
   --mvair-skeleton-shimmer: #E9EDEF;
 }
 
-/* Body/UI = Hanken Grotesk; display = Newsreader */
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500;1,6..72,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -159,7 +159,7 @@
   }
 
   .input {
-    @apply border border-card-border rounded-button px-3 py-2 text-sm text-text-primary bg-white focus:outline-none focus:ring-1 focus:ring-primary;
+    @apply border border-card-border rounded-button px-3 py-2 text-sm text-text-primary bg-card-bg focus:outline-none focus:ring-1 focus:ring-primary;
   }
 
   .badge {
