@@ -315,6 +315,56 @@ export function resolveTenantBySlug(tenantId) {
   return getTenantConfig(tenantId);
 }
 
+/**
+ * Create a new tenant from the super-admin UI.
+ * Writes a JSON config file (so updateTenantConfig can merge it later)
+ * and seeds the DB rows.
+ */
+export function createTenant({ tenant_id, company_name, assistant_name = 'Aria', plan_tier = 'starter', timezone = 'UTC' }) {
+  if (!/^[a-z0-9-]+$/.test(tenant_id)) throw new Error('tenant_id must be lowercase alphanumeric with hyphens');
+
+  const existing = platformQueries.getTenant?.get(tenant_id);
+  if (existing) throw new Error(`Tenant '${tenant_id}' already exists`);
+
+  const defaultPath = path.join(CONFIGS_DIR, 'default.json');
+  const defaults = existsSync(defaultPath) ? JSON.parse(readFileSync(defaultPath, 'utf8')) : {};
+
+  const config = {
+    ...defaults,
+    tenant_id,
+    company_name,
+    assistant_name,
+    timezone,
+    calendar_enabled: false,
+  };
+
+  const filePath = path.join(CONFIGS_DIR, `${tenant_id}.json`);
+  writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
+
+  platformQueries.upsertTenant.run(tenant_id, company_name, 'active', plan_tier);
+  platformQueries.upsertTenantConfig.run(
+    tenant_id,
+    assistant_name,
+    buildSystemPrompt(config),
+    firstGreeting(config),
+    '11labs',
+    process.env.DEFAULT_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL',
+    null,
+    0,
+    JSON.stringify(config.business_hours || null),
+    JSON.stringify(config.emergency_keywords || []),
+    config.emergency_response || '',
+    JSON.stringify(config.services || []),
+    '',
+    '',
+    timezone,
+    new Date().toISOString()
+  );
+
+  console.log(`[Platform] Tenant created: ${tenant_id}`);
+  return getTenantConfig(tenant_id);
+}
+
 const ALLOWED_EDIT_KEYS = [
   'company_name', 'assistant_name', 'first_message', 'greetings',
   'emergency_response', 'emergency_keywords', 'business_hours',

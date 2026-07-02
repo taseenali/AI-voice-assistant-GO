@@ -2,7 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { platformQueries } from '../lib/platform-migrations.js';
-import { getTenantConfig, updateTenantConfig } from '../platform/tenants/tenant-service.js';
+import { getTenantConfig, updateTenantConfig, createTenant } from '../platform/tenants/tenant-service.js';
 import { authMiddleware, requireSuperAdmin } from '../platform/auth/middleware.js';
 import { writeAuditLog } from '../lib/audit.js';
 import db from '../lib/database.js';
@@ -20,6 +20,40 @@ router.get('/tenants', requireSuperAdmin, (req, res) => {
     res.json({ tenants: rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/tenants — create a new clinic (super_admin only)
+ */
+router.post('/tenants', requireSuperAdmin, async (req, res) => {
+  try {
+    const { tenant_id, company_name, assistant_name, plan_tier, timezone, admin_email, admin_password } = req.body;
+    if (!tenant_id || !company_name) {
+      return res.status(400).json({ error: 'tenant_id and company_name are required' });
+    }
+
+    const config = createTenant({ tenant_id, company_name, assistant_name, plan_tier, timezone });
+
+    if (admin_email && admin_password) {
+      const userId = randomUUID();
+      const hash = await bcrypt.hash(admin_password, 10);
+      platformQueries.insertUser.run(userId, tenant_id, admin_email, hash, 'clinic_admin');
+    }
+
+    writeAuditLog({
+      event_type: 'config_change',
+      action: 'create_tenant',
+      resource: `tenant:${tenant_id}`,
+      client_id: tenant_id,
+      user_id: req.user?.userId,
+      req,
+    });
+
+    res.status(201).json({ success: true, tenant_id, config });
+  } catch (err) {
+    const status = err.message?.includes('already exists') ? 409 : 500;
+    res.status(status).json({ error: err.message });
   }
 });
 
@@ -50,6 +84,9 @@ router.put('/tenants/:id', (req, res) => {
   try {
     const { id } = req.params;
 
+    if (req.user?.role === 'clinic_staff') {
+      return res.status(403).json({ error: 'Access restricted to clinic administrators' });
+    }
     if (req.user?.role !== 'super_admin' && req.user?.tenantId !== id) {
       return res.status(403).json({ error: 'Forbidden' });
     }

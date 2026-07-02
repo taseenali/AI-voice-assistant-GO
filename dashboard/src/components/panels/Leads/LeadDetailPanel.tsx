@@ -11,7 +11,7 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
   if (!lead) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[420px] bg-white shadow-2xl z-40 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-[420px] bg-card-bg border-l border-card-border z-40 overflow-y-auto" style={{ boxShadow: 'var(--app-shadow-pop)' }}>
       <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -39,7 +39,7 @@ export function LeadDetailPanel({ lead, onClose }: LeadDetailPanelProps) {
                   ? 'bg-success'
                   : lead.completeness >= 50
                   ? 'bg-warning'
-                  : 'bg-neutral'
+                  : 'bg-app-muted'
               }`}
               style={{ width: `${lead.completeness}%` }}
             />

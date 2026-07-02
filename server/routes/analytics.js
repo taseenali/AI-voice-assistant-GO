@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../lib/database.js';
-import { requireDashboardAuth } from '../platform/auth/clinic-auth.js';
+import { requireDashboardAuth, requireNotStaff } from '../platform/auth/clinic-auth.js';
 import { parseIntParam } from '../lib/validate.js';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
  * Query params:
  *   days=30  — rolling window (default 30)
  */
-router.get('/overview', requireDashboardAuth, (req, res) => {
+router.get('/overview', requireDashboardAuth, requireNotStaff, (req, res) => {
   try {
     const tenantId = req.tenantId;
     const days = parseIntParam(req.query.days, 30, 1, 365);
@@ -118,7 +118,7 @@ router.get('/overview', requireDashboardAuth, (req, res) => {
  * GET /api/analytics/costs
  * Cost breakdown by day over the last N days.
  */
-router.get('/costs', requireDashboardAuth, (req, res) => {
+router.get('/costs', requireDashboardAuth, requireNotStaff, (req, res) => {
   try {
     const tenantId = req.tenantId;
     const days = parseIntParam(req.query.days, 30, 1, 365);

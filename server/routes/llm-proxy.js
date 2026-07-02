@@ -277,16 +277,8 @@ router.post('/chat', async (req, res) => {
 });
 
 // ─── GET /api/llm/health ──────────────────────────────────────────────
-router.get('/health', async (req, res) => {
-  try {
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 3000);
-    const r   = await fetch(`${OLLAMA_ENDPOINT}/api/tags`, { signal: controller.signal });
-    clearTimeout(tid);
-    res.json({ available: r.ok, endpoint: 'configured' });
-  } catch {
-    res.json({ available: false, endpoint: 'configured' });
-  }
+router.get('/health', (_req, res) => {
+  res.json({ available: false, provider: 'vapi', note: 'LLM hosted by Vapi — no local endpoint' });
 });
 
 export default router;

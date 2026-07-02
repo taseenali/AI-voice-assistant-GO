@@ -31,9 +31,10 @@ function normalizePatientType(v) {
 router.get('/', requireDashboardAuth, (req, res) => {
   try {
     const client = req.tenantId;
-    const limit = parseIntParam(req.query.limit, 50, 1, 200);
+    const limit = parseIntParam(req.query.limit, 100, 1, 200);
     const offset = parseIntParam(req.query.offset, 0, 0, 1_000_000);
     const { service, completeness_min } = req.query;
+    const total = queries.countLeads.get(client).n;
 
     writeAuditLog({
       event_type: 'phi_access',
@@ -74,7 +75,7 @@ router.get('/', requireDashboardAuth, (req, res) => {
       service:            l.service,
     }));
 
-    res.json({ leads });
+    res.json({ leads, total, hasMore: offset + leads.length < total });
   } catch (error) {
     console.error('[Leads API] Error:', error);
     res.status(500).json({ error: 'Failed to fetch leads' });

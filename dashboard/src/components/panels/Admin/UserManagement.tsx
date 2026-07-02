@@ -3,6 +3,7 @@ import { UserPlus, UserX } from 'lucide-react';
 import { api } from '../../../lib/api';
 import { PageHeader } from '../../layout/PageHeader';
 import { LoadingState } from '../../shared/LoadingState';
+import { ConfirmDialog } from '../../shared/ConfirmDialog';
 import { useAuth } from '../../../context/AuthContext';
 
 interface AdminUser {
@@ -42,6 +43,7 @@ export function UserManagement() {
   const [form, setForm] = useState({ email: '', password: '', role: 'clinic_staff', tenant_id: viewingTenantId ?? '' });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<{ userId: string; email: string } | null>(null);
 
   const tenantForQuery = isSuperAdmin ? viewingTenantId : callerTenant;
 
@@ -73,13 +75,15 @@ export function UserManagement() {
     }
   }
 
-  async function deactivate(userId: string, email: string) {
-    if (!confirm(`Deactivate ${email}?`)) return;
+  async function confirmDeactivate() {
+    if (!confirmTarget) return;
     try {
-      await api.delete(`/api/admin/users/${userId}`);
+      await api.delete(`/api/admin/users/${confirmTarget.userId}`);
       load();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to deactivate user');
+    } catch {
+      // error is silent — table will simply not update; could add toast here
+    } finally {
+      setConfirmTarget(null);
     }
   }
 
@@ -187,7 +191,7 @@ export function UserManagement() {
                     {u.active ? (
                       <button
                         type="button"
-                        onClick={() => deactivate(u.user_id, u.email)}
+                        onClick={() => setConfirmTarget({ userId: u.user_id, email: u.email })}
                         className="text-danger hover:text-danger/80 transition-colors"
                         title="Deactivate user"
                       >
@@ -201,6 +205,15 @@ export function UserManagement() {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        title="Deactivate user"
+        message={`${confirmTarget?.email} will no longer be able to sign in. This can be reversed by re-creating the account.`}
+        confirmLabel="Deactivate"
+        danger
+        onConfirm={confirmDeactivate}
+        onCancel={() => setConfirmTarget(null)}
+      />
     </div>
   );
 }

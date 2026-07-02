@@ -22,7 +22,7 @@ function formatDate(iso: string): string {
 
 export function EmergencyLog() {
   const navigate = useNavigate();
-  const { events, loading, resolve } = useEmergencyEvents();
+  const { events, loading, resolve, hasMore, loadingMore, loadMore } = useEmergencyEvents();
 
   const open     = events.filter((e) => !e.resolved);
   const resolved = events.filter((e) => e.resolved);
@@ -153,6 +153,19 @@ export function EmergencyLog() {
           </div>
         )}
       </div>
+
+      {hasMore && (
+        <div className="px-5 py-3 border-t border-card-border">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="text-xs text-primary hover:underline disabled:opacity-50"
+          >
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

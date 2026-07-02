@@ -1,28 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import type { Lead } from '../types/lead';
 import { useAuth } from '../context/AuthContext';
 
 interface LeadsData {
   leads: Lead[];
+  total: number;
+  hasMore: boolean;
 }
+
+const PAGE = 100;
 
 export function useLeads(refreshInterval = 15000) {
   const { tenantId } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const filtersRef = useRef<{ service?: string; completenessMin?: number }>({});
 
   const fetchLeads = useCallback(
-    async (filters?: { service?: string; completenessMin?: number }) => {
+    async (filters?: { service?: string; completenessMin?: number }, off = 0, append = false) => {
+      if (filters !== undefined) filtersRef.current = filters;
+      const f = filtersRef.current;
       try {
-        const params = new URLSearchParams({ client: tenantId });
-        if (filters?.service) params.set('service', filters.service);
-        if (filters?.completenessMin) {
-          params.set('completeness_min', String(filters.completenessMin));
-        }
+        const params = new URLSearchParams({ limit: String(PAGE), offset: String(off) });
+        if (f.service) params.set('service', f.service);
+        if (f.completenessMin) params.set('completeness_min', String(f.completenessMin));
         const data = await api.get<LeadsData>(`/api/leads?${params}`);
-        setLeads(data.leads || []);
+        setLeads(prev => append ? [...prev, ...(data.leads || [])] : (data.leads || []));
+        setTotal(data.total ?? 0);
+        setHasMore(data.hasMore ?? false);
         setError(null);
       } catch {
         setError('Failed to load leads');
@@ -34,10 +45,22 @@ export function useLeads(refreshInterval = 15000) {
   );
 
   useEffect(() => {
-    fetchLeads();
-    const interval = setInterval(() => fetchLeads(), refreshInterval);
+    setOffset(0);
+    setLeads([]);
+    setLoading(true);
+    fetchLeads(undefined, 0, false);
+    const interval = setInterval(() => fetchLeads(undefined, 0, false), refreshInterval);
     return () => clearInterval(interval);
   }, [refreshInterval, fetchLeads]);
 
-  return { leads, loading, error, refetch: fetchLeads };
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore) return;
+    const next = offset + PAGE;
+    setOffset(next);
+    setLoadingMore(true);
+    await fetchLeads(undefined, next, true);
+    setLoadingMore(false);
+  }, [hasMore, loadingMore, offset, fetchLeads]);
+
+  return { leads, total, hasMore, loading, loadingMore, error, refetch: fetchLeads, loadMore };
 }

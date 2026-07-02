@@ -90,7 +90,7 @@ export function Overview() {
       {/* Recent calls table */}
       <RecentSessionsTable
         sessions={sessions}
-        onSessionClick={() => navigate('/app/calls')}
+        onSessionClick={(session) => navigate('/app/calls', { state: { highlightSessionId: session.sessionId } })}
       />
     </div>
   );

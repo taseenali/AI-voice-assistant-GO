@@ -61,7 +61,7 @@ export function SystemTrustMini() {
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
                   row.ok === null
-                    ? 'bg-text-muted'
+                    ? 'bg-app-muted'
                     : row.ok
                       ? 'bg-success'
                       : 'bg-danger'

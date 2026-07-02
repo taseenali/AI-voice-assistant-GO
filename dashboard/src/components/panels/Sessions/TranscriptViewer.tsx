@@ -19,7 +19,7 @@ export function TranscriptViewer({ session, turns, onClose }: TranscriptViewerPr
     : null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-40 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-[480px] bg-card-bg border-l border-card-border z-40 overflow-y-auto" style={{ boxShadow: 'var(--app-shadow-pop)' }}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>

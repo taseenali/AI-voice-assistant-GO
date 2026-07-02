@@ -173,37 +173,35 @@ export function SystemHealth() {
         {/* Latency vs Vapi 7.5s budget */}
         <div className="flex flex-col gap-4">
           <div className="card p-5 flex-1">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">Latency vs. Vapi budget</h3>
+            <h3 className="text-sm font-semibold text-text-primary mb-1">Latency vs. Vapi budget</h3>
+            <p className="text-[11px] text-text-muted mb-4">7,500 ms assistant-request window</p>
             <div className="space-y-4">
               {[
-                { label: 'p50 (typical)', ms: 420, color: 'bg-success' },
-                { label: 'p95 (slow)', ms: 1200, color: 'bg-warning' },
-                { label: 'p99 (tail)', ms: 2800, color: 'bg-danger' },
-              ].map(({ label, ms, color }) => {
-                const pct = Math.min(Math.round((ms / 7500) * 100), 100);
-                return (
-                  <div key={label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-text-secondary">{label}</span>
-                      <span className="font-mono font-semibold text-text-primary">{ms}ms</span>
-                    </div>
-                    <div className="h-1.5 bg-page rounded-full overflow-hidden">
-                      <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
-                    </div>
+                { label: 'p50 (typical)', key: 'p50' },
+                { label: 'p95 (slow)',    key: 'p95' },
+                { label: 'p99 (tail)',    key: 'p99' },
+              ].map(({ label }) => (
+                <div key={label}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-text-secondary">{label}</span>
+                    <span className="font-mono text-text-muted">not measured</span>
                   </div>
-                );
-              })}
+                  <div className="h-1.5 bg-page rounded-full overflow-hidden">
+                    <div className="h-full bg-card-border rounded-full w-full" />
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="mt-4 pt-4 border-t border-card-border">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-text-secondary">assistant-request budget</span>
-                <span className="font-mono font-semibold text-text-primary">7,500ms</span>
+                <span className="text-text-secondary">Vapi hard budget</span>
+                <span className="font-mono font-semibold text-text-primary">7,500 ms</span>
               </div>
               <div className="h-1.5 bg-page rounded-full overflow-hidden">
                 <div className="h-full bg-primary/30 rounded-full w-full" />
               </div>
-              <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-                Vapi enforces a 7.5s build budget per call. Values above are estimates — instrument your webhook for real metrics.
+              <p className="text-[11px] text-text-muted mt-3 leading-relaxed">
+                Real p50/p95/p99 values appear once webhook response-time telemetry is instrumented. Until then this panel shows live config status only.
               </p>
             </div>
           </div>

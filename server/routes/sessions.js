@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/', requireDashboardAuth, (req, res) => {
   try {
     const client = req.tenantId;
-    const limit = parseIntParam(req.query.limit, 50, 1, 200);
+    const limit = parseIntParam(req.query.limit, 100, 1, 200);
     const offset = parseIntParam(req.query.offset, 0, 0, 1_000_000);
 
     writeAuditLog({
@@ -22,6 +22,7 @@ router.get('/', requireDashboardAuth, (req, res) => {
       req,
     });
 
+    const total = queries.countSessions.get(client).n;
     const rows = queries.listSessions.all(client, parseInt(limit), parseInt(offset));
 
     const localYMD = (iso) => {
@@ -65,6 +66,8 @@ router.get('/', requireDashboardAuth, (req, res) => {
 
     res.json({
       sessions,
+      total,
+      hasMore: offset + sessions.length < total,
       stats: {
         totalToday: todaySessions.length,
         leadsToday,
@@ -122,7 +125,7 @@ router.get('/:id', requireDashboardAuth, (req, res) => {
 });
 
 // POST /api/sessions - Create new session
-router.post('/', (req, res) => {
+router.post('/', requireDashboardAuth, (req, res) => {
   try {
     const { session_id, client_id, start_time, intent_detected } = req.body;
 
@@ -139,7 +142,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/sessions/:id - Update session (on conversation end)
-router.put('/:id', (req, res) => {
+router.put('/:id', requireDashboardAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { end_time, duration_seconds, total_turns, final_state, lead_captured, emergency_detected } = req.body;
@@ -162,7 +165,7 @@ router.put('/:id', (req, res) => {
 });
 
 // POST /api/sessions/:id/turns - Add conversation turn
-router.post('/:id/turns', (req, res) => {
+router.post('/:id/turns', requireDashboardAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { turn_number, timestamp, role, state, message, intent, confidence } = req.body;

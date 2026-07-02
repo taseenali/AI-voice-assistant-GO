@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, Legend, Funnel as ReFunnel, FunnelChart, LabelList,
@@ -57,8 +58,18 @@ const COLORS = [
 ];
 
 export function Analytics() {
-  const [days, setDays] = useState<WindowDays>(30);
+  const location = useLocation();
+  const navDays = (location.state as { days?: number } | null)?.days;
+  const initialDays: WindowDays = WINDOW_OPTIONS.includes(navDays as WindowDays) ? (navDays as WindowDays) : 30;
+  const [days, setDays] = useState<WindowDays>(initialDays);
   const { data, loading, error } = useAnalytics(days);
+
+  // Sync when navigated from topbar with a new days value
+  useEffect(() => {
+    if (navDays && WINDOW_OPTIONS.includes(navDays as WindowDays)) {
+      setDays(navDays as WindowDays);
+    }
+  }, [navDays]);
 
   const fmtDate = (d: string) => {
     const dt = new Date(d);

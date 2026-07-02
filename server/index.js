@@ -17,6 +17,7 @@ import appointmentsRouter from './routes/appointments.js';
 import callStreamRouter from './routes/call-stream.js';
 import recordingsRouter from './routes/recordings.js';
 import analyticsRouter from './routes/analytics.js';
+import llmRouter from './routes/llm-proxy.js';
 import { bootstrapPlatform } from './platform/bootstrap.js';
 
 // Initialize database (creates tables if they don't exist)
@@ -103,6 +104,7 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/calls', callStreamRouter);
 app.use('/api/recordings', recordingsRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/llm', llmRouter);
 app.use('/', healthRouter);
 
 await bootstrapPlatform();

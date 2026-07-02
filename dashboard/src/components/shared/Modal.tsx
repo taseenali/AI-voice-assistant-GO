@@ -35,7 +35,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         className="fixed inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
-      <div className={`relative bg-white rounded-card shadow-xl w-full ${sizeClasses[size]} mx-4 p-6`}>
+      <div className={`relative bg-card-bg border border-card-border rounded-card w-full ${sizeClasses[size]} mx-4 p-6`} style={{ boxShadow: 'var(--app-shadow-pop)' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
           <button

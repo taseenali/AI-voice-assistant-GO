@@ -1,17 +1,26 @@
 /**
  * In-process SSE broadcast bus for live call events.
- * Keeps a set of active response streams; broadcasts named SSE events to all.
- * Non-blocking: if no clients are connected, broadcast is a no-op.
+ * Each client entry stores the response stream + the tenant scope so
+ * broadcasts are filtered: clinic users only see their own clinic's events.
  */
 
 const clients = new Set();
 
-export function addSseClient(res) {
-  clients.add(res);
+/**
+ * @param {import('express').Response} res
+ * @param {string|null} tenantId  — null for super_admin (receives all events)
+ */
+export function addSseClient(res, tenantId = null) {
+  clients.add({ res, tenantId });
 }
 
 export function removeSseClient(res) {
-  clients.delete(res);
+  for (const entry of clients) {
+    if (entry.res === res) {
+      clients.delete(entry);
+      break;
+    }
+  }
 }
 
 export function clientCount() {
@@ -19,19 +28,20 @@ export function clientCount() {
 }
 
 /**
- * Broadcast a named SSE event to all connected monitor clients.
+ * Broadcast a named SSE event, filtered by tenantId if present in data.
  * @param {string} event  - e.g. 'call:started'
- * @param {object} data   - JSON-serialisable payload
+ * @param {object} data   - must include tenantId for filtering to work
  */
 export function broadcast(event, data) {
   if (clients.size === 0) return;
   const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const res of clients) {
+  for (const entry of clients) {
+    // null tenantId = super_admin scope = receive everything
+    if (entry.tenantId !== null && data?.tenantId && entry.tenantId !== data.tenantId) continue;
     try {
-      res.write(frame);
+      entry.res.write(frame);
     } catch {
-      // Client disconnected mid-write; will be cleaned up on 'close'
-      clients.delete(res);
+      clients.delete(entry);
     }
   }
 }

@@ -20,7 +20,7 @@ interface AuditEntry {
 const EVENT_COLORS: Record<string, string> = {
   phi_access: 'text-primary bg-primary/10',
   auth: 'text-text-secondary bg-page',
-  recording_access: 'text-accent-dark bg-accent/10',
+  recording_access: 'text-accent bg-accent/10',
 };
 
 export function AuditLog() {

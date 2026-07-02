@@ -69,3 +69,14 @@ export function canAccessEmergencyEvent(req, event, sessionClientId) {
   if (!req.tenantId || !sessionClientId) return false;
   return sessionClientId === req.tenantId;
 }
+
+export function isClinicStaff(req) {
+  return req?.user?.role === 'clinic_staff';
+}
+
+export function requireNotStaff(req, res, next) {
+  if (req?.user?.role === 'clinic_staff') {
+    return res.status(403).json({ error: 'Access restricted to clinic administrators' });
+  }
+  next();
+}

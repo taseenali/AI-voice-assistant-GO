@@ -19,18 +19,25 @@ interface EmergencyResponse {
   events: EmergencyEvent[];
 }
 
+const PAGE = 100;
+
 export function useEmergencyEvents(refreshInterval = 15000) {
   const { tenantId } = useAuth();
   const [events, setEvents] = useState<EmergencyEvent[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (off = 0, append = false) => {
     try {
       const data = await api.get<EmergencyResponse>(
-        `/api/emergency?client=${encodeURIComponent(tenantId)}`
+        `/api/emergency?limit=${PAGE}&offset=${off}`
       );
-      setEvents(data.events || []);
+      const page = data.events || [];
+      setEvents(prev => append ? [...prev, ...page] : page);
+      setHasMore(page.length === PAGE);
       setError(null);
     } catch {
       setError('Failed to load emergency events');
@@ -41,14 +48,27 @@ export function useEmergencyEvents(refreshInterval = 15000) {
 
   const resolve = useCallback(async (rawId: number) => {
     await api.put(`/api/emergency/${rawId}/resolve`, {});
-    await fetchEvents();
+    await fetchEvents(0, false);
+    setOffset(0);
   }, [fetchEvents]);
 
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore) return;
+    const next = offset + PAGE;
+    setOffset(next);
+    setLoadingMore(true);
+    await fetchEvents(next, true);
+    setLoadingMore(false);
+  }, [hasMore, loadingMore, offset, fetchEvents]);
+
   useEffect(() => {
-    fetchEvents();
-    const interval = setInterval(fetchEvents, refreshInterval);
+    setOffset(0);
+    setEvents([]);
+    setLoading(true);
+    fetchEvents(0, false);
+    const interval = setInterval(() => fetchEvents(0, false), refreshInterval);
     return () => clearInterval(interval);
   }, [fetchEvents, refreshInterval]);
 
-  return { events, loading, error, refetch: fetchEvents, resolve };
+  return { events, hasMore, loading, loadingMore, error, refetch: fetchEvents, resolve, loadMore };
 }

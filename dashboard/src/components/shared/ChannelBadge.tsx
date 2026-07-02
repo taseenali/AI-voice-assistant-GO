@@ -15,8 +15,8 @@ export function ChannelBadge({ channel, className = '' }: ChannelBadgeProps) {
     <span
       className={`inline-flex items-center gap-1.5 badge text-xs font-semibold ${
         phone
-          ? 'bg-emerald-100 text-emerald-800'
-          : 'bg-slate-100 text-slate-600'
+          ? 'bg-success/15 text-success'
+          : 'bg-page text-text-secondary border border-card-border'
       } ${className}`}
     >
       {phone ? <Phone className="w-3 h-3" aria-hidden /> : <Globe className="w-3 h-3" aria-hidden />}

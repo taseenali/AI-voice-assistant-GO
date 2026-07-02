@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
@@ -21,9 +21,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenants } from '../../hooks/useTenants';
 import { TenantSwitcher } from '../admin/TenantSwitcher';
 
-const NAV = [
+const NAV_ALL = [
   {
     section: 'MONITOR',
+    minRole: 'staff' as const,
     items: [
       { path: '/app', label: 'Command Center', icon: LayoutDashboard, end: true },
       { path: '/app/live', label: 'Live Monitor', icon: Radio, live: true },
@@ -32,6 +33,7 @@ const NAV = [
   },
   {
     section: 'FRONT DESK',
+    minRole: 'staff' as const,
     items: [
       { path: '/app/appointments', label: 'Appointments', icon: CalendarDays },
       { path: '/app/leads', label: 'Leads', icon: Users },
@@ -40,6 +42,7 @@ const NAV = [
   },
   {
     section: 'ANALYZE',
+    minRole: 'admin' as const,
     items: [
       { path: '/app/analytics', label: 'Analytics', icon: BarChart2 },
       { path: '/app/health', label: 'System Health', icon: Activity },
@@ -47,6 +50,7 @@ const NAV = [
   },
   {
     section: 'TRUST & SETUP',
+    minRole: 'admin' as const,
     items: [
       { path: '/app/trust', label: 'Trust & Compliance', icon: ShieldCheck },
       { path: '/app/integrations', label: 'Integrations', icon: Link2 },
@@ -54,16 +58,22 @@ const NAV = [
       { path: '/app/billing', label: 'Billing', icon: CreditCard },
     ],
   },
+  {
+    section: 'MY TEAM',
+    minRole: 'admin' as const,
+    items: [
+      { path: '/app/admin/users', label: 'Users', icon: UserCog },
+    ],
+  },
+  {
+    section: 'ADMIN',
+    minRole: 'super_admin' as const,
+    items: [
+      { path: '/app/admin/tenants', label: 'Clinics', icon: Building2 },
+      { path: '/app/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
+    ],
+  },
 ];
-
-const ADMIN_NAV = {
-  section: 'ADMIN',
-  items: [
-    { path: '/app/admin/tenants', label: 'Clinics', icon: Building2 },
-    { path: '/app/admin/audit-log', label: 'Audit Log', icon: ClipboardList },
-    { path: '/app/admin/users', label: 'Users', icon: UserCog },
-  ],
-};
 
 interface NavItem {
   path: string;
@@ -102,19 +112,31 @@ function NavRow({ item }: { item: NavItem }) {
   );
 }
 
-export function Sidebar({ openEmergencies = 0 }: { openEmergencies?: number }) {
+interface SidebarProps {
+  openEmergencies?: number;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ openEmergencies = 0, mobileOpen = false, onMobileClose }: SidebarProps) {
   const { user, tenantId, logout, isSuperAdmin, viewingTenantId } = useAuth();
   const { tenants } = useTenants();
   const navigate = useNavigate();
 
-  const sections = isSuperAdmin ? [...NAV, ADMIN_NAV] : NAV;
+  const isStaff = user?.role === 'clinic_staff';
+
+  const sections = NAV_ALL.filter((sec) => {
+    if (sec.minRole === 'super_admin') return isSuperAdmin;
+    if (sec.minRole === 'admin') return !isStaff;
+    return true;
+  });
 
   // Inject badge onto Emergencies nav item
   const sectionsWithBadge = sections.map((sec) => ({
     ...sec,
-    items: sec.items.map((item) => ({
+    items: sec.items.map((item: NavItem) => ({
       ...item,
-      badge: (item as NavItem).alert ? openEmergencies : undefined,
+      badge: item.alert ? openEmergencies : undefined,
     })),
   }));
 
@@ -123,9 +145,9 @@ export function Sidebar({ openEmergencies = 0 }: { openEmergencies?: number }) {
   const planTier = viewingTenant?.plan_tier;
 
   return (
-    <aside className="w-[220px] h-screen bg-sidebar text-sidebar-text flex flex-col fixed z-30">
+    <aside className={`w-[220px] h-screen bg-sidebar text-sidebar-text flex flex-col fixed z-30 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       {/* Logo */}
-      <div className="px-4 py-4 shrink-0">
+      <div className="px-4 py-4 shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-white font-display text-sm ring-1 ring-accent/30 shrink-0">
             M
@@ -135,6 +157,15 @@ export function Sidebar({ openEmergencies = 0 }: { openEmergencies?: number }) {
             <div className="text-[10px] text-[#6E838A] tracking-wide truncate">AI Receptionist</div>
           </div>
         </div>
+        {/* Close button — mobile only */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="md:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#6E838A] hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
+          aria-label="Close menu"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -164,7 +195,9 @@ export function Sidebar({ openEmergencies = 0 }: { openEmergencies?: number }) {
           <div className="text-[11px] text-[#6E838A] flex items-center gap-1 mt-0.5">
             {planTier && <span className="capitalize">{planTier}</span>}
             {planTier && <span>·</span>}
-            <span className="truncate">{user?.role === 'super_admin' ? 'Super admin' : 'Clinic admin'}</span>
+            <span className="truncate">
+              {user?.role === 'super_admin' ? 'Super admin' : user?.role === 'clinic_staff' ? 'Staff' : 'Clinic admin'}
+            </span>
           </div>
         </button>
         <button

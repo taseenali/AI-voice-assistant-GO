@@ -18,7 +18,7 @@ interface SessionDetailResponse {
 }
 
 export function Sessions() {
-  const { sessions, loading } = useSessions();
+  const { sessions, total, hasMore, loading, loadingMore, loadMore } = useSessions();
   const location = useLocation();
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [transcript, setTranscript] = useState<ConversationTurn[]>([]);
@@ -33,6 +33,19 @@ export function Sessions() {
     if (target) loadTranscript(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, loading, sessions]);
+
+  // Push a history entry when panel opens so browser Back closes it
+  useEffect(() => {
+    if (!selectedSession) return;
+    window.history.pushState({ panel: 'session' }, '');
+    function onPop() {
+      setSelectedSession(null);
+      setTranscript([]);
+      setTranscriptError(null);
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [selectedSession?.sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadTranscript = async (session: Session) => {
     setSelectedSession(session);
@@ -82,19 +95,25 @@ export function Sessions() {
 
   const phoneCount = sessions.filter((s) => s.channel === 'phone').length;
   const webCount = sessions.length - phoneCount;
+  const subtitle = total > sessions.length
+    ? `${total} calls · showing ${sessions.length} · ${phoneCount} phone · ${webCount} web`
+    : `${sessions.length} call${sessions.length !== 1 ? 's' : ''} · ${phoneCount} phone · ${webCount} web`;
 
   return (
     <div>
-      <PageHeader
-        title="Calls"
-        subtitle={`${sessions.length} call${sessions.length !== 1 ? 's' : ''} · ${phoneCount} phone · ${webCount} web`}
+      <PageHeader title="Calls" subtitle={subtitle} />
+      <SessionsTable
+        sessions={sessions}
+        onSessionClick={loadTranscript}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={loadMore}
       />
-      <SessionsTable sessions={sessions} onSessionClick={loadTranscript} />
 
       {transcriptLoading && <LoadingState variant="panel" />}
 
       {selectedSession && !transcriptLoading && transcriptError && (
-        <div className="fixed inset-y-0 right-0 w-[480px] bg-white shadow-2xl z-40 flex flex-col">
+        <div className="fixed inset-y-0 right-0 w-[480px] bg-card-bg border-l border-card-border z-40 flex flex-col" style={{ boxShadow: 'var(--app-shadow-pop)' }}>
           <div className="flex items-center justify-between p-6 border-b border-card-border">
             <h2 className="text-lg font-display font-medium text-text-primary">Transcript</h2>
             <button

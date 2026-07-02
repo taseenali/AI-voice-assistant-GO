@@ -40,7 +40,7 @@ export function OutcomeRow({ sessions }: Props) {
       label: 'Info / other',
       count: completed,
       pct: total > 0 ? Math.round((completed / total) * 100) : 0,
-      color: 'bg-text-muted',
+      color: 'bg-app-muted',
       icon: Info,
       iconColor: 'text-text-secondary',
       bg: 'bg-page',

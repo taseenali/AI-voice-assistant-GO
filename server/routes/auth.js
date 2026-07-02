@@ -27,7 +27,7 @@ router.post('/login', async (req, res) => {
     }
 
     const user = platformQueries.getUserByEmail.get(email.trim().toLowerCase());
-    if (!user) {
+    if (!user || !user.active) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

@@ -21,7 +21,9 @@ import { LiveMonitor } from './components/panels/LiveMonitor/LiveMonitor';
 import { Integrations } from './components/panels/Integrations/Integrations';
 import { Billing } from './components/panels/Billing/Billing';
 import { SuperAdminRoute } from './components/auth/SuperAdminRoute';
+import { ClinicAdminRoute } from './components/auth/ClinicAdminRoute';
 import { Landing } from './marketing/Landing';
+import { NotFound } from './pages/NotFound';
 
 function App() {
   return (
@@ -50,12 +52,12 @@ function App() {
                 <Route path="leads" element={<Leads />} />
                 <Route path="appointments" element={<Appointments />} />
                 <Route path="emergency" element={<EmergencyLog />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="health" element={<SystemHealth />} />
-                <Route path="trust" element={<Compliance />} />
-                <Route path="integrations" element={<Integrations />} />
-                <Route path="config" element={<Configuration />} />
-                <Route path="billing" element={<Billing />} />
+                <Route path="analytics" element={<ClinicAdminRoute><Analytics /></ClinicAdminRoute>} />
+                <Route path="health" element={<ClinicAdminRoute><SystemHealth /></ClinicAdminRoute>} />
+                <Route path="trust" element={<ClinicAdminRoute><Compliance /></ClinicAdminRoute>} />
+                <Route path="integrations" element={<ClinicAdminRoute><Integrations /></ClinicAdminRoute>} />
+                <Route path="config" element={<ClinicAdminRoute><Configuration /></ClinicAdminRoute>} />
+                <Route path="billing" element={<ClinicAdminRoute><Billing /></ClinicAdminRoute>} />
                 <Route
                   path="admin/tenants"
                   element={
@@ -80,8 +82,11 @@ function App() {
                     </SuperAdminRoute>
                   }
                 />
-                <Route path="admin/users" element={<UserManagement />} />
+                <Route path="admin/users" element={<ClinicAdminRoute><UserManagement /></ClinicAdminRoute>} />
               </Route>
+
+              {/* 404 catch-all */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </ToastProvider>

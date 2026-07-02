@@ -1,7 +1,9 @@
-import { Outlet, useLocation } from 'react-router-dom';
-import { Sun, Moon, AlignJustify, AlignLeft, Bell, Search, ShieldCheck, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Sun, Moon, AlignJustify, AlignLeft, Bell, Search, ShieldCheck, ChevronDown, LogOut, User, Menu } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Toast } from '../shared/Toast.tsx';
+import { CommandPalette } from '../shared/CommandPalette';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -35,21 +37,76 @@ function roleLabel(role: string | undefined): string {
 
 export function MainLayout() {
   const { toasts, removeToast } = useToast();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, logout } = useAuth();
   const { theme, density, toggleTheme, toggleDensity } = useTheme();
   const { events } = useEmergencyEvents(30000);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [dateMenuOpen, setDateMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const dateMenuRef = useRef<HTMLDivElement>(null);
 
   const openEmergencies = events.filter((e) => !e.resolved).length;
   const pageTitle = ROUTE_TITLES[location.pathname] ?? 'Dashboard';
 
+  // Close mobile sidebar on route change
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
+
+  // ⌘K / Ctrl+K global shortcut
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
+      if (dateMenuRef.current && !dateMenuRef.current.contains(e.target as Node)) setDateMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-page overflow-x-hidden">
-      <Sidebar openEmergencies={openEmergencies} />
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="ml-[220px] flex-1 min-w-0 flex flex-col">
+      <Sidebar
+        openEmergencies={openEmergencies}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+      />
+
+      <div className="md:ml-[220px] flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
         <header className="h-[52px] border-b border-card-border bg-page flex items-center px-5 gap-3 shrink-0 sticky top-0 z-20">
+          {/* Hamburger — mobile only */}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-primary/8 transition-colors shrink-0"
+            aria-label="Open menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+
           {/* Left: page title + status pills */}
           <div className="flex items-center gap-3 min-w-0">
             <h1 className="text-[15px] font-semibold text-text-primary whitespace-nowrap">{pageTitle}</h1>
@@ -65,31 +122,61 @@ export function MainLayout() {
             </div>
           </div>
 
-          {/* Center: search */}
+          {/* Center: search / command palette trigger */}
           <div className="flex-1 max-w-xs mx-auto">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-card-border bg-page text-[12px] text-text-muted cursor-text hover:border-primary/40 transition-colors">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg border border-card-border bg-page text-[12px] text-text-muted cursor-pointer hover:border-primary/40 transition-colors"
+            >
               <Search className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">Search…</span>
+              <span className="flex-1 text-left">Search…</span>
               <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-card-border bg-page font-mono text-text-muted">⌘K</kbd>
-            </div>
+            </button>
           </div>
 
           {/* Right: date filter, notifications, toggles, user */}
           <div className="flex items-center gap-1 ml-auto">
-            {/* Date filter */}
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-card-border text-[12px] text-text-secondary hover:bg-page hover:text-text-primary transition-colors"
-            >
-              Today
-              <ChevronDown className="w-3 h-3" />
-            </button>
+            {/* Date filter dropdown */}
+            <div className="relative" ref={dateMenuRef}>
+              <button
+                type="button"
+                onClick={() => setDateMenuOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-card-border text-[12px] text-text-secondary hover:bg-page hover:text-text-primary transition-colors"
+              >
+                Today
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {dateMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-40 bg-card-bg border border-card-border rounded-lg shadow-lg py-1 z-50">
+                  {[
+                    { label: 'Today',        path: '/app',          days: null },
+                    { label: 'Last 7 days',  path: '/app/analytics', days: 7   },
+                    { label: 'Last 30 days', path: '/app/analytics', days: 30  },
+                    { label: 'Last 90 days', path: '/app/analytics', days: 90  },
+                  ].map(({ label, path, days }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        setDateMenuOpen(false);
+                        navigate(path, days ? { state: { days } } : undefined);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[12px] text-text-primary hover:bg-page transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            {/* Notification bell */}
+            {/* Notification bell → emergency log */}
             <button
               type="button"
+              onClick={() => navigate('/app/emergency')}
               className="relative w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-primary/8 transition-colors"
-              title={openEmergencies > 0 ? `${openEmergencies} open emergency` : 'No open emergencies'}
+              title={openEmergencies > 0 ? `${openEmergencies} open emergency — click to review` : 'No open emergencies'}
             >
               <Bell className="w-4 h-4" />
               {openEmergencies > 0 && (
@@ -123,21 +210,55 @@ export function MainLayout() {
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
 
-            {/* Role / user pill */}
-            <button
-              type="button"
-              className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg border border-card-border text-[12px] text-text-secondary hover:text-text-primary hover:bg-page transition-colors"
-            >
-              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                {user?.email?.[0]?.toUpperCase() ?? 'U'}
-              </div>
-              <span className="hidden sm:inline">{roleLabel(user?.role)}</span>
-              <ChevronDown className="w-3 h-3 hidden sm:block" />
-            </button>
+            {/* User pill → dropdown with sign out */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg border border-card-border text-[12px] text-text-secondary hover:text-text-primary hover:bg-page transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                  {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                </div>
+                <span className="hidden sm:inline">{roleLabel(user?.role)}</span>
+                <ChevronDown className="w-3 h-3 hidden sm:block" />
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-52 bg-card-bg border border-card-border rounded-lg shadow-lg py-1 z-50">
+                  <div className="px-3 py-2 border-b border-card-border">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                        {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-medium text-text-primary truncate">{user?.email}</p>
+                        <p className="text-[11px] text-text-muted">{roleLabel(user?.role)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { navigate('/app/admin/users'); setUserMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-text-secondary hover:text-text-primary hover:bg-page transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Manage users
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { logout(); setUserMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-danger hover:bg-danger/5 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" style={{ padding: 'var(--pad)' }}>
           <div className="max-w-[1400px] mx-auto">
             {isSuperAdmin && (
               <div className="mb-5 text-xs text-primary bg-primary/[0.07] border border-primary/20 rounded-lg px-3 py-2">
@@ -148,6 +269,9 @@ export function MainLayout() {
           </div>
         </main>
       </div>
+
+      {/* Command palette */}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
       {/* Toast stack */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50 pointer-events-none">

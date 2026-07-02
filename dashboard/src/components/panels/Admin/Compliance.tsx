@@ -20,10 +20,10 @@ interface BaaRecord {
 function statusBadge(status: BaaRecord['status']) {
   const cls =
     status === 'active'
-      ? 'text-green-700 bg-green-50 border-green-200'
+      ? 'text-success bg-success/10 border-success/25'
       : status === 'expired'
-        ? 'text-yellow-700 bg-yellow-50 border-yellow-200'
-        : 'text-danger bg-red-50 border-red-200';
+        ? 'text-warning bg-warning/10 border-warning/25'
+        : 'text-danger bg-danger/10 border-danger/25';
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${cls}`}>
       {status}
@@ -113,18 +113,18 @@ export function Compliance() {
       </div>
 
       {/* BAA status banner */}
-      <div className={`mb-6 flex items-center gap-3 rounded-card border px-5 py-4 ${activeBaa ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}>
+      <div className={`mb-6 flex items-center gap-3 rounded-card border px-5 py-4 ${activeBaa ? 'border-success/25 bg-success/[0.07]' : 'border-warning/25 bg-warning/[0.07]'}`}>
         {activeBaa ? (
-          <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" />
+          <ShieldCheck className="w-5 h-5 text-success shrink-0" />
         ) : (
-          <ShieldAlert className="w-5 h-5 text-yellow-600 shrink-0" />
+          <ShieldAlert className="w-5 h-5 text-warning shrink-0" />
         )}
         <div>
-          <p className={`text-sm font-semibold ${activeBaa ? 'text-green-800' : 'text-yellow-800'}`}>
+          <p className={`text-sm font-semibold ${activeBaa ? 'text-success' : 'text-warning'}`}>
             {activeBaa ? 'Active BAA on file' : 'No active BAA — live booking is restricted'}
           </p>
           {activeBaa && (
-            <p className="text-xs text-green-700 mt-0.5">
+            <p className="text-xs text-text-secondary mt-0.5">
               Signed by {activeBaa.signed_by} · Effective {activeBaa.effective_date.slice(0, 10)}
             </p>
           )}

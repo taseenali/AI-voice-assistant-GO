@@ -13,7 +13,7 @@ export default {
         // Bridged to System A (tokens/brand.css). Alpha-using keys use the
         // rgb channel form so Tailwind opacity modifiers keep working.
         // Backgrounds
-        page: 'var(--mvair-surface)',
+        page: 'var(--app-surface)',
         sidebar: 'var(--mvair-dark)',
         card: {
           bg: 'var(--app-card)',   // switches light (#FFF) ↔ dark (#0F212A) via data-theme
@@ -118,7 +118,7 @@ export default {
       },
       
       boxShadow: {
-        'card': '0 1px 3px rgba(0,0,0,0.08)',
+        'card': 'var(--app-shadow)',
       },
     },
   },

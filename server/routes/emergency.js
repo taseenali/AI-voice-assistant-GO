@@ -42,9 +42,16 @@ router.put('/:id/resolve', requireDashboardAuth, (req, res) => {
   try {
     const rawId = parseInt(req.params.id, 10);
     if (isNaN(rawId)) return res.status(400).json({ error: 'Invalid event ID' });
+
+    // Verify the event belongs to the requester's tenant
+    const event = queries.getEmergencyEventWithSession.get(rawId);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (req.user?.role !== 'super_admin' && event.client_id !== req.tenantId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { owner = 'dashboard' } = req.body || {};
-    const result = queries.resolveEmergencyEvent.run(String(owner), rawId);
-    if (result.changes === 0) return res.status(404).json({ error: 'Event not found' });
+    queries.resolveEmergencyEvent.run(String(owner), rawId);
     res.json({ success: true });
   } catch (error) {
     console.error('[Emergency API] Resolve error:', error);

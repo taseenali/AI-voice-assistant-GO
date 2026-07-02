@@ -81,6 +81,7 @@ export function OutcomeDonut({ sessions }: Props) {
                   border: '1px solid var(--mvair-card-border)',
                   borderRadius: 8,
                   fontSize: 12,
+                  color: 'var(--mvair-text-primary)',
                 }}
               />
             </PieChart>

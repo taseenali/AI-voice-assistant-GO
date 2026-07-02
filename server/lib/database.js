@@ -21,18 +21,6 @@ const db = new Database(dbPath);
 // Enable WAL mode for better concurrent read/write performance
 db.pragma('journal_mode = WAL');
 
-// Runtime migrations — add columns that weren't in the original schema.
-// SQLite doesn't support IF NOT EXISTS on ALTER TABLE; guard with a pragma check.
-(function runColumnMigrations() {
-  const cols = db.prepare("PRAGMA table_info(emergency_events)").all();
-  const names = cols.map(c => c.name);
-  if (!names.includes('resolved_at')) {
-    db.prepare("ALTER TABLE emergency_events ADD COLUMN resolved_at TEXT").run();
-  }
-  if (!names.includes('owner')) {
-    db.prepare("ALTER TABLE emergency_events ADD COLUMN owner TEXT").run();
-  }
-})();
 db.pragma('synchronous = NORMAL');
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
@@ -130,6 +118,15 @@ db.exec(`
 // SQLite does not support "ALTER TABLE ... ADD COLUMN IF NOT EXISTS",
 // so we check PRAGMA table_info before issuing the ALTER.
 
+// emergency_events column additions (must run after table creation)
+const emergencyColumns = db.pragma('table_info(emergency_events)').map(c => c.name);
+if (!emergencyColumns.includes('resolved_at')) {
+  db.prepare("ALTER TABLE emergency_events ADD COLUMN resolved_at TEXT").run();
+}
+if (!emergencyColumns.includes('owner')) {
+  db.prepare("ALTER TABLE emergency_events ADD COLUMN owner TEXT").run();
+}
+
 const leadsColumns = db.pragma('table_info(leads)').map(c => c.name);
 if (!leadsColumns.includes('phone')) {
   db.exec('ALTER TABLE leads ADD COLUMN phone TEXT');
@@ -167,6 +164,10 @@ export const queries = {
     WHERE s.client_id = ?
     ORDER BY s.start_time DESC
     LIMIT ? OFFSET ?
+  `),
+
+  countSessions: db.prepare(`
+    SELECT COUNT(*) AS n FROM sessions WHERE client_id = ?
   `),
 
   // Conversation turns
@@ -212,6 +213,10 @@ export const queries = {
     LIMIT ? OFFSET ?
   `),
 
+  countLeads: db.prepare(`
+    SELECT COUNT(*) AS n FROM leads WHERE client_id = ?
+  `),
+
   getLeadBySession: db.prepare(`
     SELECT * FROM leads WHERE session_id = ?
   `),
@@ -236,6 +241,13 @@ export const queries = {
     WHERE s.client_id = ?
     ORDER BY e.timestamp DESC
     LIMIT ? OFFSET ?
+  `),
+
+  getEmergencyEventWithSession: db.prepare(`
+    SELECT e.*, s.client_id
+    FROM emergency_events e
+    INNER JOIN sessions s ON s.session_id = e.session_id
+    WHERE e.event_id = ?
   `),
 
   resolveEmergencyEvent: db.prepare(`

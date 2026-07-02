@@ -14,13 +14,13 @@ export function FilterBar({
   services,
 }: FilterBarProps) {
   return (
-    <div className="flex items-center gap-4 mb-6 p-4 bg-white border border-card-border rounded-card">
+    <div className="flex items-center gap-4 mb-6 p-4 bg-card-bg border border-card-border rounded-card">
       <div className="flex items-center gap-2">
         <label className="text-xs text-text-muted font-medium">Service:</label>
         <select
           value={serviceFilter}
           onChange={(e) => onServiceChange(e.target.value)}
-          className="text-sm border border-card-border rounded-input px-3 py-1.5 bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="text-sm border border-card-border rounded-input px-3 py-1.5 bg-card-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">All Services</option>
           {services.map((s) => (
@@ -37,7 +37,7 @@ export function FilterBar({
         <select
           value={completenessFilter}
           onChange={(e) => onCompletenessChange(Number(e.target.value))}
-          className="text-sm border border-card-border rounded-input px-3 py-1.5 bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="text-sm border border-card-border rounded-input px-3 py-1.5 bg-card-bg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value={0}>Any</option>
           <option value={25}>25%+</option>
